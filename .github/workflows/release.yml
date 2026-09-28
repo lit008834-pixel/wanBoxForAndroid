@@ -104,12 +104,16 @@ jobs:
           ./run init action gradle
           ./gradlew app:assembleOssRelease
           APK_DIR=app/build/outputs/apk/oss/release
+          find app/build/outputs/apk -type f -name '*.apk' -print
+          test -d "$APK_DIR"
           APKSIGNER=$(find "${ANDROID_HOME}/build-tools" -name apksigner | sort -V | tail -n 1)
           test -n "$APKSIGNER"
           VERSION_NAME=$(grep '^VERSION_NAME=' nb4a.properties | cut -d= -f2 | tr -d '\r')
-          test "$(find "$APK_DIR" -maxdepth 1 -name "wanBoxForAndroid-${VERSION_NAME}-*.apk" | wc -l)" -eq 4
+          test "$(find "$APK_DIR" -maxdepth 1 -name '*.apk' | wc -l)" -eq 4
           for apk in "$APK_DIR"/*.apk; do
-            signer_digest=$("$APKSIGNER" verify --verbose --print-certs "$apk" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | tr '[:lower:]' '[:upper:]')
+            case "$(basename "$apk")" in wanBoxForAndroid-"$VERSION_NAME"-*.apk) ;; *) exit 1 ;; esac
+            signer_digest=$("$APKSIGNER" verify --verbose --print-certs "$apk" | grep -i 'Signer #1 certificate SHA-256 digest' | sed 's/.*: *//' | tr -d ' \r' | tr '[:lower:]' '[:upper:]')
+            echo "$(basename "$apk") certificate SHA-256: $signer_digest"
             test "$signer_digest" = 'AEC62C7003FA515534817250D3CD0DC705E19F4CD578A7A9A1D22519596EA598'
           done
           echo "APK=$APK_DIR" >> "$GITHUB_ENV"
