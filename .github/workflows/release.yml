@@ -1,3 +1,4 @@
+# @author 雾晚
 name: Release Build
 on:
   push:
@@ -8,7 +9,7 @@ on:
       tag:
         description: "Release Tag (e.g. v3.0.0)"
         required: true
-        default: "v3.0.0"
+        default: "v3.0.1"
 
 permissions:
   contents: write
@@ -109,6 +110,8 @@ jobs:
           APKSIGNER=$(find "${ANDROID_HOME}/build-tools" -name apksigner | sort -V | tail -n 1)
           test -n "$APKSIGNER"
           VERSION_NAME=$(grep '^VERSION_NAME=' nb4a.properties | cut -d= -f2 | tr -d '\r')
+          RELEASE_TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          test "$RELEASE_TAG" = "v$VERSION_NAME"
           test "$(find "$APK_DIR" -maxdepth 1 -name '*.apk' | wc -l)" -eq 4
           for apk in "$APK_DIR"/*.apk; do
             case "$(basename "$apk")" in wanBoxForAndroid-"$VERSION_NAME"-*.apk) ;; *) exit 1 ;; esac
@@ -148,15 +151,18 @@ jobs:
           mkdir -p apks
           find artifacts -name "*.apk" -exec cp {} apks/ \;
           ls -la apks/
+          test "$(find apks -maxdepth 1 -name '*.apk' | wc -l)" -eq 4
+          (cd apks && sha256sum *.apk > SHA256SUMS && sha256sum --check SHA256SUMS)
+          cat apks/SHA256SUMS
       - name: Show Release Notes
         run: cat RELEASE_NOTES.md
       - name: Publish to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
-          name: wanBoxForAndroid ${{ github.event.inputs.tag || github.ref_name }}
+          name: wanBox ${{ github.event.inputs.tag || github.ref_name }}
           body_path: RELEASE_NOTES.md
-          files: apks/*.apk
+          files: apks/*
           draft: false
           prerelease: ${{ contains(github.event.inputs.tag || github.ref_name, 'preview') || contains(github.event.inputs.tag || github.ref_name, 'alpha') || contains(github.event.inputs.tag || github.ref_name, 'beta') }}
           make_latest: ${{ !(contains(github.event.inputs.tag || github.ref_name, 'preview') || contains(github.event.inputs.tag || github.ref_name, 'alpha') || contains(github.event.inputs.tag || github.ref_name, 'beta')) }}
