@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- @author 雾晚 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:installLocation="internalOnly">
@@ -543,7 +544,7 @@
         <receiver
             android:name="io.nekohasekai.sagernet.widget.OwnBoxWidget1x1"
             android:exported="true"
-            android:label="wanBoxForAndroid 1×1 (水滴微球)">
+            android:label="wanBox 1×1 (水滴微球)">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="com.ownbox.app.widget.ACTION_TOGGLE" />
@@ -556,7 +557,7 @@
         <receiver
             android:name="io.nekohasekai.sagernet.widget.OwnBoxWidget2x2"
             android:exported="true"
-            android:label="wanBoxForAndroid 2×2 (紧凑状态)">
+            android:label="wanBox 2×2 (紧凑状态)">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="com.ownbox.app.widget.ACTION_TOGGLE" />
@@ -569,7 +570,7 @@
         <receiver
             android:name="io.nekohasekai.sagernet.widget.OwnBoxWidget4x1"
             android:exported="true"
-            android:label="wanBoxForAndroid 4×1 (胶囊操作栏)">
+            android:label="wanBox 4×1 (胶囊操作栏)">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="com.ownbox.app.widget.ACTION_TOGGLE" />
@@ -582,7 +583,7 @@
         <receiver
             android:name="io.nekohasekai.sagernet.widget.OwnBoxWidget4x2"
             android:exported="true"
-            android:label="wanBoxForAndroid 4×2 (全景仪表板)">
+            android:label="wanBox 4×2 (全景仪表板)">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="com.ownbox.app.widget.ACTION_TOGGLE" />

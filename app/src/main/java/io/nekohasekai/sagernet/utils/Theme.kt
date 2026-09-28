@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.utils
 
 import android.app.WallpaperManager
@@ -154,7 +155,7 @@ object Theme {
             return Color.parseColor("#212121")
         }
         if (isLightGrayTheme()) {
-            return Color.parseColor("#1F2937")
+            return context.getColorAttr(R.attr.colorPrimary)
         }
         if (isBlackTheme()) {
             return Color.WHITE

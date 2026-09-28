@@ -1,0 +1,55 @@
+# @author 雾晚
+name: Verify Android Build
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  libcore:
+    name: Build LibCore
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ^1.25
+      - name: Build native core
+        run: ./run lib core
+      - name: Verify native artifact
+        run: test -s app/libs/libcore.aar
+      - uses: actions/upload-artifact@v5
+        with:
+          name: libcore-aar
+          path: app/libs/libcore.aar
+          if-no-files-found: error
+          retention-days: 1
+
+  app:
+    name: Build Android Debug APK
+    runs-on: ubuntu-latest
+    needs: libcore
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/download-artifact@v5
+        with:
+          name: libcore-aar
+          path: app/libs
+      - name: Verify native artifact
+        run: test -s app/libs/libcore.aar
+      - name: Build app
+        env:
+          BUILD_PLUGIN: none
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "sdk.dir=${ANDROID_HOME}" > local.properties
+          echo "ndk.dir=${ANDROID_HOME}/ndk/25.0.8775105" >> local.properties
+          ./run init action gradle
+          ./gradlew app:assembleOssDebug

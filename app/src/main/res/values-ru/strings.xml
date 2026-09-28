@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- @author 雾晚 -->
 <resources>
 <string name="abc_search_hint">Введите запрос</string>
 <string name="abc_searchview_description_clear">Удалить запрос</string>
@@ -37,8 +38,8 @@
 <string name="always_show_address">Всегда показывать адрес</string>
 <string name="always_show_address_sum">Всегда отображать адрес сервера на карте конфигурации</string>
 <string name="app_desc">Универсальный набор инструментов прокси для Android, написанный на Kotlin.</string>
-<string name="app_name">wanBoxForAndroid</string>
-<string name="app_name_long">wanBoxForAndroid</string>
+<string name="app_name">wanBox</string>
+<string name="app_name_long">wanBox</string>
 <string name="app_tls_version">Минимальная версия TLS протокола</string>
 <string name="app_version">Версия</string>
 <string name="mixed_auth_config">Настроить аутентификацию</string>

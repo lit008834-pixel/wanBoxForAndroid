@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- @author 雾晚 -->
 <resources xmlns:tools="http://schemas.android.com/tools">
+
+    <color name="wanbox_blue_primary">#0052D9</color>
+    <color name="wanbox_blue_primary_dark">#003FA8</color>
+    <color name="wanbox_blue_accent">#0A58F6</color>
+    <color name="wanbox_blue_selected">#1A0052D9</color>
 
     <integer-array name="material_colors">
         <item>@color/material_red_500</item>
@@ -356,9 +362,9 @@
     <color name="color_white_theme_ripple">#1F000000</color>
 
     <!-- 浅灰主题专用调色盘 -->
-    <color name="color_light_gray_primary">#1F2937</color>
-    <color name="color_light_gray_primary_dark">#E5E7EB</color>
-    <color name="color_light_gray_accent">#2563EB</color>
+    <color name="color_light_gray_primary">@color/wanbox_blue_primary</color>
+    <color name="color_light_gray_primary_dark">@color/wanbox_blue_primary_dark</color>
+    <color name="color_light_gray_accent">@color/wanbox_blue_accent</color>
     <color name="color_light_gray_material_100">#F3F4F6</color>
     <color name="color_light_gray_material_300">#E5E7EB</color>
     <color name="color_light_gray_surface">#FFFFFF</color>
@@ -366,8 +372,8 @@
     <color name="color_light_gray_text_primary">#1F2937</color>
     <color name="color_light_gray_text_secondary">#6B7280</color>
     <color name="color_light_gray_tab_unselected">#6B7280</color>
-    <color name="color_light_gray_tab_selected">#1F2937</color>
-    <color name="color_light_gray_ripple">#1A1F2937</color>
+    <color name="color_light_gray_tab_selected">@color/wanbox_blue_primary</color>
+    <color name="color_light_gray_ripple">@color/wanbox_blue_selected</color>
 
     <!-- 纯黑 (AMOLED Black) 主题专用调色盘 -->
     <color name="color_black_theme_primary">#FFFFFF</color>
