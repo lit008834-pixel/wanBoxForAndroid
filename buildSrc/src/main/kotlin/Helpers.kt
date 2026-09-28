@@ -2,6 +2,7 @@ import com.android.build.api.dsl.ApplicationExtension
 import com.android.build.gradle.AbstractAppExtension
 import com.android.build.gradle.internal.api.BaseVariantOutputImpl
 import org.gradle.api.JavaVersion
+import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.plugins.ExtensionAware
 import org.gradle.kotlin.dsl.getByName
@@ -99,14 +100,6 @@ fun Project.setupCommon() {
                     jniDebuggable(true)
                 }
             }
-            applicationVariants.forEach { variant ->
-                variant.outputs.forEach {
-                    it as BaseVariantOutputImpl
-                    it.outputFileName = it.outputFileName.replace(
-                        "app", "${project.name}-" + variant.versionName
-                    ).replace("-release", "").replace("-oss", "")
-                }
-            }
         }
     }
 }
@@ -115,33 +108,29 @@ fun Project.setupAppCommon() {
     setupCommon()
 
     val lp = requireLocalProperties()
-    val keystorePwd = lp.getProperty("KEYSTORE_PASS") ?: System.getenv("KEYSTORE_PASS") ?: "ownbox123"
-    val alias = lp.getProperty("ALIAS_NAME") ?: System.getenv("ALIAS_NAME") ?: "ownbox"
-    val pwd = lp.getProperty("ALIAS_PASS") ?: System.getenv("ALIAS_PASS") ?: "ownbox123"
+    val keystorePath = lp.getProperty("WANBOX_KEYSTORE_FILE") ?: System.getenv("WANBOX_KEYSTORE_FILE")
+    val keystorePassword = lp.getProperty("WANBOX_KEYSTORE_PASSWORD") ?: System.getenv("WANBOX_KEYSTORE_PASSWORD")
+    val releaseRequested = gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }
 
-    android.apply {
-        signingConfigs {
-            create("release") {
-                if (rootProject.file("release.keystore").exists()) {
-                    storeFile = rootProject.file("release.keystore")
-                    storePassword = keystorePwd
-                    keyAlias = alias
-                    keyPassword = pwd
-                } else {
-                    val debugConfig = getByName("debug")
-                    storeFile = debugConfig.storeFile
-                    storePassword = debugConfig.storePassword
-                    keyAlias = debugConfig.keyAlias
-                    keyPassword = debugConfig.keyPassword
+    if (releaseRequested && (keystorePath.isNullOrBlank() || keystorePassword.isNullOrBlank())) {
+        throw GradleException("Release signing requires WANBOX_KEYSTORE_FILE and WANBOX_KEYSTORE_PASSWORD")
+    }
+    if (!keystorePath.isNullOrBlank() && !keystorePassword.isNullOrBlank()) {
+        val keystore = file(keystorePath)
+        if (!keystore.isFile) {
+            throw GradleException("Release keystore does not exist: $keystorePath")
+        }
+        android.apply {
+            signingConfigs {
+                create("release") {
+                    storeFile = keystore
+                    storePassword = keystorePassword
+                    keyAlias = "wanboxforandroid"
+                    keyPassword = keystorePassword
+                    storeType = "pkcs12"
                 }
             }
-        }
-        buildTypes {
-            val key = signingConfigs.findByName("release")
-            if (key != null) {
-                getByName("release").signingConfig = key
-                getByName("debug").signingConfig = key
-            }
+            buildTypes.getByName("release").signingConfig = signingConfigs.getByName("release")
         }
     }
 }
@@ -203,10 +192,10 @@ fun Project.setupApp() {
                 outputFileName = if (isPreview) {
                     outputFileName.replace(
                         project.name,
-                        "OwnBox-" + requireMetadata().getProperty("PRE_VERSION_NAME")
+                        "wanBoxForAndroid-" + requireMetadata().getProperty("PRE_VERSION_NAME")
                     ).replace("-preview", "")
                 } else {
-                    outputFileName.replace(project.name, "OwnBox-$versionName")
+                    outputFileName.replace(project.name, "wanBoxForAndroid-$versionName")
                         .replace("-release", "")
                         .replace("-oss", "")
                 }

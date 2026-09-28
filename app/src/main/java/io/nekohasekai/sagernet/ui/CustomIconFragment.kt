@@ -167,7 +167,7 @@ class CustomIconFragment : NamedFragment(R.layout.layout_custom_icon) {
         if (customAppBitmap != null) {
             binding.ivAppIconPreview.setImageBitmap(customAppBitmap)
         } else {
-            binding.ivAppIconPreview.setImageResource(R.mipmap.ic_launcher)
+            binding.ivAppIconPreview.setImageResource(R.mipmap.wanbox_launcher)
         }
 
         // 2. 磁贴图标加载（提取 Alpha 蒙版）

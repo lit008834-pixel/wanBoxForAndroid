@@ -11,7 +11,7 @@ enum class AppIcon(
     NEKOBOX_PLUS(
         "io.nekohasekai.sagernet.launcher.NekoBoxPlus",
         R.string.app_icon_dynamic,
-        R.mipmap.ic_launcher,
+        R.mipmap.wanbox_launcher,
     ),
     LIGHT_MODE(
         "io.nekohasekai.sagernet.launcher.LightMode",

@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - beta1-1.15
-      - main
   workflow_dispatch:
     inputs:
 
@@ -36,6 +35,14 @@ jobs:
       - name: Native Build
         if: steps.cache.outputs.cache-hit != 'true'
         run: ./run lib core
+      - name: Verify LibCore AAR
+        run: test -s app/libs/libcore.aar
+      - name: Upload LibCore AAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: libcore-aar
+          path: app/libs/libcore.aar
+          if-no-files-found: error
   build:
     name: Build OSS APK
     runs-on: ubuntu-latest
@@ -44,53 +51,46 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Golang Status
-        run: find buildScript libcore/*.sh nb4a.properties | xargs cat | sha1sum > golang_status
-      - name: Libcore Status
-        run: git ls-files libcore | xargs cat | sha1sum > libcore_status
-      - name: LibCore Cache
-        uses: actions/cache@v4
+      - name: Download LibCore AAR
+        uses: actions/download-artifact@v4
         with:
-          path: |
-            app/libs/libcore.aar
-          key: ${{ hashFiles('.github/workflows/*', 'golang_status', 'libcore_status') }}
+          name: libcore-aar
+          path: app/libs
       - name: Gradle cache
         uses: actions/cache@v4
         with:
           path: ~/.gradle
           key: gradle-oss-${{ hashFiles('**/*.gradle.kts') }}
+      - name: Prepare release signing key
+        env:
+          WANBOX_KEYSTORE_BASE64: ${{ secrets.WANBOX_KEYSTORE_BASE64 }}
+          WANBOX_KEYSTORE_PASSWORD: ${{ secrets.WANBOX_KEYSTORE_PASSWORD }}
+        run: |
+          test -n "$WANBOX_KEYSTORE_BASE64"
+          test -n "$WANBOX_KEYSTORE_PASSWORD"
+          printf '%s' "$WANBOX_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/wanbox-release.p12"
+          test -s "$RUNNER_TEMP/wanbox-release.p12"
       - name: Gradle Build
         env:
           BUILD_PLUGIN: none
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WANBOX_KEYSTORE_FILE: ${{ runner.temp }}/wanbox-release.p12
+          WANBOX_KEYSTORE_PASSWORD: ${{ secrets.WANBOX_KEYSTORE_PASSWORD }}
         run: |
           echo "sdk.dir=${ANDROID_HOME}" > local.properties
           echo "ndk.dir=${ANDROID_HOME}/ndk/25.0.8775105" >> local.properties
           export LOCAL_PROPERTIES="${{ secrets.LOCAL_PROPERTIES }}"
           ./run init action gradle
           ./gradlew app:assemblePreviewRelease
-
-          KEYSTORE_PATH="release.keystore"
-          APKSIGNER=$(find ${ANDROID_HOME}/build-tools -name apksigner | sort -V | tail -n 1)
-          if [ -z "$APKSIGNER" ]; then
-            APKSIGNER="apksigner"
-          fi
-          echo "Using apksigner: $APKSIGNER"
-
-          APK=$(find app/build/outputs/apk -name '*arm64-v8a*.apk')
-          APK_DIR=$(dirname $APK)
-
-          echo "Signing APKs in $APK_DIR..."
-          for apk in "$APK_DIR"/*-unsigned.apk; do
-            if [ -f "$apk" ]; then
-              signed_apk="${apk%-unsigned.apk}-signed.apk"
-              echo "Signing $apk -> $signed_apk"
-              $APKSIGNER sign --ks "$KEYSTORE_PATH" --ks-pass pass:ownbox123 --key-pass pass:ownbox123 --ks-key-alias ownbox --out "$signed_apk" "$apk"
-              rm "$apk"
-            fi
+          APK_DIR=app/build/outputs/apk/preview/release
+          APKSIGNER=$(find "${ANDROID_HOME}/build-tools" -name apksigner | sort -V | tail -n 1)
+          test -n "$APKSIGNER"
+          test "$(find "$APK_DIR" -maxdepth 1 -name 'wanBoxForAndroid-*.apk' | wc -l)" -eq 4
+          for apk in "$APK_DIR"/*.apk; do
+            signer_digest=$("$APKSIGNER" verify --verbose --print-certs "$apk" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | tr '[:lower:]' '[:upper:]')
+            test "$signer_digest" = 'AEC62C7003FA515534817250D3CD0DC705E19F4CD578A7A9A1D22519596EA598'
           done
-
-          echo "APK=$APK_DIR" >> $GITHUB_ENV
+          echo "APK=$APK_DIR" >> "$GITHUB_ENV"
       - uses: actions/upload-artifact@v4
         with:
           name: APKs

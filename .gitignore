@@ -8,6 +8,8 @@ build/
 .externalNativeBuild
 .cxx
 local.properties
+/release.keystore
+*.p12
 /app/libs/
 /app/src/main/assets/sing-box
 /service_account_credentials.json
