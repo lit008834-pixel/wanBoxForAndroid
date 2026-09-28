@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- @author 雾晚 -->
 <resources>
-    <string name="app_name" translatable="false">wanBoxForAndroid</string>
-    <string name="app_name_long" translatable="false">wanBoxForAndroid</string>
+    <string name="app_name" translatable="false">wanBox</string>
+    <string name="app_name_long" translatable="false">wanBox</string>
     <string name="app_desc">The universal proxy toolchain for Android, written in Kotlin.</string>
     <string name="project">Project</string>
     <string name="github">Source code</string>

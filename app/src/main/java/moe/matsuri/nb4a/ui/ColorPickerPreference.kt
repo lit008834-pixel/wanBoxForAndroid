@@ -1,6 +1,6 @@
+// @author 雾晚
 package moe.matsuri.nb4a.ui
 
-import android.app.Activity
 import android.content.Context
 import android.content.res.Resources
 import android.graphics.Color
@@ -14,7 +14,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
-import androidx.core.app.ActivityCompat
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.content.res.TypedArrayUtils
 import androidx.core.graphics.drawable.DrawableCompat
@@ -54,7 +53,7 @@ class ColorPickerPreference @JvmOverloads constructor(
 
         val displayColor = when {
             Theme.isWhiteTheme() -> Color.WHITE
-            Theme.isLightGrayTheme() -> Color.parseColor("#F5F5F7")
+            Theme.isLightGrayTheme() -> context.getColor(R.color.wanbox_blue_primary)
             Theme.isBlackTheme() -> Color.BLACK
             else -> context.getColorAttr(R.attr.colorPrimary)
         }
@@ -123,13 +122,8 @@ class ColorPickerPreference @JvmOverloads constructor(
         }
 
         fun applyTheme(themeId: Int) {
-            persistInt(themeId)
-            DataStore.appTheme = themeId
+            if (!callChangeListener(themeId)) return
             dialog.dismiss()
-            callChangeListener(themeId)
-            (context as? Activity)?.let {
-                ActivityCompat.recreate(it)
-            }
         }
 
         // 1. Core Base Themes Section
@@ -145,7 +139,7 @@ class ColorPickerPreference @JvmOverloads constructor(
         val baseThemes = listOf(
             PresetTheme(Theme.BLACK, "纯黑 (AMOLED Black)", Color.BLACK, "纯黑底色 #000000 · 极致省电高对比"),
             PresetTheme(Theme.WHITE, "纯白 (Pure White)", Color.WHITE, "纯白底色 #FFFFFF · 极简黑白高反差"),
-            PresetTheme(Theme.LIGHT_GRAY, "浅灰 (Light Gray)", Color.parseColor("#F5F5F7"), "柔灰底色 #F5F5F7 · 优雅层次悬浮感")
+            PresetTheme(Theme.LIGHT_GRAY, "亮蓝 (Bright Blue)", context.getColor(R.color.wanbox_blue_primary), "亮蓝高亮 #0052D9 · 浅灰背景")
         )
 
         for (base in baseThemes) {
@@ -161,7 +155,7 @@ class ColorPickerPreference @JvmOverloads constructor(
                 cardElevation = 0f
                 strokeWidth = if (isSelected) dp2px(2) else dp2px(1)
                 strokeColor = if (isSelected) context.getColorAttr(R.attr.colorPrimary) else Color.parseColor("#25888888")
-                setCardBackgroundColor(if (isSelected) Color.parseColor("#0F2196F3") else Color.TRANSPARENT)
+                setCardBackgroundColor(if (isSelected) context.getColor(R.color.wanbox_blue_selected) else Color.TRANSPARENT)
                 isClickable = true
                 isFocusable = true
                 setOnClickListener {

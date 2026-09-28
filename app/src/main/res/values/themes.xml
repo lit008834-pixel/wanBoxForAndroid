@@ -1,3 +1,4 @@
+<!-- @author 雾晚 -->
 <resources>
     <!-- Base application theme. -->
     <style name="Theme.SagerNet" parent="Theme.MaterialComponents.DayNight.NoActionBar">
@@ -7,9 +8,9 @@
         <item name="android:navigationBarColor">?colorPrimaryDark</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">true</item>
-        <item name="colorPrimary">@color/material_pink_500</item>
-        <item name="colorPrimaryDark">@color/material_pink_700</item>
-        <item name="colorAccent">@color/material_pink_accent_200</item>
+        <item name="colorPrimary">@color/wanbox_blue_primary</item>
+        <item name="colorPrimaryDark">@color/wanbox_blue_primary_dark</item>
+        <item name="colorAccent">@color/wanbox_blue_accent</item>
 
         <item name="colorMaterial100">@color/material_pink_100</item>
         <item name="colorMaterial300">@color/material_pink_300</item>
@@ -99,9 +100,9 @@
         <item name="actionModeCloseDrawable">@drawable/ic_navigation_close</item>
         <item name="colorButtonNormal">?colorAccent</item>
         <item name="android:navigationBarColor">?colorPrimaryDark</item>
-        <item name="colorPrimary">@color/material_pink_500</item>
-        <item name="colorPrimaryDark">@color/material_pink_700</item>
-        <item name="colorAccent">@color/material_pink_accent_200</item>
+        <item name="colorPrimary">@color/wanbox_blue_primary</item>
+        <item name="colorPrimaryDark">@color/wanbox_blue_primary_dark</item>
+        <item name="colorAccent">@color/wanbox_blue_accent</item>
 
         <item name="colorMaterial100">@color/material_pink_100</item>
         <item name="colorMaterial300">@color/material_pink_300</item>

@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.ui
 
 import android.content.Intent
@@ -67,6 +68,10 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(), OnPreferenceDataS
     }
 
     override fun onPreferenceDataStoreChanged(store: PreferenceDataStore, key: String) {
+        if (key == Key.MTU && DataStore.serviceState.started) {
+            // The value has been persisted. Rebuild the VPN tunnel without recreating MainActivity.
+            SagerNet.restartService()
+        }
         if (key == Key.PROFILE_CARD_STYLE) {
             runOnMainDispatcher {
                 listView?.adapter?.notifyDataSetChanged()
@@ -314,9 +319,8 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(), OnPreferenceDataS
         trafficSniffing.onPreferenceChangeListener = reloadListener
         bypassLan.onPreferenceChangeListener = reloadListener
         bypassLanInCore.onPreferenceChangeListener = reloadListener
-        mtu.setOnPreferenceChangeListener { _, _ ->
-            needRestart()
-            true
+        mtu.setOnPreferenceChangeListener { _, newValue ->
+            newValue.toString().toIntOrNull()?.let { it in 1000..10000 } == true
         }
 
         val dualNetworkAcceleration = findPreference<SwitchPreference>(Key.DUAL_NETWORK_ACCELERATION)!!
