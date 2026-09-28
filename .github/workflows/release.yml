@@ -117,7 +117,7 @@ jobs:
               exit 1
             fi
             printf '%s\n' "$verify_output"
-            signer_digest=$(printf '%s\n' "$verify_output" | grep -i 'Signer #1 certificate SHA-256 digest' | sed 's/.*: *//' | tr -d ' \r' | tr '[:lower:]' '[:upper:]')
+            signer_digest=$(printf '%s\n' "$verify_output" | grep -m1 -i 'certificate SHA-256 digest' | sed 's/.*: *//' | tr -d ' \r' | tr '[:lower:]' '[:upper:]')
             echo "$(basename "$apk") certificate SHA-256: $signer_digest"
             test "$signer_digest" = 'AEC62C7003FA515534817250D3CD0DC705E19F4CD578A7A9A1D22519596EA598'
           done
