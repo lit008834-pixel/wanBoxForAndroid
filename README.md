@@ -1,7 +1,7 @@
 # wanBoxForAndroid
 
 <p align="center">
-  <img src="docs/logo.png" width="128" height="128" alt="OwnBox Logo">
+  <img src="docs/logo.png" width="128" height="128" alt="wanBoxForAndroid Logo">
   <br>
   <b>基于 sing-box 官方 v1.15.0-alpha.9 预览版内核构建的 Android 通用代理与网络调试客户端</b>
   <br>
