@@ -3,11 +3,13 @@ package libcore
 import (
 	"fmt"
 	"net"
+	"net/netip"
 	"strings"
 
 	"github.com/oschwald/maxminddb-golang"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"
+	"github.com/sagernet/sing/common/json/badoption"
 )
 
 type geoip struct {
@@ -37,15 +39,19 @@ func (g *geoip) Rules(countryCode string) ([]option.HeadlessRule, error) {
 	}
 
 	ipNets := countryMap[strings.ToLower(countryCode)]
-
 	if len(ipNets) == 0 {
 		return nil, fmt.Errorf("no networks found for country code: %s", countryCode)
 	}
 
 	var headlessRule option.DefaultHeadlessRule
-	headlessRule.IPCIDR = make([]string, 0, len(ipNets))
+	headlessRule.IPCIDR = make(badoption.Listable[*badoption.Prefixable], 0, len(ipNets))
 	for _, cidr := range ipNets {
-		headlessRule.IPCIDR = append(headlessRule.IPCIDR, cidr.String())
+		prefix, err := netip.ParsePrefix(cidr.String())
+		if err != nil {
+			return nil, fmt.Errorf("invalid network %s: %w", cidr, err)
+		}
+		prefixable := badoption.Prefixable(prefix)
+		headlessRule.IPCIDR = append(headlessRule.IPCIDR, &prefixable)
 	}
 
 	return []option.HeadlessRule{
