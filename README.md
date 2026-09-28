@@ -1,15 +1,15 @@
-# OwnBox
+# wanBoxForAndroid
 
 <p align="center">
   <img src="docs/logo.png" width="128" height="128" alt="OwnBox Logo">
   <br>
-  <b>基于 Sing-box 1.15.0 Alpha 7 适用于 Android 的现代化通用代理工具链与网络调试客户端</b>
+  <b>基于 sing-box 官方 v1.15.0-alpha.9 预览版内核构建的 Android 通用代理与网络调试客户端</b>
   <br>
-  <b>A Modern Universal Proxy Toolchain & Network Debugging Client for Android</b>
+  <b>An Android universal proxy and network debugging client built with the official sing-box v1.15.0-alpha.9 preview core</b>
 </p>
 
 <p align="center">
-  <a href="https://github.com/Own716/OwnBoxForAndroid/releases/tag/v2.9.0"><img src="https://img.shields.io/badge/Release-v2.9.0-blue.svg?style=flat-square" alt="Version"></a>
+  <a href="https://github.com/lit008834-pixel/wanBoxForAndroid/releases/tag/v2.9.1"><img src="https://img.shields.io/badge/Release-v2.9.1-blue.svg?style=flat-square" alt="Version"></a>
   <a href="https://android-arsenal.com/api?level=21"><img src="https://img.shields.io/badge/Android-5.0%2B%20(API%2021%2B)-brightgreen.svg?style=flat-square" alt="API"></a>
   <a href="https://www.gnu.org/licenses/gpl-3.0"><img src="https://img.shields.io/badge/License-GPL--3.0-orange.svg?style=flat-square" alt="License"></a>
   <a href="https://t.me/OwnBoxs"><img src="https://img.shields.io/badge/Telegram-@OwnBoxs-2CA5E0.svg?logo=telegram&style=flat-square" alt="Telegram"></a>
@@ -27,19 +27,19 @@
 ---
 ## 📖 项目介绍 / Introduction
 
-**OwnBox for Android** 是一款基于 Sing-box 官方原生核心深度定制打造的 Android 通用网络代理客户端。集合全协议栈支持、自定义桌面图标切换 (9 款精选质感图标，支持系统深浅色主题自适应)、TCP Ping 极速真连测试、常用应用分流一键预设、单节点独立测速、并发拨号、双网络加速、WebDAV 云备份同步、控制中心快捷磁贴与桌面小组件等丰富功能，兼具极速连接、低耗电量与优雅简洁的用户界面。
+**wanBoxForAndroid（OwnBox for Android）** 是基于 sing-box 官方 **v1.15.0-alpha.9 预览版内核**构建的 Android 通用网络代理客户端。集合全协议栈支持、自定义桌面图标切换（9 款精选图标，支持系统深浅色主题自适应）、TCP Ping 真连测试、常用应用分流一键预设、单节点独立测速、并发拨号、双网络加速、WebDAV 云备份同步、控制中心快捷磁贴与桌面小组件等功能，兼具快速连接、低耗电量与简洁界面。
 
-**OwnBox for Android** is a universal network proxy client for Android, deeply customized and built on top of the official native Sing-box core. It brings together full-protocol-stack support, customizable home screen icons (9 stylish icon designs with system light/dark auto-adaptation), lightning-fast real-connection TCP Ping testing, one-tap presets for routing common apps, standalone latency testing per node, concurrent dialing, dual-network acceleration, WebDAV cloud backup and sync, a Quick Settings tile, and home screen widgets — all combined with blazing-fast connections, low battery consumption, and an elegant, clean user interface.
+**wanBoxForAndroid (OwnBox for Android)** is an Android universal proxy client built with the official **sing-box v1.15.0-alpha.9 preview core**. Features include full protocol support, customizable home-screen icons with light/dark theme adaptation, real-connection TCP Ping, one-tap per-app routing presets, per-node latency tests, concurrent dialing, dual-network acceleration, WebDAV backup and sync, a Quick Settings tile, and home-screen widgets.
 
 ---
 
 ## 📥 发行版下载 / Downloads
 
-请前往官方发行版页面获取经过正式签名的全架构 APK 安装包：
+请前往 **wanBoxForAndroid 自己的 GitHub Releases 页面**下载本仓库发布的 APK，并查看对应版本说明：
 
-Please visit the official Releases page to download officially signed APK packages for all supported architectures:
+Download APKs published by **this wanBoxForAndroid repository** and read the release notes on its GitHub Releases page:
 
-👉 **[前往 GitHub Releases 官方发布页面 / Go to the Official GitHub Releases Page](https://github.com/Own716/OwnBoxForAndroid/releases)**
+👉 **[前往本仓库 GitHub Releases 下载 / Download from this repository's GitHub Releases](https://github.com/lit008834-pixel/wanBoxForAndroid/releases)**
 
 ---
 
@@ -58,9 +58,8 @@ Please visit the official Releases page to download officially signed APK packag
 
 ## 💬 反馈与建议 / Issues & Feedback
 
-遇到任何使用问题、连接异常或有新的功能建议，欢迎前往仓库议题页面提交反馈：
+遇到任何使用问题、连接异常或有新的功能建议，欢迎前往 **wanBoxForAndroid 自己的仓库议题页**提交反馈：
 
-If you encounter any issues, connection errors, or have feature requests, please feel free to submit an issue:
+If you encounter any issues, connection errors, or have feature requests, please submit an issue to the **wanBoxForAndroid repository**:
 
-👉 **[前往提交议题 / Submit an Issue on GitHub](https://github.com/Own716/OwnBoxForAndroid/issues)**
-
+👉 **[前往本仓库提交议题 / Submit an issue to this repository](https://github.com/lit008834-pixel/wanBoxForAndroid/issues)**
