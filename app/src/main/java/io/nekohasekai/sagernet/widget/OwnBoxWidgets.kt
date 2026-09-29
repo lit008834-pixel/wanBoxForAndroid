@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.widget
 
 import android.app.PendingIntent
@@ -9,6 +10,7 @@ import android.content.Intent
 import android.graphics.Color
 import android.text.format.Formatter
 import android.widget.RemoteViews
+import io.nekohasekai.sagernet.BuildConfig
 import io.nekohasekai.sagernet.R
 import io.nekohasekai.sagernet.SagerNet
 import io.nekohasekai.sagernet.aidl.SpeedDisplayData
@@ -20,7 +22,7 @@ import io.nekohasekai.sagernet.ui.MainActivity
 import io.nekohasekai.sagernet.ui.NodeSelectDialogActivity
 
 object OwnBoxWidgetHelper {
-    const val ACTION_TOGGLE = "com.ownbox.app.widget.ACTION_TOGGLE"
+    val ACTION_TOGGLE = "${BuildConfig.APPLICATION_ID}.widget.ACTION_TOGGLE"
 
     @Volatile
     var lastSpeedDisplayData: SpeedDisplayData? = null

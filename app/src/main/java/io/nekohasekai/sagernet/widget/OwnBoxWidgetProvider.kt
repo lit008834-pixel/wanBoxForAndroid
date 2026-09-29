@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.widget
 
 import android.appwidget.AppWidgetManager
@@ -8,15 +9,13 @@ import android.content.Intent
 class OwnBoxWidgetProvider : AppWidgetProvider() {
 
     companion object {
-        const val ACTION_TOGGLE = "com.ownbox.app.widget.ACTION_TOGGLE"
-
         fun updateWidgets(context: Context) {
             OwnBoxWidgetHelper.updateAllWidgets(context)
         }
     }
 
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == ACTION_TOGGLE) {
+        if (intent.action == OwnBoxWidgetHelper.ACTION_TOGGLE) {
             OwnBoxWidgetHelper.handleToggle(context)
             return
         }
