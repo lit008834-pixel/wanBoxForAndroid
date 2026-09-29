@@ -14,10 +14,13 @@ import io.nekohasekai.sagernet.ktx.runOnDefaultDispatcher
 import io.nekohasekai.sagernet.ktx.runOnIoDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
+import kotlin.concurrent.thread
 
 class RootTunService : Service(), BaseService.Interface {
     override val data = BaseService.Data(this)
@@ -29,6 +32,7 @@ class RootTunService : Service(), BaseService.Interface {
     private var fallbackAfterStop = false
     private val pidFile get() = File(noBackupFilesDir, "root-tun.pid")
     private val readyFile get() = File(noBackupFilesDir, "root-tun.ready")
+    private val stopFile get() = File(noBackupFilesDir, "root-tun.stop")
 
     override fun createNotification(profileName: String) =
         ServiceNotification(this, profileName, "service-proxy", true)
@@ -47,28 +51,35 @@ class RootTunService : Service(), BaseService.Interface {
         }
         val proxy = data.proxy ?: throw IOException("Missing proxy configuration")
         proxy.launchExternalOnly()
-        val process = withContext(Dispatchers.IO) {
-            val executable = File(applicationInfo.nativeLibraryDir, "librootbox.so")
-            if (!executable.isFile) throw IOException("Root TUN executable is missing")
-            val configFile = File(noBackupFilesDir, "root-tun.json")
-            configFile.writeText(proxy.config.config)
-            pidFile.delete()
-            readyFile.delete()
-            fun quote(path: String) = "'${path.replace("'", "'\\''")}'"
-            val command = listOf(
-                executable.absolutePath,
-                configFile.absolutePath,
-                SagerNet.application.externalAssets.absolutePath,
-                pidFile.absolutePath,
-                readyFile.absolutePath,
-                android.os.Process.myPid().toString()
-            ).joinToString(" ") { quote(it) }
-            ProcessBuilder("su", "-c", "exec $command")
-                .directory(noBackupFilesDir)
-                .redirectErrorStream(true)
-                .start()
+        val process = try {
+            withContext(NonCancellable + Dispatchers.IO) {
+                val executable = File(applicationInfo.nativeLibraryDir, "librootbox.so")
+                if (!executable.isFile) throw IOException("Root TUN executable is missing")
+                val configFile = File(noBackupFilesDir, "root-tun.json")
+                configFile.writeText(proxy.config.config)
+                pidFile.delete()
+                readyFile.delete()
+                stopFile.delete()
+                fun quote(path: String) = "'${path.replace("'", "'\\''")}'"
+                val command = listOf(
+                    executable.absolutePath,
+                    configFile.absolutePath,
+                    SagerNet.application.externalAssets.absolutePath,
+                    pidFile.absolutePath,
+                    readyFile.absolutePath,
+                    stopFile.absolutePath,
+                    android.os.Process.myPid().toString()
+                ).joinToString(" ") { quote(it) }
+                ProcessBuilder("su", "-c", "exec $command")
+                    .directory(noBackupFilesDir)
+                    .redirectErrorStream(true)
+                    .start()
+                    .also { rootProcess = it }
+            }
+        } catch (error: Throwable) {
+            if (error !is CancellationException) fallbackAfterStop = true
+            throw error
         }
-        rootProcess = process
         runOnIoDispatcher {
             process.inputStream.bufferedReader().forEachLine { Logs.i("Root TUN: $it") }
         }
@@ -81,7 +92,7 @@ class RootTunService : Service(), BaseService.Interface {
             }
             if (!readyFile.isFile) throw IOException("Root TUN startup timed out")
         } catch (error: Throwable) {
-            fallbackAfterStop = true
+            if (error !is CancellationException) fallbackAfterStop = true
             throw error
         }
         rootWatcher = runOnIoDispatcher {
@@ -98,9 +109,16 @@ class RootTunService : Service(), BaseService.Interface {
         rootWatcher?.cancel()
         rootWatcher = null
         withContext(Dispatchers.IO) {
+            // The root process also watches this file, so cleanup works when su refuses kill.
+            stopFile.writeText("stop")
             val pid = runCatching { pidFile.readText().trim().toInt() }.getOrNull()
             if (pid != null && pid > 1) {
-                runCatching { ProcessBuilder("su", "-c", "kill -TERM $pid").start().waitFor() }
+                runCatching {
+                    val killer = ProcessBuilder("su", "-c", "kill -TERM $pid").start()
+                    val waiter = thread(isDaemon = true) { killer.waitFor() }
+                    waiter.join(3_000)
+                    if (waiter.isAlive) killer.destroy()
+                }
             }
             rootProcess?.destroy()
             rootProcess = null
