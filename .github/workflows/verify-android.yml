@@ -20,11 +20,21 @@ jobs:
       - name: Build native core
         run: ./run lib core
       - name: Verify native artifact
-        run: test -s app/libs/libcore.aar
+        run: |
+          test -s app/libs/libcore.aar
+          for abi in armeabi-v7a arm64-v8a x86 x86_64; do
+            test -s "app/executableSo/$abi/librootbox.so"
+          done
       - uses: actions/upload-artifact@v5
         with:
           name: libcore-aar
           path: app/libs/libcore.aar
+          if-no-files-found: error
+          retention-days: 1
+      - uses: actions/upload-artifact@v5
+        with:
+          name: root-tun-executables
+          path: app/executableSo
           if-no-files-found: error
           retention-days: 1
 
@@ -42,8 +52,16 @@ jobs:
         with:
           name: libcore-aar
           path: app/libs
+      - uses: actions/download-artifact@v5
+        with:
+          name: root-tun-executables
+          path: app/executableSo
       - name: Verify native artifact
-        run: test -s app/libs/libcore.aar
+        run: |
+          test -s app/libs/libcore.aar
+          for abi in armeabi-v7a arm64-v8a x86 x86_64; do
+            test -s "app/executableSo/$abi/librootbox.so"
+          done
       - name: Build app
         env:
           BUILD_PLUGIN: none

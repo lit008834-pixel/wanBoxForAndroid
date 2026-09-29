@@ -31,6 +31,7 @@ jobs:
         with:
           path: |
             app/libs/libcore.aar
+            app/executableSo
           key: ${{ hashFiles('.github/workflows/*', 'golang_status', 'libcore_status') }}
       - name: Install Golang
         if: steps.cache.outputs.cache-hit != 'true'
@@ -43,6 +44,9 @@ jobs:
       - name: Verify LibCore AAR
         run: |
           test -s app/libs/libcore.aar
+          for abi in armeabi-v7a arm64-v8a x86 x86_64; do
+            test -s "app/executableSo/$abi/librootbox.so"
+          done
           unzip -p app/libs/libcore.aar classes.jar > /tmp/libcore-classes.jar
           unzip -l /tmp/libcore-classes.jar | grep -q 'libcore/Libcore.class'
           unzip -l /tmp/libcore-classes.jar | grep -q 'go/Seq.class'
@@ -51,6 +55,13 @@ jobs:
         with:
           name: libcore-aar
           path: app/libs/libcore.aar
+          if-no-files-found: error
+          retention-days: 1
+      - name: Upload Root TUN executables
+        uses: actions/upload-artifact@v5
+        with:
+          name: root-tun-executables
+          path: app/executableSo
           if-no-files-found: error
           retention-days: 1
 
@@ -72,6 +83,11 @@ jobs:
         with:
           name: libcore-aar
           path: app/libs
+      - name: Download Root TUN executables
+        uses: actions/download-artifact@v5
+        with:
+          name: root-tun-executables
+          path: app/executableSo
       - name: Verify LibCore AAR
         run: |
           test -s app/libs/libcore.aar
@@ -120,6 +136,7 @@ jobs:
           test "$(grep -c 'android:targetPackage="com.lit008834.pixel.wanboxforandroid"' app/src/main/res/xml/shortcuts.xml)" -eq 4
           for apk in "$APK_DIR"/*.apk; do
             case "$(basename "$apk")" in wanBoxForAndroid-"$VERSION_NAME"-*.apk) ;; *) exit 1 ;; esac
+            unzip -Z1 "$apk" | grep -Eq '^lib/(armeabi-v7a|arm64-v8a|x86|x86_64)/librootbox.so$'
             "$AAPT" dump badging "$apk" | grep -q "^package: name='com.lit008834.pixel.wanboxforandroid' versionCode='$VERSION_CODE' versionName='$VERSION_NAME' "
             manifest=$($AAPT dump xmltree "$apk" AndroidManifest.xml)
             printf '%s\n' "$manifest" | grep -q 'com.lit008834.pixel.wanboxforandroid.cache'

@@ -163,14 +163,14 @@ object DataStore : OnPreferenceDataStoreChangeListener {
 
     // 仅在 TUN 模式下真正生效；系统代理模式必须保留 mixed 入站
     val mixedInboundDisabled: Boolean
-        get() = disableMixedInbound && serviceMode == Key.MODE_VPN
+        get() = disableMixedInbound && serviceMode != Key.MODE_PROXY
 
     // 混合入站账密由用户设置决定：用户名留空即不启用认证（本机回环免密直连）
     var mixedUsername by configurationStore.string(Key.MIXED_USERNAME) { "" }
     var mixedPassword by configurationStore.string(Key.MIXED_PASSWORD) { "" }
 
     val mixedInboundNeedsAuth: Boolean
-        get() = serviceMode == Key.MODE_VPN && !mixedInboundDisabled && mixedUsername.isNotBlank()
+        get() = serviceMode != Key.MODE_PROXY && !mixedInboundDisabled && mixedUsername.isNotBlank()
 
     val mixedInboundUser: String get() = if (mixedInboundAuthed) mixedUsername else ""
     val mixedInboundPass: String get() = if (mixedInboundAuthed) mixedPassword else ""

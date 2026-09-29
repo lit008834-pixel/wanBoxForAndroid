@@ -2384,6 +2384,8 @@ public class SingBoxOptions {
 
         public Boolean auto_route;
 
+        public Boolean auto_redirect;
+
         public Boolean strict_route;
 
         // Generate note: Listable
@@ -2970,6 +2972,8 @@ public class SingBoxOptions {
         public List<String> address;
 
         public Boolean auto_route;
+
+        public Boolean auto_redirect;
 
         public Boolean strict_route;
 

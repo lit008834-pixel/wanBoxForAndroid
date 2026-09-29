@@ -2,6 +2,7 @@ package io.nekohasekai.sagernet.bg.proto
 
 import android.os.SystemClock
 import io.nekohasekai.sagernet.SagerNet
+import io.nekohasekai.sagernet.Key
 import io.nekohasekai.sagernet.bg.AbstractInstance
 import io.nekohasekai.sagernet.bg.GuardedProcessPool
 import io.nekohasekai.sagernet.database.DataStore
@@ -51,7 +52,10 @@ abstract class BoxInstance(
     }
 
     protected open suspend fun loadConfig() {
-        box = Libcore.newSingBoxInstance(config.config, LocalResolverImpl)
+        // @author 雾晚: root TUN runs the core in a privileged process, not through VpnService.
+        if (DataStore.serviceMode != Key.MODE_ROOT) {
+            box = Libcore.newSingBoxInstance(config.config, LocalResolverImpl)
+        }
     }
 
     open suspend fun init() {
