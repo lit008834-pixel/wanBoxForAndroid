@@ -142,7 +142,7 @@ jobs:
         with:
           name: APKs
           path: apks
-      - name: Download current formal release and OwnBox
+      - name: Download previous wanBox releases and OwnBox
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -150,6 +150,9 @@ jobs:
           gh release download v3.0.2 \
             -R lit008834-pixel/wanBoxForAndroid \
             -p wanBoxForAndroid-3.0.2-x86_64.apk -D previous
+          gh release download v3.0.3-preview.2 \
+            -R lit008834-pixel/wanBoxForAndroid \
+            -p wanBoxForAndroid-3.0.3-preview.2-x86_64-release.apk -D previous
           gh release download v2.9.1-preview \
             -R Own716/OwnBoxForAndroid \
             -p OwnBox-2.9.1-x86_64-release.apk -D previous
@@ -187,7 +190,7 @@ jobs:
       - name: Get Version
         run: |
           VERSION=$(grep '^PRE_VERSION_NAME=' nb4a.properties | cut -d'=' -f2 | tr -d '\r\n')
-          echo "PREVIEW_TAG=v$VERSION-app-id.$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
+          echo "PREVIEW_TAG=v$VERSION" >> "$GITHUB_ENV"
       - name: Download Artifacts
         uses: actions/download-artifact@v4
         with:
@@ -202,7 +205,7 @@ jobs:
           (cd apks && sha256sum *.apk > SHA256SUMS && sha256sum --check SHA256SUMS)
           CODE=$(grep '^PRE_VERSION_CODE=' nb4a.properties | cut -d= -f2 | tr -d '\r')
           CODE=$((CODE * 5))
-          printf '# wanBox 预览版更新说明\n\n- 快捷设置磁贴单击恢复为开启或关闭代理连接；首次启用 VPN 时会请求系统授权。长按仍可进入“工具 → 自定义图标”（取决于系统是否支持磁贴偏好入口）。\n- 新增 Root TUN 模式：获得 Root 权限后由独立内核进程接管 TUN，无需启动 Android VPN 服务；未获得权限或启动失败时提示并切回 VPN 模式。\n- 保持独立包名 `com.lit008834.pixel.wanboxforandroid` 和原有正式签名；Android 版本号为 %s，可覆盖升级上一预览版，并与包名为 `com.ownbox.app` 的 OwnBox 2.9.1 共存。\n- 提供四种架构的签名 APK 与 SHA-256 校验文件。Root TUN 在不同 Root 管理器和厂商系统上的兼容性仍需设备验证。\n' "$CODE" > PREVIEW_NOTES.md
+          printf '# wanBox 预览版更新说明\n\n- 修复 Root TUN 模式测速误报“core not started”：测速现在检测 Root TUN 的实际网络路径。\n- 修复停止 Root TUN 时后台进程可能因输出流关闭而崩溃的问题；异常退出时保留诊断信息。\n- Root TUN 现在遵循现有分应用代理设置，不再忽略所选应用范围。\n- 保持独立包名 `com.lit008834.pixel.wanboxforandroid` 和原有签名；Android 版本号为 %s，可覆盖升级上一预览版，并与 OwnBox 共存。\n- 提供四种架构的签名 APK 与 SHA-256 校验文件。Root TUN 的实际流量仍需在 Root 设备上验证。\n' "$CODE" > PREVIEW_NOTES.md
       - name: Publish to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
