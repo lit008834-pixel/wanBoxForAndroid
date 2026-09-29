@@ -91,14 +91,13 @@ jobs:
           test -n "$APKSIGNER"
           test -n "$AAPT"
           test "$(find "$APK_DIR" -maxdepth 1 -name '*.apk' | wc -l)" -eq 4
+          test "$(grep -c 'android:targetPackage="com.lit008834.pixel.wanboxforandroid"' app/src/main/res/xml/shortcuts.xml)" -eq 4
           for apk in "$APK_DIR"/*.apk; do
             case "$(basename "$apk")" in wanBoxForAndroid-*.apk) ;; *) exit 1 ;; esac
             "$AAPT" dump badging "$apk" | grep -q "^package: name='com.lit008834.pixel.wanboxforandroid' "
             manifest=$($AAPT dump xmltree "$apk" AndroidManifest.xml)
             printf '%s\n' "$manifest" | grep -q 'com.lit008834.pixel.wanboxforandroid.cache'
             printf '%s\n' "$manifest" | grep -q 'com.lit008834.pixel.wanboxforandroid.widget.ACTION_TOGGLE'
-            shortcuts=$($AAPT dump xmltree "$apk" res/xml/shortcuts.xml)
-            test "$(printf '%s\n' "$shortcuts" | grep -c 'com.lit008834.pixel.wanboxforandroid')" -eq 4
             signer_digest=$("$APKSIGNER" verify --verbose --print-certs "$apk" | grep -m1 -i 'certificate SHA-256 digest' | sed 's/.*: *//' | tr -d ' \r' | tr '[:lower:]' '[:upper:]')
             echo "$(basename "$apk") certificate SHA-256: $signer_digest"
             test "$signer_digest" = 'AEC62C7003FA515534817250D3CD0DC705E19F4CD578A7A9A1D22519596EA598'
