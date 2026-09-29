@@ -416,6 +416,9 @@ class BaseService {
             return cleanupError
         }
 
+        // @author 雾晚: called only after the old service has finished cleanup.
+        fun onRunnerStopped(restart: Boolean) {}
+
         fun stopRunner(restart: Boolean = false, msg: String? = null) {
             DataStore.baseService = null
             DataStore.vpnService = null
@@ -524,6 +527,7 @@ class BaseService {
                     } else {
                         stopSelf()
                     }
+                    onRunnerStopped(restart)
                 } catch (error: Throwable) {
                     recordCleanupFailure("service-finish", error)
                 }
@@ -561,11 +565,10 @@ class BaseService {
                         Logs.d("Network changed: $oldName -> ${link.interfaceName} (network $oldNetwork -> $network)")
                         upstreamInterfaceName = link.interfaceName
                         NativeInterface.clearInterfaceCache()
-                        if (data.state == State.Connecting) {
-                            Logs.i("Network changed during Connecting state: cancelling old handshake and retrying on new network")
-                            data.connectingJob?.cancel()
-                            data.connectingJob = null
-                            startRunner()
+                        // @author 雾晚: the first network callback is discovery, not a switch.
+                        if (data.state == State.Connecting && oldNetwork != null && oldName != null) {
+                            Logs.i("Network changed during Connecting state: restarting after cleanup")
+                            stopRunner(restart = true)
                             return@start
                         }
                         if (DataStore.networkChangeResetConnections) {
@@ -654,7 +657,8 @@ class BaseService {
             }
 
             data.changeState(State.Connecting)
-            runOnMainDispatcher {
+            // @author 雾晚: retain the startup job so stop/reload can cancel and join it.
+            val connectingJob = GlobalScope.launch(Dispatchers.Main.immediate, start = CoroutineStart.LAZY) {
                 try {
                     data.notification = createNotification(ServiceNotification.genTitle(profile))
 
@@ -669,6 +673,8 @@ class BaseService {
                     }
 
                     startProcesses()
+                    currentCoroutineContext().ensureActive()
+                    if (data.state != State.Connecting) return@launch
                     data.changeState(State.Connected)
                     data.cacheRecoveryAttempts = 0
                     data.networkSwitchRetryAttempts = 0
@@ -679,15 +685,9 @@ class BaseService {
                     if (data.networkSwitchRetryAttempts < 3) {
                         data.networkSwitchRetryAttempts++
                         Logs.w("Network switch / transient DNS failure in startRunner: retrying in 600ms (attempt ${data.networkSwitchRetryAttempts}/3)...")
-                        runCatching {
-                            withContext(Dispatchers.IO) {
-                                proxy.close()
-                            }
-                        }
-                        data.proxy = null
                         delay(600)
-                        startRunner()
-                        return@runOnMainDispatcher
+                        stopRunner(restart = true)
+                        return@launch
                     }
                     stopRunner(false, getString(R.string.invalid_server))
                 } catch (e: PluginManager.PluginNotFoundException) {
@@ -707,15 +707,8 @@ class BaseService {
                         data.cacheRecoveryAttempts++
                         Logs.w("Auto-recovery: detected corrupted cache database ($msg). Purging cache.db and retrying once...")
                         deleteCorruptedCacheDb()
-                        runCatching {
-                            withContext(Dispatchers.IO) {
-                                proxy.close()
-                            }
-                        }
-                        data.proxy = null
-                        delay(200)
-                        startRunner()
-                        return@runOnMainDispatcher
+                        stopRunner(restart = true)
+                        return@launch
                     }
                     data.cacheRecoveryAttempts = 0
 
@@ -729,15 +722,9 @@ class BaseService {
                     if (isNetworkTransient && data.networkSwitchRetryAttempts < 3) {
                         data.networkSwitchRetryAttempts++
                         Logs.w("Network transient failure in startRunner ($msg): retrying in 600ms (attempt ${data.networkSwitchRetryAttempts}/3)...")
-                        runCatching {
-                            withContext(Dispatchers.IO) {
-                                proxy.close()
-                            }
-                        }
-                        data.proxy = null
                         delay(600)
-                        startRunner()
-                        return@runOnMainDispatcher
+                        stopRunner(restart = true)
+                        return@launch
                     }
 
                     if (exc.javaClass.name.endsWith("proxyerror")) {
@@ -750,9 +737,13 @@ class BaseService {
                         false, "${getString(R.string.service_failed)}: ${exc.readableMessage}"
                     )
                 } finally {
-                    data.connectingJob = null
+                    if (data.connectingJob === currentCoroutineContext()[Job]) {
+                        data.connectingJob = null
+                    }
                 }
             }
+            data.connectingJob = connectingJob
+            connectingJob.start()
             return Service.START_STICKY
         }
     }

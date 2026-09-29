@@ -5,7 +5,9 @@ import android.Manifest.permission.POST_NOTIFICATIONS
 import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.content.Context
+import android.content.BroadcastReceiver
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.graphics.Color
@@ -27,6 +29,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.navigation.NavigationView
 import com.google.android.material.snackbar.Snackbar
 import io.nekohasekai.sagernet.BuildConfig
+import io.nekohasekai.sagernet.Action
 import io.nekohasekai.sagernet.GroupType
 import io.nekohasekai.sagernet.Key
 import io.nekohasekai.sagernet.R
@@ -82,6 +85,11 @@ class MainActivity : ThemedActivity(),
     lateinit var binding: LayoutMainBinding
     lateinit var navigation: NavigationView
     private var currentMainFragment: ToolbarFragment? = null
+    private val serviceModeReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == Action.SERVICE_MODE_CHANGED) connection.rebindIfServiceChanged(this@MainActivity)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -171,6 +179,14 @@ class MainActivity : ThemedActivity(),
             animateControls = animateInitialControls,
         )
         connection.connect(this, this)
+        // @author 雾晚: fallback is written in :bg and does not fire this process's DataStore listener.
+        val modeFilter = IntentFilter(Action.SERVICE_MODE_CHANGED)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(serviceModeReceiver, modeFilter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            @Suppress("DEPRECATION")
+            registerReceiver(serviceModeReceiver, modeFilter)
+        }
         DataStore.configurationStore.registerChangeListener(this)
         GroupManager.userInterface = GroupInterfaceAdapter(this)
 
@@ -207,6 +223,7 @@ class MainActivity : ThemedActivity(),
 
     override fun onResume() {
         super.onResume()
+        connection.rebindIfServiceChanged(this)
         MessageStore.setCurrentActivity(this)
 
         if (DataStore.hideFromRecentApps) {
@@ -704,7 +721,7 @@ class MainActivity : ThemedActivity(),
         runOnMainDispatcher {
             if (isDestroyed || isFinishing) return@runOnMainDispatcher
             when (key) {
-                Key.SERVICE_MODE -> onBinderDied()
+                Key.SERVICE_MODE -> connection.rebindIfServiceChanged(this@MainActivity)
                 Key.PROFILE_ID -> {
                     LandingIpManager.clearCache()
                     if (DataStore.serviceState.connected && DataStore.showLandingIp) {
@@ -749,6 +766,7 @@ class MainActivity : ThemedActivity(),
 
     override fun onDestroy() {
         super.onDestroy()
+        unregisterReceiver(serviceModeReceiver)
         GroupManager.userInterface = null
         DataStore.configurationStore.unregisterChangeListener(this)
         connection.disconnect(this)

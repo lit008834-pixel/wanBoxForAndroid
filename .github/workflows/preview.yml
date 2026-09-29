@@ -150,9 +150,9 @@ jobs:
           gh release download v3.0.2 \
             -R lit008834-pixel/wanBoxForAndroid \
             -p wanBoxForAndroid-3.0.2-x86_64.apk -D previous
-          gh release download v3.0.3-preview.2 \
+          gh release download v3.0.3-preview.3 \
             -R lit008834-pixel/wanBoxForAndroid \
-            -p wanBoxForAndroid-3.0.3-preview.2-x86_64-release.apk -D previous
+            -p wanBoxForAndroid-3.0.3-preview.3-x86_64-release.apk -D previous
           gh release download v2.9.1-preview \
             -R Own716/OwnBoxForAndroid \
             -p OwnBox-2.9.1-x86_64-release.apk -D previous
@@ -205,7 +205,7 @@ jobs:
           (cd apks && sha256sum *.apk > SHA256SUMS && sha256sum --check SHA256SUMS)
           CODE=$(grep '^PRE_VERSION_CODE=' nb4a.properties | cut -d= -f2 | tr -d '\r')
           CODE=$((CODE * 5))
-          printf '# wanBox 预览版更新说明\n\n- 修复 Root TUN 模式测速误报“core not started”：测速现在检测 Root TUN 的实际网络路径。\n- 修复停止 Root TUN 时后台进程可能因输出流关闭而崩溃的问题；异常退出时保留诊断信息。\n- Root TUN 现在遵循现有分应用代理设置，不再忽略所选应用范围。\n- 保持独立包名 `com.lit008834.pixel.wanboxforandroid` 和原有签名；Android 版本号为 %s，可覆盖升级上一预览版，并与 OwnBox 共存。\n- 提供四种架构的签名 APK 与 SHA-256 校验文件。Root TUN 的实际流量仍需在 Root 设备上验证。\n' "$CODE" > PREVIEW_NOTES.md
+          printf '# wanBox 预览版更新说明\n\n- 修复 Root TUN 首次连接、切换节点时旧启动任务和旧进程争用的问题。\n- Root 模式测速改经本地代理测试当前核心，避免 FakeIP 被直连请求误判；关闭本地代理时使用独立节点测试。\n- 节点或配置失败时保留 Root 模式；仅 Root 权限或本地运行环境不可用时回退 VPN。\n- 回退 VPN 后立即刷新服务连接，不必退出应用再打开。\n- 保持独立包名 `com.lit008834.pixel.wanboxforandroid` 和原有签名；Android 版本号为 %s，可覆盖升级上一预览版，并与 OwnBox 共存。\n- 提供四种架构的签名 APK 与 SHA-256 校验文件。Root TUN 的实际流量仍需在 Root 设备上验证。\n' "$CODE" > PREVIEW_NOTES.md
       - name: Publish to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
