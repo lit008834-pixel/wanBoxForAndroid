@@ -20,6 +20,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
 import go.Seq
 import io.nekohasekai.sagernet.bg.SagerConnection
+import io.nekohasekai.sagernet.bg.RootAccess
 import io.nekohasekai.sagernet.database.DataStore
 import io.nekohasekai.sagernet.ktx.Logs
 import io.nekohasekai.sagernet.ktx.isOss
@@ -241,9 +242,24 @@ class SagerNet : Application(),
             }
         }
 
-        fun startService() = ContextCompat.startForegroundService(
-            application, Intent(application, SagerConnection.serviceClass)
-        )
+        fun startService() {
+            // @author 雾晚: verify privilege before creating a root foreground service.
+            if (DataStore.serviceMode == Key.MODE_ROOT) {
+                runOnDefaultDispatcher {
+                    if (RootAccess.available()) {
+                        ContextCompat.startForegroundService(
+                            application, Intent(application, SagerConnection.serviceClass)
+                        )
+                    } else {
+                        RootAccess.fallbackToVpn(application)
+                    }
+                }
+            } else {
+                ContextCompat.startForegroundService(
+                    application, Intent(application, SagerConnection.serviceClass)
+                )
+            }
+        }
 
         fun reloadService() =
             application.sendBroadcast(Intent(Action.RELOAD).setPackage(application.packageName))

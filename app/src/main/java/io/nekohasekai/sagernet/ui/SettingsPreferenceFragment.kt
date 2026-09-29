@@ -129,7 +129,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(), OnPreferenceDataS
         }
         val mixedPort = findPreference<EditTextPreference>(Key.MIXED_PORT)!!
         val disableMixedInbound = findPreference<SwitchPreference>(Key.DISABLE_MIXED_INBOUND)!!
-        val serviceMode = findPreference<Preference>(Key.SERVICE_MODE)!!
+        val serviceMode = findPreference<SimpleMenuPreference>(Key.SERVICE_MODE)!!
         val mixedAuthConfig = findPreference<Preference>(Key.MIXED_AUTH_CONFIG)!!
         val httpProxyBypass = findPreference<EditTextPreference>(Key.HTTP_PROXY_BYPASS)!!
         val dnsHosts = findPreference<EditTextPreference>(Key.DNS_HOSTS)!!
@@ -238,8 +238,21 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(), OnPreferenceDataS
             true
         }
 
-        serviceMode.setOnPreferenceChangeListener { _, _ ->
+        serviceMode.setOnPreferenceChangeListener { _, newValue ->
             if (DataStore.serviceState.started) SagerNet.stopService()
+            // @author 雾晚: reject Root TUN immediately when the root manager denies access.
+            if (newValue == Key.MODE_ROOT) runOnDefaultDispatcher {
+                if (!io.nekohasekai.sagernet.bg.RootAccess.available() &&
+                    DataStore.serviceMode == Key.MODE_ROOT) {
+                    DataStore.serviceMode = Key.MODE_VPN
+                    onMainDispatcher {
+                        serviceMode.value = Key.MODE_VPN
+                        context?.let {
+                            Toast.makeText(it, R.string.root_unavailable_fallback, Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
+            }
             true
         }
 

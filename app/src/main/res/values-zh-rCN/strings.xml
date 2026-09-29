@@ -41,6 +41,9 @@
     <!-- misc -->
     <string name="service_mode">运行模式</string>
     <string name="service_mode_proxy">仅代理</string>
+    <string name="service_mode_root">Root TUN（不使用系统 VPN）</string>
+    <string name="root_unavailable_fallback">未获得 Root 权限，已自动切换回 VPN 模式。</string>
+    <string name="root_tun_failed_fallback">Root TUN 启动失败，已自动切换回 VPN 模式。</string>
     <string name="port_proxy">代理端口</string>
     <string name="port_http">HTTP 代理端口</string>
     <string name="disable_mixed_inbound">禁用混合入站</string>

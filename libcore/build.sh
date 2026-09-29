@@ -42,3 +42,20 @@ proj=../app/libs
 mkdir -p $proj
 cp -f libcore.aar $proj
 echo ">> install $(realpath $proj)/libcore.aar"
+
+# @author 雾晚: package a separate PIE executable for genuine root TUN.
+NDK_BIN="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
+for target in "armeabi-v7a:arm:armv7a-linux-androideabi21-clang" \
+              "arm64-v8a:arm64:aarch64-linux-android21-clang" \
+              "x86:386:i686-linux-android21-clang" \
+              "x86_64:amd64:x86_64-linux-android21-clang"; do
+  IFS=: read -r abi arch compiler <<< "$target"
+  output="../app/executableSo/$abi/librootbox.so"
+  mkdir -p "$(dirname "$output")"
+  CGO_ENABLED=1 GOOS=android GOARCH="$arch" CC="$NDK_BIN/$compiler" \
+    go build -buildmode=pie -trimpath \
+      -ldflags="-s -w -X github.com/sagernet/sing-box/constant.Version=$SINGBOX_VERSION" \
+      -tags='with_conntrack,with_gvisor,with_quic,with_wireguard,with_utls,with_clash_api' \
+      -o "$output" ./cmd/rootbox || exit 1
+  test -s "$output" || exit 1
+done

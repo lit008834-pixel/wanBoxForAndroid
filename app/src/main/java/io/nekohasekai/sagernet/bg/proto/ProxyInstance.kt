@@ -55,6 +55,11 @@ class ProxyInstance(profile: ProxyEntity, var service: BaseService.Interface? = 
         }
     }
 
+    // @author 雾晚: external proxy helpers are still needed by the root core.
+    fun launchExternalOnly() {
+        launchExternal()
+    }
+
     override fun close() {
         var closeError: Throwable? = null
         try {

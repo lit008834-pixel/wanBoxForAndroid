@@ -8,13 +8,19 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.drawable.Icon
 import android.os.Build
+import android.os.SystemClock
 import android.service.quicksettings.Tile
+import android.widget.Toast
 import androidx.annotation.RequiresApi
 import io.nekohasekai.sagernet.R
+import io.nekohasekai.sagernet.Key
+import io.nekohasekai.sagernet.SagerNet
 import io.nekohasekai.sagernet.aidl.ISagerNetService
+import io.nekohasekai.sagernet.database.DataStore
+import io.nekohasekai.sagernet.ktx.onMainDispatcher
+import io.nekohasekai.sagernet.ktx.runOnDefaultDispatcher
 import io.nekohasekai.sagernet.database.SagerDatabase
-import io.nekohasekai.sagernet.ui.MainActivity
-import io.nekohasekai.sagernet.ui.TileNavigation
+import io.nekohasekai.sagernet.ui.VpnRequestActivity
 import io.nekohasekai.sagernet.utils.CustomIconManager
 import android.service.quicksettings.TileService as BaseTileService
 
@@ -51,6 +57,7 @@ class TileService : BaseTileService(), SagerConnection.Callback {
     }
 
     private val connection = SagerConnection(SagerConnection.CONNECTION_ID_TILE)
+    private var lastTapTime = 0L
     override fun stateChanged(state: BaseService.State, profileName: String?, msg: String?) =
         updateTile(state, profileName)
 
@@ -89,14 +96,43 @@ class TileService : BaseTileService(), SagerConnection.Callback {
     }
 
     override fun onClick() {
-        if (isLocked) unlockAndRun(this::openConfiguration) else openConfiguration()
+        if (isLocked) unlockAndRun(this::toggleConnection) else toggleConnection()
+    }
+
+    private fun toggleConnection() {
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastTapTime < 700L) return
+        lastTapTime = now
+        val state = connection.service?.let { BaseService.State.values()[it.state] }
+            ?: DataStore.serviceState
+        when {
+            state.canStop -> SagerNet.stopService()
+            state == BaseService.State.Stopping -> Unit
+            DataStore.serviceMode == Key.MODE_ROOT -> runOnDefaultDispatcher {
+                if (RootAccess.available()) {
+                    SagerNet.startService()
+                } else {
+                    DataStore.serviceMode = Key.MODE_VPN
+                    onMainDispatcher {
+                        Toast.makeText(this@TileService, R.string.root_unavailable_fallback, Toast.LENGTH_LONG).show()
+                        if (android.net.VpnService.prepare(this@TileService) == null) {
+                            SagerNet.startService()
+                        } else {
+                            requestVpnPermission()
+                        }
+                    }
+                }
+            }
+            DataStore.serviceMode == Key.MODE_VPN && android.net.VpnService.prepare(this) != null ->
+                requestVpnPermission()
+            else -> SagerNet.startService()
+        }
     }
 
     @Suppress("DEPRECATION")
-    private fun openConfiguration() {
-        val launch = Intent(this, MainActivity::class.java).apply {
-            action = TileNavigation.ACTION_OPEN_CONFIGURATION
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+    private fun requestVpnPermission() {
+        val launch = Intent(this, VpnRequestActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             val pending = PendingIntent.getActivity(

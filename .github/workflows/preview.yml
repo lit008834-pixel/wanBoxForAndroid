@@ -27,6 +27,7 @@ jobs:
         with:
           path: |
             app/libs/libcore.aar
+            app/executableSo
           key: ${{ hashFiles('.github/workflows/*', 'golang_status', 'libcore_status') }}
       - name: Install Golang
         if: steps.cache.outputs.cache-hit != 'true'
@@ -37,12 +38,22 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         run: ./run lib core
       - name: Verify LibCore AAR
-        run: test -s app/libs/libcore.aar
+        run: |
+          test -s app/libs/libcore.aar
+          for abi in armeabi-v7a arm64-v8a x86 x86_64; do
+            test -s "app/executableSo/$abi/librootbox.so"
+          done
       - name: Upload LibCore AAR
         uses: actions/upload-artifact@v4
         with:
           name: libcore-aar
           path: app/libs/libcore.aar
+          if-no-files-found: error
+      - name: Upload Root TUN executables
+        uses: actions/upload-artifact@v4
+        with:
+          name: root-tun-executables
+          path: app/executableSo
           if-no-files-found: error
   build:
     name: Build OSS APK
@@ -57,6 +68,11 @@ jobs:
         with:
           name: libcore-aar
           path: app/libs
+      - name: Download Root TUN executables
+        uses: actions/download-artifact@v4
+        with:
+          name: root-tun-executables
+          path: app/executableSo
       - name: Gradle cache
         uses: actions/cache@v4
         with:
@@ -99,6 +115,7 @@ jobs:
           test "$(grep -c 'android:targetPackage="com.lit008834.pixel.wanboxforandroid"' app/src/main/res/xml/shortcuts.xml)" -eq 4
           for apk in "$APK_DIR"/*.apk; do
             case "$(basename "$apk")" in wanBoxForAndroid-"$PREVIEW_VERSION"-*.apk) ;; *) exit 1 ;; esac
+            unzip -Z1 "$apk" | grep -Eq '^lib/(armeabi-v7a|arm64-v8a|x86|x86_64)/librootbox.so$'
             "$AAPT" dump badging "$apk" | grep -q "^package: name='com.lit008834.pixel.wanboxforandroid' versionCode='$PREVIEW_CODE' versionName='$PREVIEW_VERSION' "
             manifest=$($AAPT dump xmltree "$apk" AndroidManifest.xml)
             printf '%s\n' "$manifest" | grep -q 'com.lit008834.pixel.wanboxforandroid.cache'
@@ -179,8 +196,7 @@ jobs:
           (cd apks && sha256sum *.apk > SHA256SUMS && sha256sum --check SHA256SUMS)
           CODE=$(grep '^PRE_VERSION_CODE=' nb4a.properties | cut -d= -f2 | tr -d '\r')
           CODE=$((CODE * 5))
-          printf '# wanBox preview update\n\nThis preview keeps applicationId `com.lit008834.pixel.wanboxforandroid` and the same release signing certificate. Its Android versionCode is %s, higher than the previous preview (1615) and formal v3.0.2 (1620), so it updates an installed wanBox without uninstalling it. It can coexist with OwnBox 2.9.1 (`com.ownbox.app`). An older wanBox 3.0.1 release also used `com.ownbox.app` and cannot coexist with OwnBox 2.9.1 until that older installation is removed after backing up any needed data.\n' "$CODE" > PREVIEW_NOTES.md
-          printf '\nThe Quick Settings tile now opens the configuration screen on tap. On Android systems that honor tile preferences, long-press opens Tools > Custom Icon. The supplied transparent cat image replaces the shared default graphic used by the tile, notification icons, and widget preview. Importing, applying, and resetting custom icon packs remain available.\n' >> PREVIEW_NOTES.md
+          printf '# wanBox 预览版更新说明\n\n- 快捷设置磁贴单击恢复为开启或关闭代理连接；首次启用 VPN 时会请求系统授权。长按仍可进入“工具 → 自定义图标”（取决于系统是否支持磁贴偏好入口）。\n- 新增 Root TUN 模式：获得 Root 权限后由独立内核进程接管 TUN，无需启动 Android VPN 服务；未获得权限或启动失败时提示并切回 VPN 模式。\n- 保持独立包名 `com.lit008834.pixel.wanboxforandroid` 和原有正式签名；Android 版本号为 %s，可覆盖升级上一预览版，并与包名为 `com.ownbox.app` 的 OwnBox 2.9.1 共存。\n- 提供四种架构的签名 APK 与 SHA-256 校验文件。Root TUN 在不同 Root 管理器和厂商系统上的兼容性仍需设备验证。\n' "$CODE" > PREVIEW_NOTES.md
       - name: Publish to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:

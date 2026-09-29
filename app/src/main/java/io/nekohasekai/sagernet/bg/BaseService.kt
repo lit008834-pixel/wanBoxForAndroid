@@ -70,7 +70,7 @@ class BaseService {
                             // Instead, only run a memory trim while keeping TUN/network completely alive.
                             Libcore.forceGc()
                         } else {
-                            proxy?.box?.wake()
+                            runCatching { proxy?.box }.getOrNull()?.wake()
                             if (DataStore.wakeResetConnections) {
                                 Libcore.resetAllConnections(true)
                             }
@@ -121,7 +121,7 @@ class BaseService {
 
                 Intent.ACTION_SCREEN_ON,
                 Intent.ACTION_USER_PRESENT -> {
-                    proxy?.box?.wake()
+                    runCatching { proxy?.box }.getOrNull()?.wake()
                     runOnDefaultDispatcher {
                         proxy?.looper?.postLastSnapshotSpeed()
                     }
@@ -206,12 +206,13 @@ class BaseService {
         }
 
         override fun urlTest(): Int {
-            if (data?.proxy?.box == null) {
+            val activeBox = runCatching { data?.proxy?.box }.getOrNull()
+            if (activeBox == null) {
                 error("core not started")
             }
             try {
                 return Libcore.urlTest(
-                    data!!.proxy!!.box, DataStore.connectionTestURL, DataStore.connectionTestTimeout
+                    activeBox, DataStore.connectionTestURL, DataStore.connectionTestTimeout
                 )
             } catch (e: Exception) {
                 error(Protocols.genFriendlyMsg(e.readableMessage))
@@ -219,13 +220,14 @@ class BaseService {
         }
 
         override fun urlTestCustomUrl(url: String, timeoutMs: Int): Int {
-            if (data?.proxy?.box == null) {
+            val activeBox = runCatching { data?.proxy?.box }.getOrNull()
+            if (activeBox == null) {
                 error("core not started")
             }
             try {
                 // urlTestFull 直接经 default outbound 拨号，完全绕过路由规则，杜绝 geosite:cn 等分流劫持
                 return Libcore.urlTestFull(
-                    data!!.proxy!!.box, url, timeoutMs
+                    activeBox, url, timeoutMs
                 )
             } catch (e: Exception) {
                 error(Protocols.genFriendlyMsg(e.readableMessage))

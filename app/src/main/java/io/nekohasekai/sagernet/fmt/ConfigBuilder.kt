@@ -408,7 +408,8 @@ fun buildConfig(
     val hostResolvers = HashMap<String, MutableSet<String>>()
     val nonCustomFinalHosts = hashSetOf<String>()
     val groupCache = HashMap<Long, ProxyGroup?>()
-    val isVPN = DataStore.serviceMode == Key.MODE_VPN
+    val isRootTun = DataStore.serviceMode == Key.MODE_ROOT
+    val isVPN = DataStore.serviceMode == Key.MODE_VPN || isRootTun
     val bind = if (!forTest && DataStore.allowAccess) "0.0.0.0" else LOCALHOST
     val remoteDns = DataStore.remoteDns.split("\n")
         .mapNotNull { dns -> dns.trim().takeIf { it.isNotBlank() && !it.startsWith("#") } }
@@ -753,6 +754,7 @@ fun buildConfig(
                 }
                 mtu = DataStore.mtu
                 auto_route = true
+                auto_redirect = if (isRootTun) true else null
                 strict_route = DataStore.strictRoute
                 // sing-box 1.13 移除了入站 sniff/domain_strategy 字段，
                 // 改由路由规则动作实现（见下方 route.rules 构建处）；
@@ -787,7 +789,7 @@ fun buildConfig(
         // init routing object
         route = RouteOptions().apply {
             auto_detect_interface = true
-            override_android_vpn = true
+            override_android_vpn = !isRootTun
             find_process = true
             rules = mutableListOf()
             rule_set = mutableListOf()
