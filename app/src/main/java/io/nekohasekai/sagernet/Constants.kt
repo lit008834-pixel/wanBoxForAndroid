@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet
 
 object Key {
@@ -252,6 +253,6 @@ object Action {
     const val RESTART = "io.nekohasekai.sagernet.RESTART"
 
     // const val SWITCH_WAKE_LOCK = "io.nekohasekai.sagernet.SWITCH_WAKELOCK"
-    const val RESET_UPSTREAM_CONNECTIONS = "com.ownbox.app.RESET_UPSTREAM_CONNECTIONS"
-    const val SWITCH_PERFORMANCE_MODE = "com.ownbox.app.SWITCH_PERFORMANCE_MODE"
+    val RESET_UPSTREAM_CONNECTIONS = "${BuildConfig.APPLICATION_ID}.RESET_UPSTREAM_CONNECTIONS"
+    val SWITCH_PERFORMANCE_MODE = "${BuildConfig.APPLICATION_ID}.SWITCH_PERFORMANCE_MODE"
 }

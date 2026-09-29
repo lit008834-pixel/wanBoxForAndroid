@@ -1,3 +1,4 @@
+// @author 雾晚
 import com.android.build.api.dsl.ApplicationExtension
 import com.android.build.gradle.AbstractAppExtension
 import com.android.build.gradle.internal.api.BaseVariantOutputImpl
@@ -137,6 +138,9 @@ fun Project.setupAppCommon() {
 
 fun Project.setupApp() {
     val pkgName = requireMetadata().getProperty("PACKAGE_NAME")
+    require(pkgName == "com.lit008834.pixel.wanboxforandroid") {
+        "wanBoxForAndroid releases must use the stable applicationId: $pkgName"
+    }
     val verName = requireMetadata().getProperty("VERSION_NAME")
     val verCode = (requireMetadata().getProperty("VERSION_CODE").toInt()) * 5
     android.apply {

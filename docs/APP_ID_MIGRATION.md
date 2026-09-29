@@ -1,0 +1,9 @@
+# wanBoxForAndroid 应用标识迁移
+
+wanBoxForAndroid 的正式版和预览版使用 `com.lit008834.pixel.wanboxforandroid`。`com.ownbox.app` 是 OwnBox 的旧应用标识。Android 将它们视为两个独立应用，可以分别安装、启动和卸载。
+
+安装新版 wanBoxForAndroid 不会覆盖或卸载已安装的 OwnBox，也不会自动继承 OwnBox 的私有应用数据或设置。需要保留的配置应由用户通过应用提供的导出与导入功能自行迁移；不要清除旧应用数据。
+
+新标识后续更新必须继续使用同一个 applicationId、现有发布签名证书，并按版本策略递增 `versionCode`。仅更改显示名称或 `versionName` 不会改变 Android 的应用身份。
+
+构建标识由 `nb4a.properties` 的 `PACKAGE_NAME` 提供，并由 Gradle 检查。Manifest 中应用专用权限、Provider authority 和小组件 action 使用 `${applicationId}`；`res/xml/shortcuts.xml` 的目标包名使用固定字符串，因为 Android 快捷方式的 intent 不支持字符串资源，构建工作流会检查最终 APK 内的值。
