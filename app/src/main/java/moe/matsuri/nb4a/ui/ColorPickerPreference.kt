@@ -63,7 +63,7 @@ class ColorPickerPreference @JvmOverloads constructor(
         val color = when (DataStore.appTheme) {
             Theme.BLACK -> Color.BLACK
             Theme.WHITE -> Color.WHITE
-            Theme.LIGHT_GRAY -> context.getColor(R.color.wanbox_blue_primary)
+            Theme.LIGHT_GRAY -> context.getColor(R.color.color_light_gray_bg)
             Theme.CUSTOM -> Theme.customPrimaryColor()
             else -> Theme.getPrimaryColor(context)
         }

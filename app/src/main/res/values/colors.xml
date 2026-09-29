@@ -362,9 +362,9 @@
     <color name="color_white_theme_ripple">#1F000000</color>
 
     <!-- 浅灰主题专用调色盘 -->
-    <color name="color_light_gray_primary">@color/wanbox_blue_primary</color>
-    <color name="color_light_gray_primary_dark">@color/wanbox_blue_primary_dark</color>
-    <color name="color_light_gray_accent">@color/wanbox_blue_accent</color>
+    <color name="color_light_gray_primary">#4B5563</color>
+    <color name="color_light_gray_primary_dark">#374151</color>
+    <color name="color_light_gray_accent">#4B5563</color>
     <color name="color_light_gray_material_100">#F3F4F6</color>
     <color name="color_light_gray_material_300">#E5E7EB</color>
     <color name="color_light_gray_surface">#FFFFFF</color>
@@ -372,8 +372,8 @@
     <color name="color_light_gray_text_primary">#1F2937</color>
     <color name="color_light_gray_text_secondary">#6B7280</color>
     <color name="color_light_gray_tab_unselected">#6B7280</color>
-    <color name="color_light_gray_tab_selected">@color/wanbox_blue_primary</color>
-    <color name="color_light_gray_ripple">@color/wanbox_blue_selected</color>
+    <color name="color_light_gray_tab_selected">@color/color_light_gray_primary</color>
+    <color name="color_light_gray_ripple">#1A4B5563</color>
 
     <!-- 纯黑 (AMOLED Black) 主题专用调色盘 -->
     <color name="color_black_theme_primary">#FFFFFF</color>
