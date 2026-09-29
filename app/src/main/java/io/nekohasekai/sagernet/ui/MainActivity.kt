@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.ui
 
 import android.Manifest.permission.POST_NOTIFICATIONS
@@ -123,7 +124,9 @@ class MainActivity : ThemedActivity(),
         navigation.setNavigationItemSelectedListener(this)
 
         if (savedInstanceState == null) {
-            displayFragmentWithId(R.id.nav_configuration)
+            if (TileNavigation.destinationFor(intent?.action) == null) {
+                displayFragmentWithId(R.id.nav_configuration)
+            }
         } else {
             currentMainFragment =
                 supportFragmentManager.findFragmentById(R.id.fragment_holder) as? ToolbarFragment
@@ -155,6 +158,7 @@ class MainActivity : ThemedActivity(),
         }
 
         setContentView(binding.root)
+        handleTileIntent(intent)
         currentMainFragment =
             supportFragmentManager.findFragmentById(R.id.fragment_holder) as? ToolbarFragment
                 ?: currentMainFragment
@@ -314,8 +318,23 @@ class MainActivity : ThemedActivity(),
         navigation.menu.findItem(R.id.nav_dashboard)?.isVisible = clashApi
     }
 
+    private fun handleTileIntent(incoming: Intent?): Boolean {
+        when (TileNavigation.destinationFor(incoming?.action)) {
+            TileNavigation.Destination.CONFIGURATION -> displayFragmentWithId(R.id.nav_configuration)
+            TileNavigation.Destination.CUSTOM_ICON -> {
+                displayFragment(ToolsFragment.forCustomIcon())
+                setCheckedItem(R.id.nav_tools)
+            }
+            null -> return false
+        }
+        // A configuration change must not replay a tile navigation request.
+        setIntent(Intent(this, MainActivity::class.java).apply { action = Intent.ACTION_MAIN })
+        return true
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        if (handleTileIntent(intent)) return
 
         val uri = intent.data ?: return
 

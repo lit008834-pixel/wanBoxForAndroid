@@ -125,25 +125,25 @@ jobs:
         with:
           name: APKs
           path: apks
-      - name: Download previous preview and OwnBox
+      - name: Download current formal release and OwnBox
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p previous
-          gh release download v3.0.2-preview.1-app-id.10 \
+          gh release download v3.0.2 \
             -R lit008834-pixel/wanBoxForAndroid \
-            -p wanBoxForAndroid-3.0.2-preview.1-x86_64-release.apk -D previous
+            -p wanBoxForAndroid-3.0.2-x86_64.apk -D previous
           gh release download v2.9.1-preview \
             -R Own716/OwnBoxForAndroid \
             -p OwnBox-2.9.1-x86_64-release.apk -D previous
-          echo '9427370e3809e903ceae8dfa759bd85970aae36203442b04e1da6ee5686893fc  previous/wanBoxForAndroid-3.0.2-preview.1-x86_64-release.apk' | sha256sum --check
+          echo '3458e7a32ecb7ca03cc6648dcfc3f6aabb06d8f5c7dfca81cdf823bff5dbfc23  previous/wanBoxForAndroid-3.0.2-x86_64.apk' | sha256sum --check
           echo 'c7b8acf33542006c7a866e148b7faf98bfe44742df96e73bc6d9f713024f0a3f  previous/OwnBox-2.9.1-x86_64-release.apk' | sha256sum --check
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Update installed preview beside OwnBox
+      - name: Update installed wanBox beside OwnBox
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -180,6 +180,7 @@ jobs:
           CODE=$(grep '^PRE_VERSION_CODE=' nb4a.properties | cut -d= -f2 | tr -d '\r')
           CODE=$((CODE * 5))
           printf '# wanBox preview update\n\nThis preview keeps applicationId `com.lit008834.pixel.wanboxforandroid` and the same release signing certificate. Its Android versionCode is %s, higher than the previous preview (1615) and formal v3.0.2 (1620), so it updates an installed wanBox without uninstalling it. It can coexist with OwnBox 2.9.1 (`com.ownbox.app`). An older wanBox 3.0.1 release also used `com.ownbox.app` and cannot coexist with OwnBox 2.9.1 until that older installation is removed after backing up any needed data.\n' "$CODE" > PREVIEW_NOTES.md
+          printf '\nThe Quick Settings tile now opens the configuration screen on tap. On Android systems that honor tile preferences, long-press opens Tools > Custom Icon. The supplied transparent cat image replaces the shared default graphic used by the tile, notification icons, and widget preview. Importing, applying, and resetting custom icon packs remain available.\n' >> PREVIEW_NOTES.md
       - name: Publish to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:

@@ -2,7 +2,7 @@
 # @author 雾晚
 set -euo pipefail
 
-previous=previous/wanBoxForAndroid-3.0.2-preview.1-x86_64-release.apk
+previous=previous/wanBoxForAndroid-3.0.2-x86_64.apk
 own=previous/OwnBox-2.9.1-x86_64-release.apk
 shopt -s nullglob
 new_apks=(apks/wanBoxForAndroid-*-x86_64-release.apk)
@@ -28,4 +28,4 @@ printf '%s\n' "$output"
 grep -q 'Events injected: 1' <<< "$output"
 sleep 3
 adb shell pidof com.lit008834.pixel.wanboxforandroid >/dev/null
-echo 'The new preview updated the installed preview while OwnBox remained installed.'
+echo 'The new preview updated the installed formal release while OwnBox remained installed.'
