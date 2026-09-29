@@ -101,7 +101,7 @@ class ColorPickerPreference @JvmOverloads constructor(
         setPadding(dp2px(2), dp2px(12), 0, dp2px(8))
     }
 
-    private fun swatch(id: Int, name: String, color: Int, selected: Boolean, onClick: () -> Unit) =
+    private fun swatch(name: String, color: Int, selected: Boolean, onClick: () -> Unit) =
         FrameLayout(context).apply {
             layoutParams = GridLayout.LayoutParams().apply {
                 width = dp2px(52)
@@ -240,7 +240,7 @@ class ColorPickerPreference @JvmOverloads constructor(
             override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
                 super.onSizeChanged(w, h, oldw, oldh)
                 if (w > 0) {
-                    val columns = (w / dp2px(52)).coerceIn(3, 8)
+                    val columns = (w / dp2px(52)).coerceIn(1, 8)
                     if (columnCount != columns) columnCount = columns
                     val inset = ((w - columns * dp2px(52)) / 2).coerceAtLeast(0)
                     setPadding(inset, 0, inset, 0)
@@ -256,7 +256,7 @@ class ColorPickerPreference @JvmOverloads constructor(
         try {
             presetIds.forEachIndexed { index, id ->
                 val color = colors.getColor(index, Color.BLACK)
-                grid.addView(swatch(id, names[index], color, currentId == id) { select(id) })
+                grid.addView(swatch(names[index], color, currentId == id) { select(id) })
             }
         } finally {
             colors.recycle()
