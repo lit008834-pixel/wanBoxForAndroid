@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# @author 雾晚
+set -euo pipefail
+
+previous=previous/wanBoxForAndroid-3.0.0.1-x86_64-release.apk
+own=previous/OwnBox-2.9.1-x86_64-release.apk
+shopt -s nullglob
+new_apks=(apks/wanBoxForAndroid-*-x86_64-release.apk)
+test "${#new_apks[@]}" -eq 1
+current=${new_apks[0]}
+preview_name=$(sed -n 's/^PRE_VERSION_NAME=//p' nb4a.properties | tr -d '\r')
+preview_code=$(sed -n 's/^PRE_VERSION_CODE=//p' nb4a.properties | tr -d '\r')
+preview_code=$((preview_code * 5))
+
+adb install "$previous"
+adb install "$own"
+adb shell pm list packages | tr -d '\r' | grep -Fx 'package:com.lit008834.pixel.wanboxforandroid'
+adb shell pm list packages | tr -d '\r' | grep -Fx 'package:com.ownbox.app'
+
+# Android must accept the new APK as an update to the existing wanBox installation.
+adb install -r "$current"
+adb shell dumpsys package com.lit008834.pixel.wanboxforandroid | grep -m1 -F "versionCode=$preview_code "
+adb shell dumpsys package com.lit008834.pixel.wanboxforandroid | grep -m1 -F "versionName=$preview_name"
+adb shell pm list packages | tr -d '\r' | grep -Fx 'package:com.ownbox.app'
+
+output=$(adb shell monkey -p com.lit008834.pixel.wanboxforandroid -c android.intent.category.LAUNCHER 1)
+printf '%s\n' "$output"
+grep -q 'Events injected: 1' <<< "$output"
+sleep 3
+adb shell pidof com.lit008834.pixel.wanboxforandroid >/dev/null
+echo 'The new preview updated the installed preview while OwnBox remained installed.'
