@@ -17,7 +17,7 @@ import (
 
 // RunRootBox starts the same configured core without Android's VpnService platform
 // interface. The caller must run this process as UID 0 and terminate it on stop.
-func RunRootBox(configPath, assetsPath, pidPath, readyPath string, parentPID int) error {
+func RunRootBox(configPath, assetsPath, pidPath, readyPath, stopPath string, parentPID int) error {
 	if os.Geteuid() != 0 {
 		return fmt.Errorf("Root TUN requires UID 0")
 	}
@@ -44,6 +44,10 @@ func RunRootBox(configPath, assetsPath, pidPath, readyPath string, parentPID int
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
+				if _, err := os.Stat(stopPath); err == nil {
+					cancel()
+					return
+				}
 				if syscall.Kill(parentPID, 0) == syscall.ESRCH {
 					cancel()
 					return
