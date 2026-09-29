@@ -181,6 +181,8 @@ fun Project.setupApp() {
             create("fdroid")
             create("play")
             create("preview") {
+                versionCode = requireMetadata().getProperty("PRE_VERSION_CODE").toInt() * 5
+                versionName = requireMetadata().getProperty("PRE_VERSION_NAME")
                 buildConfigField(
                     "String",
                     "PRE_VERSION_NAME",
@@ -197,7 +199,7 @@ fun Project.setupApp() {
                     outputFileName.replace(
                         project.name,
                         "wanBoxForAndroid-" + requireMetadata().getProperty("PRE_VERSION_NAME")
-                    ).replace("-preview", "")
+                    ).replace("-preview-", "-")
                 } else {
                     outputFileName.replace(project.name, "wanBoxForAndroid-$versionName")
                         .replace("-release", "")
