@@ -113,8 +113,6 @@ jobs:
           test -n "$AAPT"
           VERSION_NAME=$(grep '^VERSION_NAME=' nb4a.properties | cut -d= -f2 | tr -d '\r')
           VERSION_CODE=$(grep '^VERSION_CODE=' nb4a.properties | cut -d= -f2 | tr -d '\r')
-          PREVIEW_CODE=$(grep '^PRE_VERSION_CODE=' nb4a.properties | cut -d= -f2 | tr -d '\r')
-          test "$VERSION_CODE" -gt "$PREVIEW_CODE"
           VERSION_CODE=$((VERSION_CODE * 5))
           RELEASE_TAG="${{ github.event.inputs.tag || github.ref_name }}"
           test "$RELEASE_TAG" = "v$VERSION_NAME"
