@@ -154,7 +154,13 @@ jobs:
             -R Own716/OwnBoxForAndroid \
             -p OwnBox-2.9.1-x86_64-release.apk -D previous
           echo '3458e7a32ecb7ca03cc6648dcfc3f6aabb06d8f5c7dfca81cdf823bff5dbfc23  previous/wanBoxForAndroid-3.0.2-x86_64.apk' | sha256sum --check
-          echo 'ca90a54d76224e0a5a83fa670fc2aebd10d57689c8801efda0f3c8dddbc56586  previous/OwnBox-2.9.1-x86_64-release.apk' | sha256sum --check
+          # @author 雾晚: 上游 OwnBox 会替换同名附件；该文件只用于临时模拟器验证。
+          OWNBOX=previous/OwnBox-2.9.1-x86_64-release.apk
+          AAPT=$(find "${ANDROID_HOME}/build-tools" -name aapt | sort -V | tail -n 1)
+          APKSIGNER=$(find "${ANDROID_HOME}/build-tools" -name apksigner | sort -V | tail -n 1)
+          test -s "$OWNBOX"
+          "$AAPT" dump badging "$OWNBOX" | grep -q "^package: name='com.ownbox.app' "
+          "$APKSIGNER" verify "$OWNBOX"
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
