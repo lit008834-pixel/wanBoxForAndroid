@@ -53,3 +53,8 @@ jobs:
           echo "ndk.dir=${ANDROID_HOME}/ndk/25.0.8775105" >> local.properties
           ./run init action gradle
           ./gradlew app:assembleOssDebug
+      - name: Test theme selection
+        run: |
+          ./gradlew app:testOssDebugUnitTest \
+            --tests "moe.matsuri.nb4a.ui.ThemeColorInputTest" \
+            --tests "io.nekohasekai.sagernet.utils.ThemeMappingTest"

@@ -354,6 +354,15 @@
         <item name="cardElevatedSurfaceColor">@color/card_elevated_pink_ssr</item>
     </style>
 
+    <style name="Theme.SagerNet.Pink" parent="Theme.SagerNet">
+        <item name="colorPrimary">@color/material_pink_500</item>
+        <item name="colorPrimaryDark">@color/material_pink_700</item>
+        <item name="colorAccent">@color/material_pink_accent_200</item>
+        <item name="colorMaterial100">@color/material_pink_100</item>
+        <item name="colorMaterial300">@color/material_pink_300</item>
+        <item name="cardElevatedSurfaceColor">@color/card_elevated_pink</item>
+    </style>
+
     <style name="Theme.SagerNet.Amber" parent="Theme.SagerNet">
         <item name="colorPrimary">@color/material_amber_500</item>
         <item name="colorPrimaryDark">@color/material_amber_700</item>
@@ -670,6 +679,15 @@
         <item name="cardElevatedSurfaceColor">@color/card_elevated_pink_ssr</item>
     </style>
 
+    <style name="Theme.SagerNet.Dialog.Pink" parent="Theme.SagerNet.Dialog">
+        <item name="colorPrimary">@color/material_pink_500</item>
+        <item name="colorPrimaryDark">@color/material_pink_700</item>
+        <item name="colorAccent">@color/material_pink_accent_200</item>
+        <item name="colorMaterial100">@color/material_pink_100</item>
+        <item name="colorMaterial300">@color/material_pink_300</item>
+        <item name="cardElevatedSurfaceColor">@color/card_elevated_pink</item>
+    </style>
+
     <style name="Theme.SagerNet.Dialog.Teal" parent="Theme.SagerNet.Dialog">
         <item name="colorPrimary">@color/material_teal_500</item>
         <item name="colorPrimaryDark">@color/material_teal_700</item>
@@ -850,6 +868,11 @@
     <style name="Theme.SagerNet.Monet" parent="Theme.SagerNet" />
 
     <style name="Theme.SagerNet.Dialog.Monet" parent="Theme.SagerNet.Dialog" />
+
+    <!-- Runtime custom colors are supplied by Theme; these are safe fallback colors. -->
+    <style name="Theme.SagerNet.Custom" parent="Theme.SagerNet.VerdantMint" />
+
+    <style name="Theme.SagerNet.Dialog.Custom" parent="Theme.SagerNet.Dialog.VerdantMint" />
 
     <style name="Theme.Start" parent="Theme.SagerNet">
         <item name="android:navigationBarColor">@android:color/transparent</item>

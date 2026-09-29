@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.database
 
 import android.os.Binder
@@ -99,7 +100,7 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     var groupLayoutMode by configurationStore.stringToInt(Key.GROUP_LAYOUT_MODE) { 0 }
     var profileCardStyle by configurationStore.stringToInt(Key.PROFILE_CARD_STYLE) { 0 }
     var showSubscriptionInfoCard by configurationStore.boolean(Key.SHOW_SUBSCRIPTION_INFO_CARD) { true }
-    var customThemeColor by configurationStore.int("custom_theme_color") { 0x00E676 }
+    var customThemeColor by configurationStore.int("custom_theme_color") { 0xFF00E676.toInt() }
     var hapticFeedback by configurationStore.boolean(Key.HAPTIC_FEEDBACK) { true }
     var showAllGroupsTab by configurationStore.boolean(Key.SHOW_ALL_GROUPS_TAB) { false }
     var allGroupsOrder by configurationStore.int(Key.ALL_GROUPS_ORDER) { GroupOrder.ORIGIN }

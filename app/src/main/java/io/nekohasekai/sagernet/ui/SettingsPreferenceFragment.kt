@@ -102,8 +102,17 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(), OnPreferenceDataS
         appTheme.isEnabled = true
 
         appTheme.setOnPreferenceChangeListener { _, newValue ->
-            DataStore.appTheme = (newValue as Number).toInt()
-            activity?.recreate()
+            val selection = newValue as? ColorPickerPreference.Selection
+                ?: return@setOnPreferenceChangeListener false
+            if (!Theme.isSupportedTheme(selection.themeId)) return@setOnPreferenceChangeListener false
+            if (selection.themeId == Theme.CUSTOM && selection.customColor == null) {
+                return@setOnPreferenceChangeListener false
+            }
+            val changed = DataStore.appTheme != selection.themeId ||
+                (selection.customColor != null && DataStore.customThemeColor != selection.customColor)
+            selection.customColor?.let { DataStore.customThemeColor = it }
+            DataStore.appTheme = selection.themeId
+            if (changed) activity?.recreate()
             true
         }
 

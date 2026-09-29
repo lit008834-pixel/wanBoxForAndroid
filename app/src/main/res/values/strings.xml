@@ -1017,6 +1017,42 @@
     <string name="custom_color_title">Custom Theme Color (HEX / RGB)</string>
     <string name="custom_color_apply">Save &amp; Apply</string>
     <string name="custom_color_hex_hint">e.g. #00E676</string>
+    <string name="theme_preset_colors">Preset colors</string>
+    <string name="theme_background_modes">Background modes</string>
+    <string name="theme_custom_entry">Custom color</string>
+    <string name="theme_custom_add_symbol">+</string>
+    <string name="theme_custom_preview">Custom color preview</string>
+    <string name="theme_current_color">Current theme color</string>
+    <string name="theme_color_selected_description">%1$s, selected</string>
+    <string name="theme_invalid_hex_color">Enter a color in #RRGGBB format</string>
+    <string name="theme_mode_white">Pure white</string>
+    <string name="theme_mode_light_gray">Light gray</string>
+    <string name="theme_mode_black">AMOLED black</string>
+    <string name="theme_mode_monet">System color</string>
+    <string-array name="theme_preset_names">
+        <item>Red</item>
+        <item>SSR pink</item>
+        <item>Pink</item>
+        <item>Purple</item>
+        <item>Deep purple</item>
+        <item>Indigo</item>
+        <item>Blue</item>
+        <item>Light blue</item>
+        <item>Cyan</item>
+        <item>Teal</item>
+        <item>Green</item>
+        <item>Light green</item>
+        <item>Lime</item>
+        <item>Yellow</item>
+        <item>Amber</item>
+        <item>Orange</item>
+        <item>Deep orange</item>
+        <item>Brown</item>
+        <item>Gray</item>
+        <item>Blue gray</item>
+        <item>Black</item>
+        <item>Verdant mint</item>
+    </string-array>
     <string name="lock_user_agent">Lock User-Agent</string>
     <string name="lock_user_agent_sum">Prevent global sync or batch operations from overwriting this group\'s User-Agent</string>
     <string name="enter_group_settings_title">Enter Group Settings</string>

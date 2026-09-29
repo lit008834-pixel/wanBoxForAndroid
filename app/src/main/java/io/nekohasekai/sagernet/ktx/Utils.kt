@@ -1,4 +1,5 @@
 @file:SuppressLint("SoonBlockedPrivateApi")
+// @author 雾晚
 
 package io.nekohasekai.sagernet.ktx
 
@@ -341,6 +342,7 @@ fun Context.getColour(@ColorRes colorRes: Int): Int {
 }
 
 fun Context.getColorAttr(@AttrRes resId: Int): Int {
+    io.nekohasekai.sagernet.utils.Theme.customColorForAttribute(resId)?.let { return it }
     return try {
         val typedValue = TypedValue()
         if (theme.resolveAttribute(resId, typedValue, true)) {
