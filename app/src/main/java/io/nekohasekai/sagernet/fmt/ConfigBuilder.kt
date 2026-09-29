@@ -756,6 +756,24 @@ fun buildConfig(
                 auto_route = true
                 auto_redirect = if (isRootTun) true else null
                 strict_route = DataStore.strictRoute
+                // @author 雾晚: Root TUN has no VpnService.Builder app filter. Apply
+                // the same selected-app UIDs here so system traffic is not captured
+                // unexpectedly when the user selected an allowlist in VPN settings.
+                if (isRootTun && DataStore.proxyApps) {
+                    PackageCache.awaitLoadSync()
+                    val selectedUids = DataStore.individual.lineSequence()
+                        .map { it.trim() }
+                        .filter { it.isNotEmpty() }
+                        .mapNotNull { PackageCache[it] }
+                        .filter { it >= 1000 && it != SagerNet.application.applicationInfo.uid }
+                        .distinct()
+                        .toList()
+                    if (DataStore.bypass) {
+                        exclude_uid = selectedUids.takeIf { it.isNotEmpty() }
+                    } else {
+                        include_uid = (selectedUids + SagerNet.application.applicationInfo.uid).distinct()
+                    }
+                }
                 // sing-box 1.13 移除了入站 sniff/domain_strategy 字段，
                 // 改由路由规则动作实现（见下方 route.rules 构建处）；
                 // inet4_address/inet6_address 与 endpoint_independent_nat 已于 1.12 移除（构造函数硬报错），
