@@ -112,13 +112,17 @@ jobs:
           test -n "$APKSIGNER"
           test -n "$AAPT"
           VERSION_NAME=$(grep '^VERSION_NAME=' nb4a.properties | cut -d= -f2 | tr -d '\r')
+          VERSION_CODE=$(grep '^VERSION_CODE=' nb4a.properties | cut -d= -f2 | tr -d '\r')
+          PREVIEW_CODE=$(grep '^PRE_VERSION_CODE=' nb4a.properties | cut -d= -f2 | tr -d '\r')
+          test "$VERSION_CODE" -gt "$PREVIEW_CODE"
+          VERSION_CODE=$((VERSION_CODE * 5))
           RELEASE_TAG="${{ github.event.inputs.tag || github.ref_name }}"
           test "$RELEASE_TAG" = "v$VERSION_NAME"
           test "$(find "$APK_DIR" -maxdepth 1 -name '*.apk' | wc -l)" -eq 4
           test "$(grep -c 'android:targetPackage="com.lit008834.pixel.wanboxforandroid"' app/src/main/res/xml/shortcuts.xml)" -eq 4
           for apk in "$APK_DIR"/*.apk; do
             case "$(basename "$apk")" in wanBoxForAndroid-"$VERSION_NAME"-*.apk) ;; *) exit 1 ;; esac
-            "$AAPT" dump badging "$apk" | grep -q "^package: name='com.lit008834.pixel.wanboxforandroid' "
+            "$AAPT" dump badging "$apk" | grep -q "^package: name='com.lit008834.pixel.wanboxforandroid' versionCode='$VERSION_CODE' versionName='$VERSION_NAME' "
             manifest=$($AAPT dump xmltree "$apk" AndroidManifest.xml)
             printf '%s\n' "$manifest" | grep -q 'com.lit008834.pixel.wanboxforandroid.cache'
             printf '%s\n' "$manifest" | grep -q 'com.lit008834.pixel.wanboxforandroid.widget.ACTION_TOGGLE'
@@ -139,10 +143,49 @@ jobs:
           path: app/build/outputs/apk/oss/release/*.apk
           if-no-files-found: warn
 
+  verify_upgrade:
+    name: Verify formal update beside OwnBox
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v5
+        with:
+          name: APKs
+          path: apks
+      - name: Download previous preview and OwnBox
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p previous
+          gh release download v3.0.2-preview.1-app-id.10 \
+            -R lit008834-pixel/wanBoxForAndroid \
+            -p wanBoxForAndroid-3.0.2-preview.1-x86_64-release.apk -D previous
+          gh release download v2.9.1-preview \
+            -R Own716/OwnBoxForAndroid \
+            -p OwnBox-2.9.1-x86_64-release.apk -D previous
+          echo '9427370e3809e903ceae8dfa759bd85970aae36203442b04e1da6ee5686893fc  previous/wanBoxForAndroid-3.0.2-preview.1-x86_64-release.apk' | sha256sum --check
+          echo 'c7b8acf33542006c7a866e148b7faf98bfe44742df96e73bc6d9f713024f0a3f  previous/OwnBox-2.9.1-x86_64-release.apk' | sha256sum --check
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Update installed preview beside OwnBox
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7_pro
+          script: bash tools/diagnostics/verify_formal_upgrade.sh
+
   publish:
     name: Publish Release
     runs-on: ubuntu-latest
-    needs: build
+    needs: verify_upgrade
     permissions:
       contents: write
     steps:
