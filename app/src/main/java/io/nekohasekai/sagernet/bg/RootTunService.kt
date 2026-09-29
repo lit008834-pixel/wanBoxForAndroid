@@ -5,6 +5,7 @@ import android.annotation.SuppressLint
 import android.app.Service
 import android.content.Intent
 import android.os.PowerManager
+import android.os.SystemClock
 import io.nekohasekai.sagernet.Key
 import io.nekohasekai.sagernet.R
 import io.nekohasekai.sagernet.SagerNet
@@ -18,8 +19,12 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import java.io.IOException
+import java.net.HttpURLConnection
+import java.net.Proxy
+import java.net.URL
 import kotlin.concurrent.thread
 
 class RootTunService : Service(), BaseService.Interface {
@@ -29,6 +34,8 @@ class RootTunService : Service(), BaseService.Interface {
     override var upstreamInterfaceName: String? = null
     private var rootProcess: Process? = null
     private var rootWatcher: Job? = null
+    private var rootOutputReader: Job? = null
+    @Volatile private var lastRootOutput: String? = null
     private var fallbackAfterStop = false
     private val pidFile get() = File(noBackupFilesDir, "root-tun.pid")
     private val readyFile get() = File(noBackupFilesDir, "root-tun.ready")
@@ -36,6 +43,27 @@ class RootTunService : Service(), BaseService.Interface {
 
     override fun createNotification(profileName: String) =
         ServiceNotification(this, profileName, "service-proxy", true)
+
+    // @author 雾晚: an HTTP request from the app exercises the Root TUN route itself.
+    // The Root core cannot be reached through the in-process Libcore BoxInstance.
+    fun urlTest(url: String, timeoutMs: Int): Int {
+        if (data.state != BaseService.State.Connected || !readyFile.isFile || rootProcess == null) {
+            throw IOException(getString(R.string.root_tun_not_ready))
+        }
+        val connection = URL(url).openConnection(Proxy.NO_PROXY) as HttpURLConnection
+        try {
+            connection.connectTimeout = timeoutMs.coerceAtLeast(1)
+            connection.readTimeout = timeoutMs.coerceAtLeast(1)
+            connection.instanceFollowRedirects = false
+            connection.setRequestProperty("User-Agent", "wanBox")
+            val started = SystemClock.elapsedRealtime()
+            val status = connection.responseCode
+            if (status >= 500) throw IOException("HTTP $status")
+            return (SystemClock.elapsedRealtime() - started).coerceAtLeast(1L).toInt()
+        } finally {
+            connection.disconnect()
+        }
+    }
 
     @SuppressLint("WakelockTimeout")
     override fun acquireWakeLock() {
@@ -57,6 +85,7 @@ class RootTunService : Service(), BaseService.Interface {
                 if (!executable.isFile) throw IOException("Root TUN executable is missing")
                 val configFile = File(noBackupFilesDir, "root-tun.json")
                 configFile.writeText(proxy.config.config)
+                lastRootOutput = null
                 pidFile.delete()
                 readyFile.delete()
                 stopFile.delete()
@@ -80,14 +109,30 @@ class RootTunService : Service(), BaseService.Interface {
             if (error !is CancellationException) fallbackAfterStop = true
             throw error
         }
-        runOnIoDispatcher {
-            process.inputStream.bufferedReader().forEachLine { Logs.i("Root TUN: $it") }
+        // @author 雾晚: closing su's pipe during stop may interrupt readLine on Android.
+        // An uncaught IOException in this detached coroutine used to crash the :bg process.
+        rootOutputReader = runOnIoDispatcher {
+            try {
+                process.inputStream.bufferedReader().use { reader ->
+                    reader.forEachLine { line ->
+                        lastRootOutput = line.takeLast(512)
+                        Logs.i("Root TUN: $line")
+                    }
+                }
+            } catch (error: IOException) {
+                if (data.state != BaseService.State.Stopping && data.state != BaseService.State.Stopped) {
+                    Logs.e("Root TUN output stream closed: ${error.message}")
+                }
+            }
         }
         try {
             var attempts = 0
             while (!readyFile.isFile && attempts++ < 600) {
                 val exited = runCatching { process.exitValue(); true }.getOrDefault(false)
-                if (exited) throw IOException("Root TUN exited before becoming ready")
+                if (exited) {
+                    withTimeoutOrNull(500) { rootOutputReader?.join() }
+                    throw IOException("Root TUN exited before becoming ready: ${lastRootOutput ?: "no output"}")
+                }
                 delay(100)
             }
             if (!readyFile.isFile) throw IOException("Root TUN startup timed out")
@@ -96,9 +141,14 @@ class RootTunService : Service(), BaseService.Interface {
             throw error
         }
         rootWatcher = runOnIoDispatcher {
-            val exitCode = process.waitFor()
+            val exitCode = try {
+                process.waitFor()
+            } catch (_: InterruptedException) {
+                return@runOnIoDispatcher
+            }
             if (data.state.canStop) {
-                Logs.w("Root TUN unexpectedly exited: $exitCode")
+                // @author 雾晚: persist the reason even when the user's log level is panic.
+                Logs.e("Root TUN unexpectedly exited: $exitCode; ${lastRootOutput ?: "no output"}")
                 fallbackAfterStop = true
                 stopRunner(false, getString(R.string.root_tun_failed_fallback))
             }
@@ -108,6 +158,8 @@ class RootTunService : Service(), BaseService.Interface {
     override suspend fun killProcesses(): Throwable? {
         rootWatcher?.cancel()
         rootWatcher = null
+        rootOutputReader?.cancel()
+        rootOutputReader = null
         withContext(Dispatchers.IO) {
             // The root process also watches this file, so cleanup works when su refuses kill.
             stopFile.writeText("stop")

@@ -206,6 +206,10 @@ class BaseService {
         }
 
         override fun urlTest(): Int {
+            // @author 雾晚: Root TUN owns the core in a separate process; probe its routed network.
+            (data?.proxy?.service as? RootTunService)?.let {
+                return it.urlTest(DataStore.connectionTestURL, DataStore.connectionTestTimeout)
+            }
             val activeBox = runCatching { data?.proxy?.box }.getOrNull()
             if (activeBox == null) {
                 error("core not started")
@@ -220,6 +224,10 @@ class BaseService {
         }
 
         override fun urlTestCustomUrl(url: String, timeoutMs: Int): Int {
+            // @author 雾晚: avoid reading the absent in-process core in Root TUN mode.
+            (data?.proxy?.service as? RootTunService)?.let {
+                return it.urlTest(url, timeoutMs)
+            }
             val activeBox = runCatching { data?.proxy?.box }.getOrNull()
             if (activeBox == null) {
                 error("core not started")

@@ -65,6 +65,8 @@
     <string name="service_mode_root">Root TUN (no system VPN)</string>
     <string name="root_unavailable_fallback">Root access is unavailable. Switched to VPN mode.</string>
     <string name="root_tun_failed_fallback">Root TUN failed to start. Switched to VPN mode.</string>
+    <!-- @author 雾晚: Root TUN connection test state. -->
+    <string name="root_tun_not_ready">Root TUN is not ready.</string>
     <string name="port_proxy">Proxy Port</string>
     <string name="port_http">HTTP Proxy Port</string>
     <string name="disable_mixed_inbound">Disable Mixed Inbound</string>
