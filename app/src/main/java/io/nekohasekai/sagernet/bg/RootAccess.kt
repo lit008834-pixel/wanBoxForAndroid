@@ -8,6 +8,7 @@ import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
 import io.nekohasekai.sagernet.Key
+import io.nekohasekai.sagernet.Action
 import io.nekohasekai.sagernet.R
 import io.nekohasekai.sagernet.SagerNet
 import io.nekohasekai.sagernet.database.DataStore
@@ -33,6 +34,8 @@ object RootAccess {
 
     fun fallbackToVpn(context: Context, message: Int = R.string.root_unavailable_fallback) {
         DataStore.serviceMode = Key.MODE_VPN
+        // @author 雾晚: DataStore listeners are process-local; notify the main process explicitly.
+        context.sendBroadcast(Intent(Action.SERVICE_MODE_CHANGED).setPackage(context.packageName))
         Handler(Looper.getMainLooper()).post {
             Toast.makeText(context.applicationContext, message, Toast.LENGTH_LONG).show()
             if (VpnService.prepare(context) == null) {

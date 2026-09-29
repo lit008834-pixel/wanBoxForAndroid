@@ -3,7 +3,7 @@
 set -euo pipefail
 
 previous=previous/wanBoxForAndroid-3.0.2-x86_64.apk
-prior_preview=previous/wanBoxForAndroid-3.0.3-preview.2-x86_64-release.apk
+prior_preview=previous/wanBoxForAndroid-3.0.3-preview.3-x86_64-release.apk
 own=previous/OwnBox-2.9.1-x86_64-release.apk
 shopt -s nullglob
 new_apks=(apks/wanBoxForAndroid-*-x86_64-release.apk)
@@ -21,7 +21,7 @@ adb shell pm list packages | tr -d '\r' | grep -Fx 'package:com.ownbox.app'
 # @author 雾晚: verify the old signed preview can update the formal release,
 # then the new preview can update the old preview without uninstalling either app.
 adb install -r "$prior_preview"
-adb shell dumpsys package com.lit008834.pixel.wanboxforandroid | grep -m1 -F 'versionCode=1630 '
+adb shell dumpsys package com.lit008834.pixel.wanboxforandroid | grep -m1 -F 'versionCode=1635 '
 adb install -r "$current"
 adb shell dumpsys package com.lit008834.pixel.wanboxforandroid | grep -m1 -F "versionCode=$preview_code "
 adb shell dumpsys package com.lit008834.pixel.wanboxforandroid | grep -m1 -F "versionName=$preview_name"

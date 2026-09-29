@@ -6,25 +6,29 @@ import android.app.Service
 import android.content.Intent
 import android.os.PowerManager
 import android.os.SystemClock
+import android.util.Base64
 import io.nekohasekai.sagernet.Key
 import io.nekohasekai.sagernet.R
 import io.nekohasekai.sagernet.SagerNet
+import io.nekohasekai.sagernet.bg.proto.TestInstance
 import io.nekohasekai.sagernet.database.DataStore
 import io.nekohasekai.sagernet.ktx.Logs
-import io.nekohasekai.sagernet.ktx.runOnDefaultDispatcher
 import io.nekohasekai.sagernet.ktx.runOnIoDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.Proxy
+import java.net.InetSocketAddress
+import java.net.Socket
 import java.net.URL
+import javax.net.ssl.SSLSocket
+import javax.net.ssl.SSLSocketFactory
 import kotlin.concurrent.thread
 
 class RootTunService : Service(), BaseService.Interface {
@@ -32,7 +36,7 @@ class RootTunService : Service(), BaseService.Interface {
     override val tag = "SagerNetRootTunService"
     override var wakeLock: PowerManager.WakeLock? = null
     override var upstreamInterfaceName: String? = null
-    private var rootProcess: Process? = null
+    @Volatile private var rootProcess: Process? = null
     private var rootWatcher: Job? = null
     private var rootOutputReader: Job? = null
     @Volatile private var lastRootOutput: String? = null
@@ -44,31 +48,71 @@ class RootTunService : Service(), BaseService.Interface {
     override fun createNotification(profileName: String) =
         ServiceNotification(this, profileName, "service-proxy", true)
 
-    // @author 雾晚: an HTTP request from the app exercises the Root TUN route itself.
-    // The Root core cannot be reached through the in-process Libcore BoxInstance.
-    fun urlTest(url: String, timeoutMs: Int): Int {
-        if (data.state != BaseService.State.Connected || !readyFile.isFile || rootProcess == null) {
-            throw IOException(getString(R.string.root_tun_not_ready))
-        }
-        val connection = URL(url).openConnection(Proxy.NO_PROXY) as HttpURLConnection
-        try {
-            connection.connectTimeout = timeoutMs.coerceAtLeast(1)
-            connection.readTimeout = timeoutMs.coerceAtLeast(1)
-            connection.instanceFollowRedirects = false
-            connection.setRequestProperty("User-Agent", "wanBox")
-            val started = SystemClock.elapsedRealtime()
-            val status = connection.responseCode
-            if (status >= 500) throw IOException("HTTP $status")
-            return (SystemClock.elapsedRealtime() - started).coerceAtLeast(1L).toInt()
-        } finally {
-            connection.disconnect()
-        }
-    }
-
     @SuppressLint("WakelockTimeout")
     override fun acquireWakeLock() {
         wakeLock = SagerNet.power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "sagernet:root-tun")
             .apply { acquire() }
+    }
+
+    // @author 雾晚: probe the running root core through its local mixed inbound,
+    // avoiding Android FakeIP resolution and the app process's unopened box.
+    fun urlTest(url: String, timeoutMs: Int): Int {
+        if (data.state != BaseService.State.Connected || !readyFile.isFile || rootProcess == null) return 0
+        return try {
+            if (DataStore.mixedInboundDisabled) {
+                val profile = data.proxy?.profile ?: return 0
+                return runBlocking { TestInstance(profile, url, timeoutMs).doTest() }
+            }
+            val target = URL(url)
+            val host = target.host
+            val port = if (target.port > 0) target.port else target.defaultPort
+            if (host.isBlank() || port <= 0) throw IOException("Invalid test URL")
+            val timeout = timeoutMs.coerceIn(1_000, 30_000)
+            val started = SystemClock.elapsedRealtime()
+            Socket().use { socket ->
+                socket.connect(InetSocketAddress("127.0.0.1", DataStore.mixedPort), timeout)
+                socket.soTimeout = timeout
+                val authority = if (host.contains(':')) "[$host]:$port" else "$host:$port"
+                val credentials = if (DataStore.mixedInboundNeedsAuth) {
+                    val value = "${DataStore.mixedUsername}:${DataStore.mixedPassword}"
+                    "Proxy-Authorization: Basic ${Base64.encodeToString(value.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)}\r\n"
+                } else ""
+                socket.getOutputStream().write(
+                    "CONNECT $authority HTTP/1.1\r\nHost: $authority\r\n${credentials}\r\n"
+                        .toByteArray(Charsets.US_ASCII)
+                )
+                val proxyReader = socket.getInputStream().bufferedReader(Charsets.US_ASCII)
+                val proxyStatus = proxyReader.readLine() ?: throw IOException("Proxy closed connection")
+                if (!proxyStatus.contains(" 200 ")) throw IOException("Proxy CONNECT failed: $proxyStatus")
+                while (true) {
+                    if (proxyReader.readLine().isNullOrEmpty()) break
+                }
+                val stream = if (target.protocol.equals("https", true)) {
+                    (SSLSocketFactory.getDefault() as SSLSocketFactory)
+                        .createSocket(socket, host, port, false).also { wrapped ->
+                            val tls = wrapped as SSLSocket
+                            tls.sslParameters = tls.sslParameters.apply {
+                                endpointIdentificationAlgorithm = "HTTPS"
+                            }
+                            tls.soTimeout = timeout
+                            tls.startHandshake()
+                        }
+                } else socket
+                val path = target.file.takeIf { it.isNotBlank() } ?: "/"
+                stream.getOutputStream().write(
+                    "GET $path HTTP/1.1\r\nHost: $authority\r\nConnection: close\r\n\r\n"
+                        .toByteArray(Charsets.UTF_8)
+                )
+                val status = stream.getInputStream().bufferedReader(Charsets.US_ASCII).readLine()
+                    ?: throw IOException("Test server closed connection")
+                val code = status.split(' ').getOrNull(1)?.toIntOrNull() ?: 0
+                if (code !in 200..399) throw IOException("Test server returned $code")
+                (SystemClock.elapsedRealtime() - started).coerceAtLeast(1).toInt()
+            }
+        } catch (error: Exception) {
+            Logs.w("Root TUN URL test failed: ${error.message}")
+            0
+        }
     }
 
     override suspend fun startProcesses() {
@@ -105,8 +149,9 @@ class RootTunService : Service(), BaseService.Interface {
                     .start()
                     .also { rootProcess = it }
             }
-        } catch (error: Throwable) {
-            if (error !is CancellationException) fallbackAfterStop = true
+        } catch (error: IOException) {
+            // @author 雾晚: local Root runtime failures can safely fall back after cleanup.
+            fallbackAfterStop = true
             throw error
         }
         // @author 雾晚: closing su's pipe during stop may interrupt readLine on Android.
@@ -115,42 +160,39 @@ class RootTunService : Service(), BaseService.Interface {
             try {
                 process.inputStream.bufferedReader().use { reader ->
                     reader.forEachLine { line ->
-                        lastRootOutput = line.takeLast(512)
-                        Logs.i("Root TUN: $line")
+                        if (rootProcess === process) {
+                            lastRootOutput = line.takeLast(512)
+                            Logs.i("Root TUN: $line")
+                        }
                     }
                 }
             } catch (error: IOException) {
-                if (data.state != BaseService.State.Stopping && data.state != BaseService.State.Stopped) {
+                if (rootProcess === process && data.state != BaseService.State.Stopping &&
+                    data.state != BaseService.State.Stopped) {
                     Logs.e("Root TUN output stream closed: ${error.message}")
                 }
             }
         }
-        try {
-            var attempts = 0
-            while (!readyFile.isFile && attempts++ < 600) {
-                val exited = runCatching { process.exitValue(); true }.getOrDefault(false)
-                if (exited) {
-                    withTimeoutOrNull(500) { rootOutputReader?.join() }
-                    throw IOException("Root TUN exited before becoming ready: ${lastRootOutput ?: "no output"}")
-                }
-                delay(100)
+        var attempts = 0
+        while (!readyFile.isFile && attempts++ < 600) {
+            val exited = runCatching { process.exitValue(); true }.getOrDefault(false)
+            if (exited) {
+                withTimeoutOrNull(500) { rootOutputReader?.join() }
+                throw IOException("Root TUN exited before becoming ready: ${lastRootOutput ?: "no output"}")
             }
-            if (!readyFile.isFile) throw IOException("Root TUN startup timed out")
-        } catch (error: Throwable) {
-            if (error !is CancellationException) fallbackAfterStop = true
-            throw error
+            delay(100)
         }
+        if (!readyFile.isFile) throw IOException("Root TUN startup timed out")
         rootWatcher = runOnIoDispatcher {
             val exitCode = try {
                 process.waitFor()
             } catch (_: InterruptedException) {
                 return@runOnIoDispatcher
             }
-            if (data.state.canStop) {
+            if (isActive && rootProcess === process && data.state.canStop) {
                 // @author 雾晚: persist the reason even when the user's log level is panic.
                 Logs.e("Root TUN unexpectedly exited: $exitCode; ${lastRootOutput ?: "no output"}")
-                fallbackAfterStop = true
-                stopRunner(false, getString(R.string.root_tun_failed_fallback))
+                stopRunner(false, "Root TUN exited: $exitCode; ${lastRootOutput ?: "no output"}")
             }
         }
     }
@@ -172,20 +214,28 @@ class RootTunService : Service(), BaseService.Interface {
                     if (waiter.isAlive) killer.destroy()
                 }
             }
-            rootProcess?.destroy()
-            rootProcess = null
+            // @author 雾晚: wait for old TUN/routing teardown before starting another node.
+            rootProcess?.let { running ->
+                val waiter = thread(isDaemon = true) { runCatching { running.waitFor() } }
+                waiter.join(3_000)
+                if (waiter.isAlive) {
+                    running.destroy()
+                    waiter.join(1_000)
+                }
+                if (waiter.isAlive) Logs.w("Root TUN process did not exit after stop request")
+                rootProcess = null
+            }
             readyFile.delete()
             pidFile.delete()
         }
-        val error = super.killProcesses()
-        if (fallbackAfterStop) {
-            fallbackAfterStop = false
-            runOnDefaultDispatcher {
-                delay(500)
-                RootAccess.fallbackToVpn(this@RootTunService, R.string.root_tun_failed_fallback)
-            }
-        }
-        return error
+        return super.killProcesses()
+    }
+
+    override fun onRunnerStopped(restart: Boolean) {
+        // @author 雾晚: only a missing Root grant changes mode, after cleanup completes.
+        val fallback = fallbackAfterStop && !restart && DataStore.serviceMode == Key.MODE_ROOT
+        fallbackAfterStop = false
+        if (fallback) RootAccess.fallbackToVpn(this)
     }
 
     override fun onBind(intent: Intent) = super<BaseService.Interface>.onBind(intent)

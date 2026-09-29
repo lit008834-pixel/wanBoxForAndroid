@@ -60,6 +60,7 @@ class SagerConnection(
     }
 
     private var connectionActive = false
+    private var boundServiceClass: Class<*>? = null
     private var callbackRegistered = false
     private var callback: Callback? = null
     private val serviceCallback = object : ISagerNetServiceCallback.Stub() {
@@ -118,6 +119,7 @@ class SagerConnection(
     }
 
     override fun onServiceConnected(name: ComponentName?, binder: IBinder) {
+        if (name?.className != boundServiceClass?.name) return
         this.binder = binder
         val service = ISagerNetService.Stub.asInterface(binder)!!
         this.service = service
@@ -133,6 +135,7 @@ class SagerConnection(
     }
 
     override fun onServiceDisconnected(name: ComponentName?) {
+        if (name?.className != boundServiceClass?.name) return
         unregisterCallback()
         callback?.onServiceDisconnected()
         service = null
@@ -161,8 +164,22 @@ class SagerConnection(
         connectionActive = true
         check(this.callback == null)
         this.callback = callback
-        val intent = Intent(context, serviceClass).setAction(Action.SERVICE)
-        context.bindService(intent, this, Context.BIND_AUTO_CREATE)
+        val target = serviceClass
+        boundServiceClass = target
+        val intent = Intent(context, target).setAction(Action.SERVICE)
+        if (!context.bindService(intent, this, Context.BIND_AUTO_CREATE)) {
+            connectionActive = false
+            boundServiceClass = null
+            this.callback = null
+        }
+    }
+
+    // @author 雾晚: switch the Binder target when :bg changes Root mode to VPN.
+    fun rebindIfServiceChanged(context: Context) {
+        if (!connectionActive || boundServiceClass == serviceClass) return
+        val savedCallback = callback
+        disconnect(context)
+        connect(context, savedCallback)
     }
 
     fun disconnect(context: Context) {
@@ -172,6 +189,7 @@ class SagerConnection(
         } catch (_: IllegalArgumentException) {
         }   // ignore
         connectionActive = false
+        boundServiceClass = null
         if (listenForDeath) try {
             binder?.unlinkToDeath(this, 0)
         } catch (_: NoSuchElementException) {

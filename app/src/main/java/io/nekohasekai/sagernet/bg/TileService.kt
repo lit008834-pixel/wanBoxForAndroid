@@ -83,6 +83,7 @@ class TileService : BaseTileService(), SagerConnection.Callback {
             iconReceiverRegistered = true
         }
         refreshTileIcon()
+        connection.rebindIfServiceChanged(this)
         connection.connect(this, this)
     }
 
@@ -100,6 +101,7 @@ class TileService : BaseTileService(), SagerConnection.Callback {
     }
 
     private fun toggleConnection() {
+        connection.rebindIfServiceChanged(this)
         val now = SystemClock.elapsedRealtime()
         if (now - lastTapTime < 700L) return
         lastTapTime = now
