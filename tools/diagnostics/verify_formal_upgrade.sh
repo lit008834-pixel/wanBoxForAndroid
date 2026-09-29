@@ -5,7 +5,7 @@ set -euo pipefail
 preview=previous/wanBoxForAndroid-3.0.2-preview.1-x86_64-release.apk
 own=previous/OwnBox-2.9.1-x86_64-release.apk
 shopt -s nullglob
-new_apks=(apks/wanBoxForAndroid-*-x86_64-release.apk)
+new_apks=(apks/wanBoxForAndroid-*-x86_64.apk)
 test "${#new_apks[@]}" -eq 1
 current=${new_apks[0]}
 formal_name=$(sed -n 's/^VERSION_NAME=//p' nb4a.properties | tr -d '\r')
