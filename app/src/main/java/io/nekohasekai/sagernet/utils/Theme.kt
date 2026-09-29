@@ -5,6 +5,7 @@ import android.app.WallpaperManager
 import android.content.Context
 import android.content.res.Configuration
 import android.content.res.ColorStateList
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.os.Build
 import android.view.View
@@ -65,6 +66,11 @@ object Theme {
         // Older versions stored RGB without an alpha byte.
         return if (Color.alpha(stored) == 0) stored or 0xFF000000.toInt() else stored
     }
+
+    private fun customSeedBitmap(): Bitmap =
+        Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888).apply {
+            eraseColor(customPrimaryColor())
+        }
 
     fun customColorForAttribute(attribute: Int): Int? {
         if (DataStore.appTheme != CUSTOM || DataStore.useSystemTheme) return null
@@ -172,7 +178,7 @@ object Theme {
             if (DataStore.appTheme == CUSTOM && !DataStore.useSystemTheme) {
                 DynamicColors.applyToActivityIfAvailable(
                     context,
-                    DynamicColorsOptions.Builder().setContentBasedSource(customPrimaryColor()).build()
+                    DynamicColorsOptions.Builder().setContentBasedSource(customSeedBitmap()).build()
                 )
             } else if (!isWhiteTheme() && !isLightGrayTheme() && DataStore.useSystemTheme) {
                 DynamicColors.applyIfAvailable(context)
@@ -186,7 +192,7 @@ object Theme {
             if (DataStore.appTheme == CUSTOM && !DataStore.useSystemTheme) {
                 DynamicColors.applyToActivityIfAvailable(
                     context,
-                    DynamicColorsOptions.Builder().setContentBasedSource(customPrimaryColor()).build()
+                    DynamicColorsOptions.Builder().setContentBasedSource(customSeedBitmap()).build()
                 )
             } else if (!isWhiteTheme() && !isLightGrayTheme() && DataStore.useSystemTheme) {
                 DynamicColors.applyIfAvailable(context)
