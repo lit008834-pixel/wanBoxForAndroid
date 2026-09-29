@@ -115,14 +115,13 @@ jobs:
           RELEASE_TAG="${{ github.event.inputs.tag || github.ref_name }}"
           test "$RELEASE_TAG" = "v$VERSION_NAME"
           test "$(find "$APK_DIR" -maxdepth 1 -name '*.apk' | wc -l)" -eq 4
+          test "$(grep -c 'android:targetPackage="com.lit008834.pixel.wanboxforandroid"' app/src/main/res/xml/shortcuts.xml)" -eq 4
           for apk in "$APK_DIR"/*.apk; do
             case "$(basename "$apk")" in wanBoxForAndroid-"$VERSION_NAME"-*.apk) ;; *) exit 1 ;; esac
             "$AAPT" dump badging "$apk" | grep -q "^package: name='com.lit008834.pixel.wanboxforandroid' "
             manifest=$($AAPT dump xmltree "$apk" AndroidManifest.xml)
             printf '%s\n' "$manifest" | grep -q 'com.lit008834.pixel.wanboxforandroid.cache'
             printf '%s\n' "$manifest" | grep -q 'com.lit008834.pixel.wanboxforandroid.widget.ACTION_TOGGLE'
-            shortcuts=$($AAPT dump xmltree "$apk" res/xml/shortcuts.xml)
-            test "$(printf '%s\n' "$shortcuts" | grep -c 'com.lit008834.pixel.wanboxforandroid')" -eq 4
             if ! verify_output=$("$APKSIGNER" verify --verbose --print-certs "$apk" 2>&1); then
               printf '%s\n' "$verify_output"
               exit 1

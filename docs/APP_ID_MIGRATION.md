@@ -6,4 +6,4 @@ wanBoxForAndroid 的正式版和预览版使用 `com.lit008834.pixel.wanboxforan
 
 新标识后续更新必须继续使用同一个 applicationId、现有发布签名证书，并按版本策略递增 `versionCode`。仅更改显示名称或 `versionName` 不会改变 Android 的应用身份。
 
-构建标识由 `nb4a.properties` 的 `PACKAGE_NAME` 提供，并由 Gradle 检查。Manifest 中应用专用权限、Provider authority 和小组件 action 使用 `${applicationId}`；`res/xml/shortcuts.xml` 的目标包名使用固定字符串，因为 Android 快捷方式的 intent 不支持字符串资源，构建工作流会检查最终 APK 内的值。
+构建标识由 `nb4a.properties` 的 `PACKAGE_NAME` 提供，并由 Gradle 检查。Manifest 中应用专用权限、Provider authority 和小组件 action 使用 `${applicationId}`；`res/xml/shortcuts.xml` 的目标包名使用固定字符串，因为 Android 快捷方式的 intent 不支持字符串资源。构建工作流会检查快捷方式源码中的目标包名，以及最终 APK 的应用标识和 Manifest 组件。
