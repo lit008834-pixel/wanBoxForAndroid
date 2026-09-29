@@ -1,23 +1,47 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.bg
 
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.drawable.Icon
+import android.os.Build
 import android.service.quicksettings.Tile
 import androidx.annotation.RequiresApi
 import io.nekohasekai.sagernet.R
-import io.nekohasekai.sagernet.SagerNet
 import io.nekohasekai.sagernet.aidl.ISagerNetService
 import io.nekohasekai.sagernet.database.SagerDatabase
+import io.nekohasekai.sagernet.ui.MainActivity
+import io.nekohasekai.sagernet.ui.TileNavigation
 import io.nekohasekai.sagernet.utils.CustomIconManager
 import android.service.quicksettings.TileService as BaseTileService
 
 @RequiresApi(24)
 class TileService : BaseTileService(), SagerConnection.Callback {
+    companion object {
+        const val ACTION_REFRESH_ICON = "io.nekohasekai.sagernet.action.REFRESH_TILE_ICON"
+    }
+
     private val defaultIcon by lazy { Icon.createWithResource(this, R.drawable.ic_throne_tile) }
-    private var tapPending = false
+    private var iconReceiverRegistered = false
+    private val iconRefreshReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == ACTION_REFRESH_ICON) refreshTileIcon()
+        }
+    }
+
+    private fun refreshTileIcon() {
+        qsTile?.apply {
+            icon = getTileIcon()
+            updateTile()
+        }
+    }
 
     private fun getTileIcon(): Icon {
         val customTileBitmap = if (CustomIconManager.isTileApplied(this)) {
-            CustomIconManager.loadTileAlphaBitmap(this)
+            runCatching { CustomIconManager.loadTileAlphaBitmap(this) }.getOrNull()
         } else null
         return if (customTileBitmap != null) {
             Icon.createWithBitmap(customTileBitmap)
@@ -32,10 +56,6 @@ class TileService : BaseTileService(), SagerConnection.Callback {
 
     override fun onServiceConnected(service: ISagerNetService) {
         updateTile(BaseService.State.values()[service.state], service.profileName)
-        if (tapPending) {
-            tapPending = false
-            onClick()
-        }
     }
 
     override fun cbSelectorUpdate(id: Long) {
@@ -45,16 +65,47 @@ class TileService : BaseTileService(), SagerConnection.Callback {
 
     override fun onStartListening() {
         super.onStartListening()
+        if (!iconReceiverRegistered) {
+            val filter = IntentFilter(ACTION_REFRESH_ICON)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(iconRefreshReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                @Suppress("DEPRECATION")
+                registerReceiver(iconRefreshReceiver, filter)
+            }
+            iconReceiverRegistered = true
+        }
+        refreshTileIcon()
         connection.connect(this, this)
     }
 
     override fun onStopListening() {
+        if (iconReceiverRegistered) {
+            unregisterReceiver(iconRefreshReceiver)
+            iconReceiverRegistered = false
+        }
         connection.disconnect(this)
         super.onStopListening()
     }
 
     override fun onClick() {
-        if (isLocked) unlockAndRun(this::toggle) else toggle()
+        if (isLocked) unlockAndRun(this::openConfiguration) else openConfiguration()
+    }
+
+    @Suppress("DEPRECATION")
+    private fun openConfiguration() {
+        val launch = Intent(this, MainActivity::class.java).apply {
+            action = TileNavigation.ACTION_OPEN_CONFIGURATION
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            val pending = PendingIntent.getActivity(
+                this, 0, launch, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            startActivityAndCollapse(pending)
+        } else {
+            startActivityAndCollapse(launch)
+        }
     }
 
     private fun updateTile(serviceState: BaseService.State, profileName: String?) {
@@ -103,17 +154,4 @@ class TileService : BaseTileService(), SagerConnection.Callback {
         }
     }
 
-    private fun toggle() {
-        val service = connection.service
-        if (service == null) {
-            SagerNet.startService()
-        } else {
-            BaseService.State.values()[service.state].let { state ->
-                when {
-                    state.canStop -> SagerNet.stopService()
-                    state == BaseService.State.Stopped || state == BaseService.State.Idle -> SagerNet.startService()
-                }
-            }
-        }
-    }
 }

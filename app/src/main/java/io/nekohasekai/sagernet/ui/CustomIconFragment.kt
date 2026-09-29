@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.ui
 
 import android.content.ComponentName
@@ -47,6 +48,8 @@ class CustomIconFragment : NamedFragment(R.layout.layout_custom_icon) {
                         is CustomIconManager.ImportResult.Success -> {
                             snackbar(getString(R.string.custom_icon_import_success)).show()
                             refreshPreview()
+                            // Import deactivates any previously applied tile image.
+                            notifyTileUpdate()
                         }
                         is CustomIconManager.ImportResult.MissingFile -> {
                             snackbar(getString(R.string.custom_icon_error_missing, result.fileName)).show()
@@ -148,6 +151,9 @@ class CustomIconFragment : NamedFragment(R.layout.layout_custom_icon) {
 
     private fun notifyTileUpdate() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            requireContext().sendBroadcast(
+                Intent(TileService.ACTION_REFRESH_ICON).setPackage(requireContext().packageName)
+            )
             try {
                 BaseTileService.requestListeningState(
                     requireContext(),

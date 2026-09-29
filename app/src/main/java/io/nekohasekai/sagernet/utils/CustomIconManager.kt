@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.utils
 
 import android.content.Context
@@ -220,7 +221,14 @@ object CustomIconManager {
             null
         } ?: return null
 
-        return extractAlphaMask(rawBitmap)
+        return try {
+            if (rawBitmap.width != REQUIRED_WIDTH || rawBitmap.height != REQUIRED_HEIGHT) null
+            else extractAlphaMask(rawBitmap)
+        } catch (_: Throwable) {
+            null
+        } finally {
+            rawBitmap.recycle()
+        }
     }
 
     /**
