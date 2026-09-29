@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.ui
 
 import android.content.res.Configuration
@@ -15,6 +16,8 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentManager
 import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.snackbar.Snackbar
 import io.nekohasekai.sagernet.R
@@ -32,11 +35,13 @@ abstract class ThemedActivity : AppCompatActivity {
     private var lastUseSystemTheme: Boolean = false
     private var lastWallpaperColor: Int? = null
     private var lastAppTheme: Int = 0
+    private var lastCustomThemeColor: Int = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         lastUseSystemTheme = DataStore.useSystemTheme
         lastWallpaperColor = if (DataStore.useSystemTheme) Theme.getSystemWallpaperColor(this) else null
         lastAppTheme = DataStore.appTheme
+        lastCustomThemeColor = DataStore.customThemeColor
 
         if (!isDialog) {
             Theme.apply(this)
@@ -46,6 +51,16 @@ abstract class ThemedActivity : AppCompatActivity {
         Theme.applyNightTheme()
 
         super.onCreate(savedInstanceState)
+
+        supportFragmentManager.registerFragmentLifecycleCallbacks(
+            object : FragmentManager.FragmentLifecycleCallbacks() {
+                override fun onFragmentViewCreated(
+                    fm: FragmentManager, fragment: Fragment, view: View, savedInstanceState: Bundle?
+                ) {
+                    Theme.tintCustomViews(view)
+                }
+            }, true
+        )
 
         uiMode = resources.configuration.uiMode
 
@@ -85,16 +100,19 @@ abstract class ThemedActivity : AppCompatActivity {
 
     override fun setContentView(view: View?) {
         super.setContentView(view)
+        view?.let(Theme::tintCustomViews)
         applyAppBarInsets()
     }
 
     override fun setContentView(layoutResID: Int) {
         super.setContentView(layoutResID)
+        findViewById<View>(android.R.id.content)?.let(Theme::tintCustomViews)
         applyAppBarInsets()
     }
 
     override fun setContentView(view: View?, params: ViewGroup.LayoutParams?) {
         super.setContentView(view, params)
+        view?.let(Theme::tintCustomViews)
         applyAppBarInsets()
     }
 
@@ -109,7 +127,9 @@ abstract class ThemedActivity : AppCompatActivity {
         val currentWallpaperColor = if (DataStore.useSystemTheme) Theme.getSystemWallpaperColor(this) else null
         if (lastUseSystemTheme != DataStore.useSystemTheme ||
             (DataStore.useSystemTheme && lastWallpaperColor != currentWallpaperColor) ||
-            (!DataStore.useSystemTheme && lastAppTheme != DataStore.appTheme)) {
+            (!DataStore.useSystemTheme && (lastAppTheme != DataStore.appTheme ||
+                (DataStore.appTheme == Theme.CUSTOM &&
+                    lastCustomThemeColor != DataStore.customThemeColor)))) {
             ActivityCompat.recreate(this)
         }
     }

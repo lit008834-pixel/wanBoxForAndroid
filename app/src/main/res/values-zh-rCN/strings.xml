@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- @author 雾晚 -->
 <resources>
     <string name="app_desc">适用于 Android 之通用代理工具, 使用 Kotlin 编写。</string>
     <string name="project">项目</string>
@@ -915,6 +916,42 @@
     <string name="custom_color_title">自定义主题色 (HEX / RGB)</string>
     <string name="custom_color_apply">保存并应用</string>
     <string name="custom_color_hex_hint">如 #00E676</string>
+    <string name="theme_preset_colors">预设颜色</string>
+    <string name="theme_background_modes">底色模式</string>
+    <string name="theme_custom_entry">自定义颜色</string>
+    <string name="theme_custom_add_symbol">+</string>
+    <string name="theme_custom_preview">自定义颜色预览</string>
+    <string name="theme_current_color">当前主题颜色</string>
+    <string name="theme_color_selected_description">%1$s，已选中</string>
+    <string name="theme_invalid_hex_color">请输入 #RRGGBB 格式的颜色</string>
+    <string name="theme_mode_white">纯白</string>
+    <string name="theme_mode_light_gray">浅灰</string>
+    <string name="theme_mode_black">纯黑</string>
+    <string name="theme_mode_monet">系统取色</string>
+    <string-array name="theme_preset_names">
+        <item>红色</item>
+        <item>SSR 粉</item>
+        <item>粉色</item>
+        <item>紫色</item>
+        <item>深紫</item>
+        <item>靛蓝</item>
+        <item>蓝色</item>
+        <item>浅蓝</item>
+        <item>青色</item>
+        <item>蓝绿</item>
+        <item>绿色</item>
+        <item>浅绿</item>
+        <item>青柠</item>
+        <item>黄色</item>
+        <item>琥珀</item>
+        <item>橙色</item>
+        <item>深橙</item>
+        <item>棕色</item>
+        <item>灰色</item>
+        <item>蓝灰</item>
+        <item>黑色</item>
+        <item>青翠薄荷</item>
+    </string-array>
     <string name="lock_user_agent">锁定独立 User-Agent</string>
     <string name="lock_user_agent_sum">防止全局同步或批量操作覆盖此分组的 User-Agent</string>
     <string name="enter_group_settings_title">进入分组设置</string>

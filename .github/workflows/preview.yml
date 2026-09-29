@@ -1,3 +1,4 @@
+# @author 雾晚
 name: Preview Build
 on:
   push:
@@ -111,8 +112,8 @@ jobs:
         uses: actions/checkout@v4
       - name: Get Version
         run: |
-          PRE_VERSION=$(grep '^PRE_VERSION_NAME=' nb4a.properties | cut -d'=' -f2 | tr -d '\r\n')
-          echo "PRE_VERSION=$PRE_VERSION" >> $GITHUB_ENV
+          VERSION=$(grep '^VERSION_NAME=' nb4a.properties | cut -d'=' -f2 | tr -d '\r\n')
+          echo "PREVIEW_TAG=v$VERSION-theme-preview.$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
       - name: Download Artifacts
         uses: actions/download-artifact@v4
         with:
@@ -123,13 +124,17 @@ jobs:
           mkdir -p apks
           find artifacts -name "*.apk" -exec cp {} apks/ \;
           ls -la apks/
+          test "$(find apks -maxdepth 1 -name '*.apk' | wc -l)" -eq 4
+          (cd apks && sha256sum *.apk > SHA256SUMS && sha256sum --check SHA256SUMS)
+          printf '# wanBox theme color preview\n\nPreview of the new theme color grid and custom HEX color selection. Based on v3.0.1; Android app version and signing certificate are unchanged.\n' > PREVIEW_NOTES.md
       - name: Publish to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ env.PRE_VERSION }}
-          name: wanBoxForAndroid v${{ env.PRE_VERSION }}
-          body_path: RELEASE_NOTES.md
-          files: apks/*.apk
+          tag_name: ${{ env.PREVIEW_TAG }}
+          target_commitish: ${{ github.sha }}
+          name: wanBox ${{ env.PREVIEW_TAG }}
+          body_path: PREVIEW_NOTES.md
+          files: apks/*
           draft: false
           prerelease: true
           make_latest: false
