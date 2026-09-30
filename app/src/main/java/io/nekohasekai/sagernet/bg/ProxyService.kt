@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.bg
 
 import android.annotation.SuppressLint
@@ -19,6 +20,11 @@ class ProxyService : Service(), BaseService.Interface {
     override fun acquireWakeLock() {
         wakeLock = SagerNet.power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "sagernet:proxy")
             .apply { acquire() }
+    }
+
+    override fun onDestroy() {
+        destroyRunner()
+        super.onDestroy()
     }
 
     override fun onBind(intent: Intent) = super.onBind(intent)

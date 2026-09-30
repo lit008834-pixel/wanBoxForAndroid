@@ -50,7 +50,7 @@ object OwnBoxWidgetHelper {
     }
 
     private fun getPendingIntents(context: Context): Triple<PendingIntent, PendingIntent, PendingIntent> {
-        val toggleIntent = Intent(context, OwnBoxWidgetProvider::class.java).apply {
+        val toggleIntent = Intent(context, WidgetControlReceiver::class.java).apply {
             action = ACTION_TOGGLE
         }
         val togglePending = PendingIntent.getBroadcast(
@@ -269,10 +269,6 @@ object OwnBoxWidgetHelper {
 
 class OwnBoxWidget1x1 : AppWidgetProvider() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == OwnBoxWidgetHelper.ACTION_TOGGLE) {
-            OwnBoxWidgetHelper.handleToggle(context)
-            return
-        }
         super.onReceive(context, intent)
     }
 
@@ -283,10 +279,6 @@ class OwnBoxWidget1x1 : AppWidgetProvider() {
 
 class OwnBoxWidget2x2 : AppWidgetProvider() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == OwnBoxWidgetHelper.ACTION_TOGGLE) {
-            OwnBoxWidgetHelper.handleToggle(context)
-            return
-        }
         super.onReceive(context, intent)
     }
 
@@ -297,10 +289,6 @@ class OwnBoxWidget2x2 : AppWidgetProvider() {
 
 class OwnBoxWidget4x1 : AppWidgetProvider() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == OwnBoxWidgetHelper.ACTION_TOGGLE) {
-            OwnBoxWidgetHelper.handleToggle(context)
-            return
-        }
         super.onReceive(context, intent)
     }
 
@@ -311,10 +299,6 @@ class OwnBoxWidget4x1 : AppWidgetProvider() {
 
 class OwnBoxWidget4x2 : AppWidgetProvider() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == OwnBoxWidgetHelper.ACTION_TOGGLE) {
-            OwnBoxWidgetHelper.handleToggle(context)
-            return
-        }
         super.onReceive(context, intent)
     }
 

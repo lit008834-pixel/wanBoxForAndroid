@@ -28,7 +28,8 @@ jobs:
           path: |
             app/libs/libcore.aar
             app/executableSo
-          key: ${{ hashFiles('.github/workflows/*', 'golang_status', 'libcore_status') }}
+          # @author 雾晚: share the verified cache for exactly the same core inputs.
+          key: native-audit-${{ hashFiles('libcore/**', 'buildScript/lib/**', 'buildScript/init/**', 'nb4a.properties') }}
       - name: Install Golang
         if: steps.cache.outputs.cache-hit != 'true'
         uses: actions/setup-go@v5
@@ -119,7 +120,7 @@ jobs:
             "$AAPT" dump badging "$apk" | grep -q "^package: name='com.lit008834.pixel.wanboxforandroid' versionCode='$PREVIEW_CODE' versionName='$PREVIEW_VERSION' "
             manifest=$($AAPT dump xmltree "$apk" AndroidManifest.xml)
             printf '%s\n' "$manifest" | grep -q 'com.lit008834.pixel.wanboxforandroid.cache'
-            printf '%s\n' "$manifest" | grep -q 'com.lit008834.pixel.wanboxforandroid.widget.ACTION_TOGGLE'
+            printf '%s\n' "$manifest" | grep -q 'io.nekohasekai.sagernet.widget.WidgetControlReceiver'
             signer_digest=$("$APKSIGNER" verify --verbose --print-certs "$apk" | grep -m1 -i 'certificate SHA-256 digest' | sed 's/.*: *//' | tr -d ' \r' | tr '[:lower:]' '[:upper:]')
             echo "$(basename "$apk") certificate SHA-256: $signer_digest"
             test "$signer_digest" = 'AEC62C7003FA515534817250D3CD0DC705E19F4CD578A7A9A1D22519596EA598'
@@ -147,16 +148,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p previous
-          gh release download v3.0.2 \
+          gh release download v3.0.3 \
             -R lit008834-pixel/wanBoxForAndroid \
-            -p wanBoxForAndroid-3.0.2-x86_64.apk -D previous
-          gh release download v3.0.3-preview.3 \
+            -p wanBoxForAndroid-3.0.3-x86_64.apk -D previous
+          gh release download v3.0.3-preview.4 \
             -R lit008834-pixel/wanBoxForAndroid \
-            -p wanBoxForAndroid-3.0.3-preview.3-x86_64-release.apk -D previous
+            -p wanBoxForAndroid-3.0.3-preview.4-x86_64-release.apk -D previous
           gh release download v2.9.1-preview \
             -R Own716/OwnBoxForAndroid \
             -p OwnBox-2.9.1-x86_64-release.apk -D previous
-          echo '3458e7a32ecb7ca03cc6648dcfc3f6aabb06d8f5c7dfca81cdf823bff5dbfc23  previous/wanBoxForAndroid-3.0.2-x86_64.apk' | sha256sum --check
+          echo '048d1792bfb8f2134fdd2f836f99cc85e8050a54920cbf99c1014f3f98331ba8  previous/wanBoxForAndroid-3.0.3-x86_64.apk' | sha256sum --check
           # @author 雾晚: 上游 OwnBox 会替换同名附件；该文件只用于临时模拟器验证。
           OWNBOX=previous/OwnBox-2.9.1-x86_64-release.apk
           AAPT=$(find "${ANDROID_HOME}/build-tools" -name aapt | sort -V | tail -n 1)
@@ -205,14 +206,14 @@ jobs:
           (cd apks && sha256sum *.apk > SHA256SUMS && sha256sum --check SHA256SUMS)
           CODE=$(grep '^PRE_VERSION_CODE=' nb4a.properties | cut -d= -f2 | tr -d '\r')
           CODE=$((CODE * 5))
-          printf '# wanBox 预览版更新说明\n\n- 修复 Root TUN 首次连接、切换节点时旧启动任务和旧进程争用的问题。\n- Root 模式测速改经本地代理测试当前核心，避免 FakeIP 被直连请求误判；关闭本地代理时使用独立节点测试。\n- 节点或配置失败时保留 Root 模式；仅 Root 权限或本地运行环境不可用时回退 VPN。\n- 回退 VPN 后立即刷新服务连接，不必退出应用再打开。\n- 保持独立包名 `com.lit008834.pixel.wanboxforandroid` 和原有签名；Android 版本号为 %s，可覆盖升级上一预览版，并与 OwnBox 共存。\n- 提供四种架构的签名 APK 与 SHA-256 校验文件。Root TUN 的实际流量仍需在 Root 设备上验证。\n' "$CODE" > PREVIEW_NOTES.md
+          cp PREVIEW_NOTES.md "$RUNNER_TEMP/preview-notes.md"
       - name: Publish to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.PREVIEW_TAG }}
           target_commitish: ${{ github.sha }}
           name: wanBox ${{ env.PREVIEW_TAG }}
-          body_path: PREVIEW_NOTES.md
+          body_path: ${{ runner.temp }}/preview-notes.md
           files: apks/*
           draft: false
           prerelease: true

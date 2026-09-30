@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.bg
 
 import android.Manifest
@@ -278,6 +279,6 @@ class VpnService : BaseVpnService(),
     override fun onDestroy() {
         DataStore.vpnService = null
         super.onDestroy()
-        data.binder.close()
+        destroyRunner()
     }
 }

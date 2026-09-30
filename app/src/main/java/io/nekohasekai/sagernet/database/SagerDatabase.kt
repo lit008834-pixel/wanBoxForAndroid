@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.database
 
 import androidx.room.AutoMigration
@@ -36,6 +37,20 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 abstract class SagerDatabase : RoomDatabase() {
 
     companion object {
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE proxy_groups ADD COLUMN isSelector INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE proxy_groups ADD COLUMN frontProxy INTEGER NOT NULL DEFAULT -1")
+                database.execSQL("ALTER TABLE proxy_groups ADD COLUMN landingProxy INTEGER NOT NULL DEFAULT -1")
+                database.execSQL("ALTER TABLE proxy_entities ADD COLUMN shadowTLSBean BLOB")
+            }
+        }
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE proxy_entities ADD COLUMN mieruBean BLOB")
+            }
+        }
+
         val MIGRATION_9_10 = object : Migration(9, 10) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 try {
@@ -54,6 +69,7 @@ abstract class SagerDatabase : RoomDatabase() {
                     }
                 } catch (e: Throwable) {
                     Logs.w(e)
+                    throw e
                 }
             }
         }
@@ -68,34 +84,13 @@ abstract class SagerDatabase : RoomDatabase() {
                     .setJournalMode(JournalMode.TRUNCATE)
                     .allowMainThreadQueries()
                     .enableMultiInstanceInvalidation()
-                    .addMigrations(MIGRATION_9_10)
-                    .fallbackToDestructiveMigration()
-                    .fallbackToDestructiveMigrationOnDowngrade()
-                    .setQueryExecutor { GlobalScope.launch { it.run() } }
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_9_10)
+                    .setQueryExecutor(java.util.concurrent.Executors.newFixedThreadPool(2))
                     .build()
             }
-            try {
-                val db = buildDatabase()
-                db.openHelper.writableDatabase
-                db
-            } catch (e: Throwable) {
-                Logs.e(e)
-                try {
-                    val dbFile = app.getDatabasePath(Key.DB_PROFILE)
-                    if (dbFile.exists()) {
-                        val bakFile = java.io.File(dbFile.parentFile, "${Key.DB_PROFILE}.bak_${System.currentTimeMillis()}")
-                        dbFile.copyTo(bakFile, overwrite = true)
-                    }
-                } catch (t: Throwable) {
-                    Logs.e(t)
-                }
-                try {
-                    app.deleteDatabase(Key.DB_PROFILE)
-                } catch (t: Throwable) {
-                    Logs.e(t)
-                }
-                buildDatabase()
-            }
+            // Room migrations run transactionally. Failed upgrades keep DB/WAL/SHM intact.
+            // Opening is deferred so diagnostics/recovery can report an error without deleting data.
+            buildDatabase()
         }
 
         val groupDao get() = instance.groupDao()

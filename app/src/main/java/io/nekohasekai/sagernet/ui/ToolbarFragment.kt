@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.ui
 
 import android.graphics.Color
@@ -21,8 +22,18 @@ open class ToolbarFragment : Fragment {
     constructor() : super()
     constructor(contentLayoutId: Int) : super(contentLayoutId)
 
-    lateinit var toolbar: Toolbar
-    val isToolbarInitialized: Boolean get() = ::toolbar.isInitialized
+    private var toolbarView: Toolbar? = null
+    var toolbar: Toolbar
+        get() = requireNotNull(toolbarView)
+        set(value) { toolbarView = value }
+    val isToolbarInitialized: Boolean get() = toolbarView != null
+
+    override fun onDestroyView() {
+        toolbarView?.setOnClickListener(null)
+        toolbarView?.setNavigationOnClickListener(null)
+        toolbarView = null
+        super.onDestroyView()
+    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)

@@ -20,14 +20,24 @@ import io.nekohasekai.sagernet.databinding.LayoutCustomIconBinding
 import io.nekohasekai.sagernet.ktx.app
 import io.nekohasekai.sagernet.ktx.getColorAttr
 import io.nekohasekai.sagernet.ktx.onMainDispatcher
-import io.nekohasekai.sagernet.ktx.runOnDefaultDispatcher
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.*
 import io.nekohasekai.sagernet.ktx.snackbar
 import io.nekohasekai.sagernet.utils.CustomIconManager
 import android.service.quicksettings.TileService as BaseTileService
 
 class CustomIconFragment : NamedFragment(R.layout.layout_custom_icon) {
 
-    private lateinit var binding: LayoutCustomIconBinding
+    private var viewBinding: LayoutCustomIconBinding? = null
+    private val binding get() = requireNotNull(viewBinding)
+
+    private fun runOnDefaultDispatcher(block: suspend CoroutineScope.() -> Unit): Job =
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO, block = block)
+
+    override fun onDestroyView() {
+        viewBinding = null
+        super.onDestroyView()
+    }
     private var isTileActive = false
 
     override fun name0(): String = app.getString(R.string.custom_icon)
@@ -36,8 +46,8 @@ class CustomIconFragment : NamedFragment(R.layout.layout_custom_icon) {
         if (uri != null) {
             runOnDefaultDispatcher {
                 val result = try {
-                    requireContext().contentResolver.openInputStream(uri)?.use { stream ->
-                        CustomIconManager.importIconPack(stream, requireContext())
+                    app.contentResolver.openInputStream(uri)?.use { stream ->
+                        CustomIconManager.importIconPack(stream, app)
                     } ?: CustomIconManager.ImportResult.Error("无法打开所选文件流")
                 } catch (e: Exception) {
                     CustomIconManager.ImportResult.Error(e.message ?: "导入失败")
@@ -81,7 +91,7 @@ class CustomIconFragment : NamedFragment(R.layout.layout_custom_icon) {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        binding = LayoutCustomIconBinding.bind(view)
+        viewBinding = LayoutCustomIconBinding.bind(view)
 
         binding.btnImportPack.setOnClickListener {
             // 采用通用选择器，并在代码中严格校验 ZIP

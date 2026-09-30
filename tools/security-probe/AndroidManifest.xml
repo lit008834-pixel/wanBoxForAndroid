@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- @author 雾晚: independently installed test APK, never shipped in release assets. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.wanbox.auditprobe">
+    <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="35"/>
+    <application android:theme="@android:style/Theme.Material.Light" android:label="Audit probe">
+        <activity android:name=".ControlProbe" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

@@ -93,6 +93,11 @@ class MainActivity : ThemedActivity(),
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (SagerNet.databaseFailure != null) {
+            startActivity(Intent(this, DatabaseRecoveryActivity::class.java))
+            finish()
+            return
+        }
         MessageStore.setCurrentActivity(this)
         val animateInitialControls = savedInstanceState == null
 
@@ -223,6 +228,7 @@ class MainActivity : ThemedActivity(),
 
     override fun onResume() {
         super.onResume()
+        if (SagerNet.databaseFailure != null) return
         connection.rebindIfServiceChanged(this)
         MessageStore.setCurrentActivity(this)
 
@@ -306,6 +312,7 @@ class MainActivity : ThemedActivity(),
 
     override fun onPostResume() {
         super.onPostResume()
+        if (SagerNet.databaseFailure != null) return
         val restoredFragment =
             supportFragmentManager.findFragmentById(R.id.fragment_holder) as? ToolbarFragment
         if (restoredFragment != null && restoredFragment !== currentMainFragment) {
@@ -752,13 +759,15 @@ class MainActivity : ThemedActivity(),
     }
 
     override fun onStart() {
+        if (SagerNet.databaseFailure != null) { super.onStart(); return }
         connection.updateConnectionId(SagerConnection.CONNECTION_ID_MAIN_ACTIVITY_FOREGROUND)
         super.onStart()
     }
 
     override fun onStop() {
-        connection.updateConnectionId(SagerConnection.CONNECTION_ID_MAIN_ACTIVITY_BACKGROUND)
+        if (SagerNet.databaseFailure == null) connection.updateConnectionId(SagerConnection.CONNECTION_ID_MAIN_ACTIVITY_BACKGROUND)
         super.onStop()
+        if (SagerNet.databaseFailure != null) return
         if (!DataStore.performancePriorityMode) {
             Libcore.forceGc()
         }
@@ -766,6 +775,7 @@ class MainActivity : ThemedActivity(),
 
     override fun onDestroy() {
         super.onDestroy()
+        if (SagerNet.databaseFailure != null) return
         unregisterReceiver(serviceModeReceiver)
         GroupManager.userInterface = null
         DataStore.configurationStore.unregisterChangeListener(this)
@@ -773,6 +783,7 @@ class MainActivity : ThemedActivity(),
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (SagerNet.databaseFailure != null) return super.onKeyDown(keyCode, event)
         when (keyCode) {
             KeyEvent.KEYCODE_DPAD_LEFT -> {
                 if (super.onKeyDown(keyCode, event)) return true

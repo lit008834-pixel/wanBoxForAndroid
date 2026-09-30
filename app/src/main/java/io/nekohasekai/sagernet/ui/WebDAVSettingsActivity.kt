@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.ui
 
 import android.os.Bundle
@@ -15,7 +16,10 @@ import io.nekohasekai.sagernet.database.DataStore
 import io.nekohasekai.sagernet.ktx.onMainDispatcher
 import io.nekohasekai.sagernet.ktx.runOnDefaultDispatcher
 import io.nekohasekai.sagernet.ktx.snackbar
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
+import androidx.lifecycle.lifecycleScope
+import io.nekohasekai.sagernet.utils.BoundedInput
+import io.nekohasekai.sagernet.utils.SecureNetwork
 import okhttp3.Credentials
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -53,6 +57,9 @@ class WebDAVSettingsActivity : ThemedActivity() {
     }
 
     class WebDAVSettingsFragment : PreferenceFragmentCompat(), PreferenceFragmentCompat.OnPreferenceStartFragmentCallback {
+        private fun runOnDefaultDispatcher(block: suspend CoroutineScope.() -> Unit): Job =
+            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO, block = block)
+        private val networkClient = SecureNetwork.webDAVClient()
         private var lastClickTime = 0L
         private val DEBOUNCE_TIME = 1000L  // 1秒内不允许重复点击
         private var isFragmentAlive = true
@@ -64,6 +71,12 @@ class WebDAVSettingsActivity : ThemedActivity() {
                 lastClickTime = currentTime
             }
             return isAllowed
+        }
+
+        override fun onDestroyView() {
+            networkClient.dispatcher.cancelAll()
+            networkClient.connectionPool.evictAll()
+            super.onDestroyView()
         }
 
         override fun onDestroy() {
@@ -128,7 +141,7 @@ class WebDAVSettingsActivity : ThemedActivity() {
                     }
 
                     val url = URL(server)
-                    val client = OkHttpClient.Builder()
+                    val client = networkClient.newBuilder()
                         .connectTimeout(10, TimeUnit.SECONDS)
                         .readTimeout(10, TimeUnit.SECONDS)
                         .writeTimeout(10, TimeUnit.SECONDS)
@@ -148,7 +161,7 @@ class WebDAVSettingsActivity : ThemedActivity() {
                         }
                         .build()
 
-                    val response = client.newCall(authRequest).execute()
+                    val response = client.newCall(authRequest).execute().also { it.close() }
                     
                     when (response.code) {
                         401 -> throw Exception(getString(R.string.webdav_auth_error))
@@ -185,7 +198,7 @@ class WebDAVSettingsActivity : ThemedActivity() {
                             }
                             .build()
 
-                        val dirResponse = client.newCall(dirRequest).execute()
+                        val dirResponse = client.newCall(dirRequest).execute().also { it.close() }
                         if (!dirResponse.isSuccessful && dirResponse.code != 405) {  // 405 表示目录已存在
                             throw Exception(getString(R.string.webdav_create_dir_failed))
                         }

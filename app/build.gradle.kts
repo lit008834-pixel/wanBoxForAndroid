@@ -17,6 +17,8 @@ val generateRootLicenseAsset by tasks.registering(Copy::class) {
 
 android {
     defaultConfig {
+        // @author 雾晚
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         versionName = requireMetadata().getProperty("VERSION_NAME")
         versionCode = requireMetadata().getProperty("VERSION_CODE").toInt() * 5
     }
@@ -49,6 +51,9 @@ android {
     sourceSets.named("main") {
         assets.srcDir(generatedLicenseAssets)
     }
+    sourceSets.named("androidTest") {
+        assets.srcDir("schemas")
+    }
 }
 
 tasks.matching { it.name == "preBuild" }.configureEach {
@@ -57,7 +62,8 @@ tasks.matching { it.name == "preBuild" }.configureEach {
 
 dependencies {
 
-    implementation(fileTree("libs"))
+    // @author 雾晚: the native build produces this single, explicit dependency.
+    implementation(files("libs/libcore.aar"))
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4")
     implementation("androidx.core:core-ktx:1.9.0")
@@ -92,6 +98,8 @@ dependencies {
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20231013")
+    androidTestImplementation("androidx.test:runner:1.5.2")
+    androidTestImplementation("androidx.room:room-testing:2.6.1")
 
     implementation("com.simplecityapps:recyclerview-fastscroll:2.0.1") {
         exclude(group = "androidx.recyclerview")

@@ -279,6 +279,17 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     var tunImplementation by configurationStore.stringToInt(Key.TUN_IMPLEMENTATION) { TunImplementation.SING_TUN }
     var profileTrafficStatistics by configurationStore.boolean(Key.PROFILE_TRAFFIC_STATISTICS) { true }
 
+    val clashApiSecret: String
+        get() = PublicDatabase.instance.runInTransaction(java.util.concurrent.Callable {
+            val key = "clashApiSecret"
+            PublicDatabase.kvPairDao[key]?.string?.takeIf { it.length == 64 } ?: run {
+                val bytes = ByteArray(32).also { java.security.SecureRandom().nextBytes(it) }
+                val value = bytes.joinToString("") { "%02x".format(it.toInt() and 255) }
+                PublicDatabase.kvPairDao.put(io.nekohasekai.sagernet.database.preference.KeyValuePair(key).put(value))
+                value
+            }
+        })
+
     var yacdURL by configurationStore.string("yacdURL") { "http://127.0.0.1:9090/ui" }
 
     // protocol

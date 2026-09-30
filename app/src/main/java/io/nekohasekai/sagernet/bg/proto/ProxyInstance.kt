@@ -19,12 +19,13 @@ class ProxyInstance(profile: ProxyEntity, var service: BaseService.Interface? = 
 
     // for TrafficLooper
     var looper: TrafficLooper? = null
+    private var closed = false
 
     override fun buildConfig() {
         super.buildConfig()
         lastSelectorGroupId = super.config.selectorGroupId
         //
-        if (notTmp) Logs.d(config.config)
+        if (notTmp) Logs.d("Core configuration prepared (credentials omitted)")
         if (notTmp && BuildConfig.DEBUG) Logs.d(JavaUtil.gson.toJson(config.trafficMap))
     }
 
@@ -38,7 +39,7 @@ class ProxyInstance(profile: ProxyEntity, var service: BaseService.Interface? = 
         super.init()
         pluginConfigs.forEach { (_, plugin) ->
             val (_, content) = plugin
-            Logs.d(content)
+            Logs.d("External proxy configuration prepared (credentials omitted)")
         }
     }
 
@@ -46,13 +47,14 @@ class ProxyInstance(profile: ProxyEntity, var service: BaseService.Interface? = 
         super.loadConfig()
     }
 
+    @Synchronized
     override fun launch() {
+        check(!closed && looper == null)
         box.setAsMain()
         super.launch() // start box
-        runOnDefaultDispatcher {
-            looper = service?.let { TrafficLooper(it.data, this) }
-            looper?.start()
-        }
+        // Register synchronously: close cannot race a deferred looper constructor.
+        looper = service?.let { TrafficLooper(it.data, it.data.serviceScope) }
+        looper?.start()
     }
 
     // @author 雾晚: external proxy helpers are still needed by the root core.
@@ -60,24 +62,23 @@ class ProxyInstance(profile: ProxyEntity, var service: BaseService.Interface? = 
         launchExternal()
     }
 
+    @Synchronized
     override fun close() {
+        if (closed) return
+        closed = true
         var closeError: Throwable? = null
+        try {
+            runBlocking { looper?.stop() }
+        } catch (error: Throwable) {
+            closeError = error
+        } finally {
+            looper = null
+        }
         try {
             super.close()
         } catch (error: Throwable) {
-            closeError = error
-        }
-        try {
-            runBlocking {
-                looper?.stop()
-                looper = null
-            }
-        } catch (error: Throwable) {
-            if (closeError == null) {
-                closeError = error
-            } else if (closeError !== error) {
-                closeError?.addSuppressed(error)
-            }
+            if (closeError == null) closeError = error
+            else if (closeError !== error) closeError?.addSuppressed(error)
         }
         closeError?.let { throw it }
     }

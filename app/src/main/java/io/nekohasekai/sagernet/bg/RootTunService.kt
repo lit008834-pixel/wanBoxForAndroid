@@ -190,6 +190,11 @@ class RootTunService : Service(), BaseService.Interface {
         if (fallback) RootAccess.fallbackToVpn(this)
     }
 
+    override fun onDestroy() {
+        destroyRunner()
+        super.onDestroy()
+    }
+
     override fun onBind(intent: Intent) = super<BaseService.Interface>.onBind(intent)
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int =

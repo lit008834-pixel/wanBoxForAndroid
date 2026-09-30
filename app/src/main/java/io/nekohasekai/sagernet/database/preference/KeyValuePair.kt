@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.database.preference
 
 import android.os.Parcel
@@ -81,7 +82,10 @@ class KeyValuePair() : Parcelable {
             val buffer = ByteBuffer.wrap(value)
             val result = HashSet<String>()
             while (buffer.hasRemaining()) {
-                val chArr = ByteArray(buffer.int)
+                require(buffer.remaining() >= 4) { "Invalid string-set length prefix" }
+                val length = buffer.int
+                require(length >= 0 && length <= buffer.remaining()) { "Invalid string-set length" }
+                val chArr = ByteArray(length)
                 buffer.get(chArr)
                 result.add(String(chArr))
             }

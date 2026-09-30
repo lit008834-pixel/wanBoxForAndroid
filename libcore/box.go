@@ -434,7 +434,24 @@ func (b *BoxInstance) SelectOutbound(tag string) bool {
 	return false
 }
 // @author 雾晚: Root and in-process probes use one cold GET and one total deadline.
-func UrlTest(i *BoxInstance, link string, timeout int32) (latency int32, err error) {
+// @author 雾晚: Java/Kotlin cancellation interrupts the same request context and sockets.
+type URLTestSession struct {
+    ctx context.Context
+    cancel context.CancelFunc
+}
+
+func NewURLTestSession() *URLTestSession {
+    ctx, cancel := context.WithCancel(context.Background())
+    return &URLTestSession{ctx: ctx, cancel: cancel}
+}
+func (s *URLTestSession) Cancel() { s.cancel() }
+func (s *URLTestSession) Test(i *BoxInstance, link string, timeout int32) (int32, error) {
+    return urlTestContext(s.ctx, i, link, timeout)
+}
+func UrlTest(i *BoxInstance, link string, timeout int32) (int32, error) {
+    return urlTestContext(context.Background(), i, link, timeout)
+}
+func urlTestContext(ctx context.Context, i *BoxInstance, link string, timeout int32) (latency int32, err error) {
 	defer device.DeferPanicToError("box.UrlTest", func(e error) { err = e })
 	if i == nil {
 		i = mainInstance
@@ -459,7 +476,7 @@ func UrlTest(i *BoxInstance, link string, timeout int32) (latency int32, err err
 			return http.ErrUseLastResponse
 		},
 	}
-	return urlprobe.Measure(client, link, time.Duration(timeout)*time.Millisecond)
+	return urlprobe.MeasureContext(ctx, client, link, time.Duration(timeout)*time.Millisecond)
 }
 
 func UrlTestFull(i *BoxInstance, link string, timeout int32) (int32, error) {

@@ -1,4 +1,7 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.ui
+
+import io.nekohasekai.sagernet.utils.BoundedInput
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -181,9 +184,25 @@ class ConfigurationFragment @JvmOverloads constructor(
         const val ALL_GROUPS_SENTINEL_ID = -1L
     }
 
-    lateinit var adapter: GroupPagerAdapter
-    lateinit var tabLayout: TabLayout
-    lateinit var groupPager: ViewPager2
+    private fun runOnDefaultDispatcher(block: suspend kotlinx.coroutines.CoroutineScope.() -> Unit): kotlinx.coroutines.Job =
+        viewLifecycleOwner.lifecycleScope.launch(kotlinx.coroutines.Dispatchers.Default, block = block)
+
+    private fun runOnMainDispatcher(block: suspend kotlinx.coroutines.CoroutineScope.() -> Unit): Job? =
+        viewLifecycleOwnerLiveData.value?.lifecycleScope?.launch(Dispatchers.Main.immediate, block = block)
+
+    private var pagerAdapter: GroupPagerAdapter? = null
+    var adapter: GroupPagerAdapter
+        get() = requireNotNull(pagerAdapter)
+        set(value) { pagerAdapter = value }
+    private var tabLayoutView: TabLayout? = null
+    var tabLayout: TabLayout
+        get() = requireNotNull(tabLayoutView)
+        set(value) { tabLayoutView = value }
+    private var groupPagerView: ViewPager2? = null
+    var groupPager: ViewPager2
+        get() = requireNotNull(groupPagerView)
+        set(value) { groupPagerView = value }
+    private var tabMediator: TabLayoutMediator? = null
 
     val alwaysShowAddress by lazy { DataStore.alwaysShowAddress }
 
@@ -206,7 +225,7 @@ class ConfigurationFragment @JvmOverloads constructor(
             }
             count = multiSelectedIds.size
         }
-        if (::adapter.isInitialized) {
+        if (pagerAdapter != null) {
             adapter.groupFragments.values.forEach { fragment ->
                 fragment.adapter?.refreshProfileState(setOf(profileId))
             }
@@ -314,7 +333,7 @@ class ConfigurationFragment @JvmOverloads constructor(
         currentProfileSnapshot = currentProfile
         serviceStartedSnapshot = serviceStarted
 
-        if (changedIds.isEmpty() || !::adapter.isInitialized) return
+        if (changedIds.isEmpty() || pagerAdapter == null) return
         adapter.groupFragments.values.forEach { fragment ->
             fragment.adapter?.refreshProfileState(changedIds)
         }
@@ -325,13 +344,13 @@ class ConfigurationFragment @JvmOverloads constructor(
     private fun isCurrentProfile(profileId: Long) = currentProfileSnapshot == profileId
 
     private fun isCurrentGroupPagerAdapter(candidate: GroupPagerAdapter): Boolean {
-        return ::adapter.isInitialized && adapter === candidate
+        return groupPagerView != null && pagerAdapter != null && adapter === candidate
     }
 
     fun getCurrentGroupFragment(): GroupFragment? {
         return try {
-            if (!::adapter.isInitialized) return null
-            val pos = if (::groupPager.isInitialized) groupPager.currentItem else adapter.selectedGroupIndex
+            if (pagerAdapter == null) return null
+            val pos = if (groupPagerView != null) groupPager.currentItem else adapter.selectedGroupIndex
             val group = adapter.groupList.getOrNull(pos) ?: return null
             adapter.groupFragments[group.id]
                 ?: (childFragmentManager.findFragmentByTag("f" + group.id) as? GroupFragment)
@@ -393,7 +412,7 @@ class ConfigurationFragment @JvmOverloads constructor(
     override fun onQueryTextChange(query: String): Boolean {
         currentSearchQuery = query
         searchJob?.cancel()
-        searchJob = lifecycleScope.launch {
+        searchJob = viewLifecycleOwner.lifecycleScope.launch {
             if (query.isNotBlank()) {
                 delay(180)
             }
@@ -432,7 +451,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                 adapter.filter("")
             } else {
                 val lower = trimmed.lowercase()
-                lifecycleScope.launch {
+                viewLifecycleOwner.lifecycleScope.launch {
                     val matched = withContext(Dispatchers.Default) {
                         val all = adapter.allConfigurationIdList
                         val map = adapter.configurationList
@@ -807,7 +826,7 @@ class ConfigurationFragment @JvmOverloads constructor(
         }
 
         val touchSlop = ViewConfiguration.get(requireContext()).scaledTouchSlop
-        TabLayoutMediator(tabLayout, groupPager) { tab, position ->
+        tabMediator = TabLayoutMediator(tabLayout, groupPager) { tab, position ->
             if (adapter.groupList.size > position) {
                 tab.text = adapter.groupList[position].displayName()
             }
@@ -827,7 +846,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                         longPressRunnable?.let { v.removeCallbacks(it) }
 
                         val runnable = Runnable {
-                            if (!isAdded || isDetached) return@Runnable
+                            if (!isAdded || isDetached || viewLifecycleOwnerLiveData.value == null) return@Runnable
                             val pos = tab.position
                             if (pos in 0 until adapter.groupList.size) {
                                 val group = adapter.groupList[pos]
@@ -858,7 +877,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                 }
                 false
             }
-        }.attach()
+        }.also { it.attach() }
 
         toolbar.setOnClickListener {
             val fragment = getCurrentGroupFragment()
@@ -922,7 +941,26 @@ class ConfigurationFragment @JvmOverloads constructor(
         }
     }
 
-    override fun onDestroy() {
+    override fun onDestroyView() {
+        cancelViewTests()
+        searchJob?.cancel()
+        searchJob = null
+        tabMediator?.detach()
+        tabMediator = null
+        groupPagerView?.unregisterOnPageChangeCallback(updateSelectedCallback)
+        groupPagerView?.adapter = null
+        groupPagerView = null
+        tabLayoutView = null
+        if (pagerAdapter != null) {
+            GroupManager.removeListener(adapter)
+            ProfileManager.removeListener(adapter)
+            adapter.groupFragments.clear()
+            pagerAdapter = null
+        }
+        super.onDestroyView()
+    }
+
+    private fun cancelViewTests() {
         if (speedTestJob != null) {
             speedTestRunner?.cancel()
             speedTestJob?.cancel()
@@ -935,10 +973,14 @@ class ConfigurationFragment @JvmOverloads constructor(
             speedTestJob = null
             DataStore.runningTest = false
         }
+    }
+
+    override fun onDestroy() {
+        cancelViewTests()
         DataStore.profileCacheStore.unregisterChangeListener(this)
         DataStore.configurationStore.unregisterChangeListener(this)
 
-        if (::adapter.isInitialized) {
+        if (pagerAdapter != null) {
             GroupManager.removeListener(adapter)
             ProfileManager.removeListener(adapter)
         }
@@ -995,21 +1037,20 @@ class ConfigurationFragment @JvmOverloads constructor(
                     val proxies = mutableListOf<AbstractBean>()
                     if (fileName != null && fileName.endsWith(".zip")) {
                         // try parse wireguard zip
-                        val zip =
-                            ZipInputStream(requireContext().contentResolver.openInputStream(file)!!)
-                        while (true) {
-                            val entry = zip.nextEntry ?: break
-                            if (entry.isDirectory) continue
-                            val fileText = zip.bufferedReader().readText()
-                            RawUpdater.parseRaw(fileText, entry.name)
-                                ?.let { pl -> proxies.addAll(pl) }
-                            zip.closeEntry()
+                        val entries = mutableListOf<Pair<String, ByteArray>>()
+                        requireContext().contentResolver.openInputStream(file)!!.use { input ->
+                            BoundedInput.zip(input) { name, bytes ->
+                                if (bytes.size > BoundedInput.JSON_BYTES) throw BoundedInput.LimitExceeded(BoundedInput.JSON_BYTES)
+                                entries.add(name to bytes)
+                            }
                         }
-                        zip.closeQuietly()
+                        for ((name, bytes) in entries) {
+                            RawUpdater.parseRaw(bytes.toString(Charsets.UTF_8), name)?.let { proxies.addAll(it) }
+                        }
                     } else {
                         val fileText =
                             requireContext().contentResolver.openInputStream(file)!!.use {
-                                it.bufferedReader().readText()
+                                BoundedInput.text(it)
                             }
                         RawUpdater.parseRaw(fileText, fileName ?: "")
                             ?.let { pl -> proxies.addAll(pl) }
@@ -1047,8 +1088,8 @@ class ConfigurationFragment @JvmOverloads constructor(
     }
 
     fun isCurrentAllGroups(): Boolean {
-        if (!::adapter.isInitialized) return false
-        val pos = if (::groupPager.isInitialized) groupPager.currentItem else adapter.selectedGroupIndex
+        if (pagerAdapter == null) return false
+        val pos = if (groupPagerView != null) groupPager.currentItem else adapter.selectedGroupIndex
         val group = adapter.groupList.getOrNull(pos) ?: return false
         return group.id == ALL_GROUPS_SENTINEL_ID
     }
@@ -1666,6 +1707,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                     val rxBytes = sample.downloadBitsPerSecond / 8
                     val txBytes = sample.uploadBitsPerSecond / 8
                     runOnMainDispatcher {
+                    if (speedTestRunner !== runner) return@runOnMainDispatcher
                         (activity as? MainActivity)?.binding?.stats?.updateSpeed(txBytes, rxBytes)
                         try {
                             (activity as? MainActivity)?.connection?.service?.postNotificationSpeed(
@@ -1699,6 +1741,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                             ) > 0
                         ) {
                             runOnMainDispatcher {
+                    if (speedTestRunner !== runner) return@runOnMainDispatcher
                                 adapter.groupFragments.values.forEach { fragment ->
                                     fragment.adapter?.updateSpeedTestResult(sample.profileId, outcome)
                                 }
@@ -1716,6 +1759,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                         }
                     }
                     runOnMainDispatcher {
+                    if (speedTestRunner !== runner) return@runOnMainDispatcher
                         val detail = formatSpeedTestSnapshot(sample)
                         speedTestNotification?.updateNotification(index + 1, total, false, detail)
                         if (!speedTestHidden && isAdded) {
@@ -1731,12 +1775,14 @@ class ConfigurationFragment @JvmOverloads constructor(
                 }
             } catch (_: CancellationException) {
                 runOnMainDispatcher {
+                    if (speedTestRunner !== runner) return@runOnMainDispatcher
                     if (!speedTestHidden && isAdded) {
                         binding.nowTesting.text = getString(R.string.speed_test_stage_cancelled)
                     }
                 }
             } finally {
                 runOnMainDispatcher {
+                    if (speedTestRunner !== runner) return@runOnMainDispatcher
                     (activity as? MainActivity)?.binding?.stats?.updateSpeed(0, 0)
                     try {
                         (activity as? MainActivity)?.connection?.service?.postNotificationSpeed(
@@ -1746,14 +1792,15 @@ class ConfigurationFragment @JvmOverloads constructor(
                     adapter.groupFragments.values.forEach { fragment ->
                         fragment.adapter?.clearSpeedTestLive()
                     }
+                    speedTestNotification?.updateNotification(0, 0, true)
+                    speedTestNotification?.cancel()
+                    speedTestNotification = null
+                    speedTestDialog = null
+                    speedTestHidden = false
+                    speedTestRunner = null
+                    speedTestJob = null
+                    DataStore.runningTest = false
                 }
-                speedTestNotification?.updateNotification(0, 0, true)
-                speedTestNotification = null
-                speedTestDialog = null
-                speedTestHidden = false
-                speedTestRunner = null
-                speedTestJob = null
-                DataStore.runningTest = false
             }
         }
     }
@@ -1819,6 +1866,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                     val rxBytes = sample.downloadBitsPerSecond / 8
                     val txBytes = sample.uploadBitsPerSecond / 8
                     runOnMainDispatcher {
+                    if (speedTestRunner !== runner) return@runOnMainDispatcher
                         (activity as? MainActivity)?.binding?.stats?.updateSpeed(txBytes, rxBytes)
                         try {
                             (activity as? MainActivity)?.connection?.service?.postNotificationSpeed(
@@ -1852,6 +1900,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                             ) > 0
                         ) {
                             runOnMainDispatcher {
+                    if (speedTestRunner !== runner) return@runOnMainDispatcher
                                 adapter.groupFragments.values.forEach { fragment ->
                                     fragment.adapter?.updateSpeedTestResult(sample.profileId, outcome)
                                 }
@@ -1869,6 +1918,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                         }
                     }
                     runOnMainDispatcher {
+                    if (speedTestRunner !== runner) return@runOnMainDispatcher
                         val detail = formatSpeedTestSnapshot(sample)
                         speedTestNotification?.updateNotification(index + 1, total, false, detail)
                         if (!speedTestHidden && isAdded) {
@@ -1884,16 +1934,19 @@ class ConfigurationFragment @JvmOverloads constructor(
                 }
             } catch (_: CancellationException) {
                 runOnMainDispatcher {
+                    if (speedTestRunner !== runner) return@runOnMainDispatcher
                     dialog.dismiss()
                 }
             } catch (e: Exception) {
                 Logs.w(e)
                 runOnMainDispatcher {
+                    if (speedTestRunner !== runner) return@runOnMainDispatcher
                     snackbar(e.readableMessage).show()
                     dialog.dismiss()
                 }
             } finally {
                 runOnMainDispatcher {
+                    if (speedTestRunner !== runner) return@runOnMainDispatcher
                     (activity as? MainActivity)?.binding?.stats?.updateSpeed(0, 0)
                     try {
                         (activity as? MainActivity)?.connection?.service?.postNotificationSpeed(
@@ -1910,10 +1963,10 @@ class ConfigurationFragment @JvmOverloads constructor(
                     speedTestNotification?.cancel()
                     speedTestNotification = null
                     speedTestHidden = false
+                    speedTestRunner = null
+                    speedTestJob = null
+                    DataStore.runningTest = false
                 }
-                speedTestRunner = null
-                speedTestJob = null
-                DataStore.runningTest = false
             }
         }
     }
@@ -2276,6 +2329,7 @@ class ConfigurationFragment @JvmOverloads constructor(
         private val reloadGeneration = AtomicLong()
 
         fun reload(now: Boolean = false) {
+            if (groupPagerView == null || (!now && !isCurrentGroupPagerAdapter(this))) return
             val generation = reloadGeneration.incrementAndGet()
 
             if (!select) {
@@ -2372,6 +2426,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                                 }
                                 refreshProfileState()
                                 newSelectedGroupIndex?.let { selectedGroupIndex = it }
+                                groupFragments.keys.retainAll(newGroupList.map { it.id }.toSet())
                                 groupList = newGroupList
                                 notifyDataSetChanged()
                                 if (!isUserInteractingWithPager && newSelectedGroupIndex != null && groupPager.currentItem != selectedGroupIndex) {
@@ -2420,7 +2475,8 @@ class ConfigurationFragment @JvmOverloads constructor(
         }
 
         override suspend fun groupAdd(group: ProxyGroup) {
-            tabLayout.post {
+            tabLayoutView?.post {
+                if (!isCurrentGroupPagerAdapter(this)) return@post
                 groupList.add(group)
 
                 if (groupList.any { !it.ungrouped }) tabLayout.post {
@@ -2478,7 +2534,10 @@ class ConfigurationFragment @JvmOverloads constructor(
             return LayoutProfileListBinding.inflate(inflater).root
         }
 
-        lateinit var undoManager: UndoSnackbarManager<ProxyEntity>
+        private var undoManagerValue: UndoSnackbarManager<ProxyEntity>? = null
+        var undoManager: UndoSnackbarManager<ProxyEntity>
+            get() = requireNotNull(undoManagerValue)
+            set(value) { undoManagerValue = value }
         var adapter: ConfigurationAdapter? = null
 
         override fun onSaveInstanceState(outState: Bundle) {
@@ -2495,7 +2554,7 @@ class ConfigurationFragment @JvmOverloads constructor(
             savedInstanceState?.getParcelable<ProxyGroup>("proxyGroup")?.also {
                 proxyGroup = it
                 isAllGroupsTab = (it.id == ALL_GROUPS_SENTINEL_ID)
-                onViewCreated(requireView(), null)
+                if (adapter == null) onViewCreated(requireView(), null)
             }
         }
 
@@ -2504,7 +2563,10 @@ class ConfigurationFragment @JvmOverloads constructor(
                 return DataStore.serviceState.let { it.canStop || it == BaseService.State.Stopped }
             }
 
-        lateinit var layoutManager: RecyclerView.LayoutManager
+        private var layoutManagerValue: RecyclerView.LayoutManager? = null
+        var layoutManager: RecyclerView.LayoutManager
+            get() = requireNotNull(layoutManagerValue)
+            set(value) { layoutManagerValue = value }
         private lateinit var itemTouchHelper: ItemTouchHelper
         private val alwaysShowAddress: Boolean
             get() = (parentFragment as? ConfigurationFragment)?.alwaysShowAddress == true
@@ -2578,7 +2640,12 @@ class ConfigurationFragment @JvmOverloads constructor(
             })
             itemTouchHelper.attachToRecyclerView(configurationListView)
         }
-        lateinit var configurationListView: RecyclerView
+        private var listView: RecyclerView? = null
+        var configurationListView: RecyclerView
+            get() = requireNotNull(listView)
+            set(value) { listView = value }
+        private fun runOnDefaultDispatcher(block: suspend kotlinx.coroutines.CoroutineScope.() -> Unit): kotlinx.coroutines.Job =
+            viewLifecycleOwner.lifecycleScope.launch(kotlinx.coroutines.Dispatchers.Default, block = block)
 
         val select by lazy {
             try {
@@ -2600,13 +2667,13 @@ class ConfigurationFragment @JvmOverloads constructor(
         override fun onResume() {
             super.onResume()
 
-            if (::configurationListView.isInitialized && configurationListView.size == 0) {
+            if ((listView != null) && configurationListView.size == 0) {
                 configurationListView.adapter = adapter
                 runOnDefaultDispatcher {
                     adapter?.reloadProfiles()
                 }
-            } else if (!::configurationListView.isInitialized) {
-                onViewCreated(requireView(), null)
+            } else if (!(listView != null)) {
+                if (adapter == null) onViewCreated(requireView(), null)
             }
             checkOrderMenu()
             updateSubscriptionInfoCard()
@@ -2744,6 +2811,7 @@ class ConfigurationFragment @JvmOverloads constructor(
 
         override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
             if (!::proxyGroup.isInitialized) return
+            (parentFragment as? ConfigurationFragment)?.pagerAdapter?.groupFragments?.set(proxyGroup.id, this)
 
             configurationListView = view.findViewById(R.id.configuration_list)
             configurationListView.descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
@@ -2964,6 +3032,26 @@ class ConfigurationFragment @JvmOverloads constructor(
         private var activeNodePopupMenu: PopupMenu? = null
 
         override fun onDestroyView() {
+            if ((listView != null)) {
+                if (::itemTouchHelper.isInitialized) itemTouchHelper.attachToRecyclerView(null)
+                configurationListView.clearOnScrollListeners()
+                configurationListView.setOnTouchListener(null)
+                configurationListView.adapter = null
+                configurationListView.layoutManager = null
+                configurationListView.recycledViewPool.clear()
+            }
+            adapter?.let {
+                ProfileManager.removeListener(it)
+                GroupManager.removeListener(it)
+            }
+            if ((undoManagerValue != null)) undoManager.flush()
+            adapter = null
+            listView = null
+            layoutManagerValue = null
+            undoManagerValue = null
+            (parentFragment as? ConfigurationFragment)?.pagerAdapter?.groupFragments?.let { fragments ->
+                if (::proxyGroup.isInitialized && fragments[proxyGroup.id] === this) fragments.remove(proxyGroup.id)
+            }
             activeNodePopupMenu?.dismiss()
             activeNodePopupMenu = null
             super.onDestroyView()
@@ -2979,7 +3067,7 @@ class ConfigurationFragment @JvmOverloads constructor(
 
             super.onDestroy()
 
-            if (!::undoManager.isInitialized) return
+            if (!(undoManagerValue != null)) return
             undoManager.flush()
         }
 
@@ -3326,19 +3414,19 @@ class ConfigurationFragment @JvmOverloads constructor(
             }
 
             override fun commit(actions: List<Pair<Int, ProxyEntity>>) {
-                val profiles = actions.map { it.second }
-                runOnDefaultDispatcher {
-                    for (entity in profiles) {
-                        ProfileManager.deleteProfile(entity.groupId, entity.id)
-                    }
+                // A committed deletion must survive view destruction. Capture IDs only.
+                val ids = actions.map { it.second.groupId to it.second.id }
+                app.applicationScope.launch {
+                    for ((groupId, id) in ids) ProfileManager.deleteProfile(groupId, id)
                 }
             }
 
             override suspend fun onAdd(profile: ProxyEntity) {
                 if (profile.groupId != proxyGroup.id && !configurationIdList.contains(profile.id)) return
 
-                configurationListView.post {
-                    if (::undoManager.isInitialized) {
+                listView?.post {
+                    if (adapter !== this || listView == null) return@post
+                    if ((undoManagerValue != null)) {
                         undoManager.flush()
                     }
                     if (configurationIdList.contains(profile.id)) {
@@ -3363,8 +3451,9 @@ class ConfigurationFragment @JvmOverloads constructor(
                 }
                 val index = configurationIdList.indexOf(profile.id)
                 if (index < 0) return
-                configurationListView.post {
-                    if (::undoManager.isInitialized) {
+                listView?.post {
+                    if (adapter !== this || listView == null) return@post
+                    if ((undoManagerValue != null)) {
                         undoManager.flush()
                     }
                     val cachedProfile = configurationList[profile.id]
@@ -3398,6 +3487,7 @@ class ConfigurationFragment @JvmOverloads constructor(
             override suspend fun onUpdated(data: List<TrafficData>) {
                 try {
                     onMainDispatcher {
+                        if (adapter !== this@ConfigurationAdapter || listView == null) return@onMainDispatcher
                         for (update in data) {
                             val cached = configurationList[update.id] ?: continue
                             if (cached.tx == update.tx && cached.rx == update.rx) continue
@@ -3421,7 +3511,8 @@ class ConfigurationFragment @JvmOverloads constructor(
                 val index = configurationIdList.indexOf(profileId)
                 if (index < 0) return
 
-                configurationListView.post {
+                listView?.post {
+                    if (adapter !== this || listView == null) return@post
                     configurationIdList.removeAt(index)
                     configurationList.remove(profileId)
                     notifyItemRemoved(index)
@@ -3513,7 +3604,8 @@ class ConfigurationFragment @JvmOverloads constructor(
                     }
                 }
 
-                configurationListView.post {
+                listView?.post {
+                    if (adapter !== this || listView == null) return@post
                     configurationList.clear()
                     configurationList.putAll(newProfileMap)
                     allConfigurationIdList.clear()

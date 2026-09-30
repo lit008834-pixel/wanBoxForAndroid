@@ -47,6 +47,8 @@ class SagerNet : Application(),
         application = this
     }
 
+    val applicationScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default)
+
     private val nativeInterface = NativeInterface()
 
     val externalAssets: File by lazy { getExternalFilesDir(null) ?: filesDir }
@@ -58,6 +60,16 @@ class SagerNet : Application(),
         super.onCreate()
 
         Thread.setDefaultUncaughtExceptionHandler(CrashHandler)
+        if (isMainProcess || isBgProcess) {
+            try {
+                io.nekohasekai.sagernet.database.preference.PublicDatabase.instance.openHelper.writableDatabase
+                io.nekohasekai.sagernet.database.SagerDatabase.instance.openHelper.writableDatabase
+            } catch (error: Exception) {
+                databaseFailure = error
+                Logs.e(error)
+                return
+            }
+        }
 
         if (isMainProcess || isBgProcess) {
             externalAssets.mkdirs()
@@ -161,6 +173,7 @@ class SagerNet : Application(),
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
 
+        if (databaseFailure != null) return
         if (level >= ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN && isMainProcess) {
             cleanWebview()
             System.gc()
@@ -175,6 +188,7 @@ class SagerNet : Application(),
     @SuppressLint("InlinedApi")
     companion object {
 
+        var databaseFailure: Throwable? = null
         lateinit var application: SagerNet
 
         val isTv by lazy {

@@ -138,6 +138,9 @@ class BaseService {
         var closeReceiverRegistered = false
 
         val binder = Binder(this)
+        val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+        var destroyed = false
+        var stoppingJob: Job? = null
         var connectingJob: Job? = null
 
         fun changeState(s: State, msg: String? = null) {
@@ -318,6 +321,7 @@ class BaseService {
         }
 
         fun startRunner() {
+            if (data.destroyed) return
             this as Context
             if (Build.VERSION.SDK_INT >= 26) startForegroundService(Intent(this, javaClass))
             else startService(Intent(this, javaClass))
@@ -419,7 +423,25 @@ class BaseService {
         // @author 雾晚: called only after the old service has finished cleanup.
         fun onRunnerStopped(restart: Boolean) {}
 
+        fun destroyRunner() {
+            data.destroyed = true
+            if (data.state != State.Stopped) stopRunner()
+            val cleanup = data.stoppingJob
+            if (cleanup == null) {
+                data.serviceScope.cancel()
+                data.binder.close()
+            } else cleanup.invokeOnCompletion {
+                data.serviceScope.cancel()
+                data.binder.close()
+            }
+        }
+
         fun stopRunner(restart: Boolean = false, msg: String? = null) {
+            // Serialize network callbacks, UI stops and service destruction on Main.
+            if (android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) {
+                data.serviceScope.launch { stopRunner(restart, msg) }
+                return
+            }
             DataStore.baseService = null
             DataStore.vpnService = null
             DataStore.mixedInboundAuthed = false
@@ -452,7 +474,7 @@ class BaseService {
             data.changeState(State.Stopping)
             val originalMessage = msg
 
-            runOnMainDispatcher {
+            data.stoppingJob = data.serviceScope.launch {
                 var cleanupError: Throwable? = null
                 fun recordCleanupFailure(stage: String, error: Throwable) {
                     if (cleanupError == null) {
@@ -521,7 +543,7 @@ class BaseService {
 
                 try {
                     // stop the service if nothing has bound to it
-                    if (restart) {
+                    if (restart && !data.destroyed) {
                         delay(100)
                         startRunner()
                     } else {
@@ -601,9 +623,13 @@ class BaseService {
         }
 
         fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+            if (data.destroyed) return Service.START_NOT_STICKY
             DataStore.baseService = this
 
             val data = data
+            if (data.state == State.Connecting && data.proxy == null && data.connectingJob?.isActive != true) {
+                data.changeState(State.Stopped)
+            }
             if (data.state != State.Stopped) return Service.START_STICKY
             var profile = SagerDatabase.proxyDao.getById(DataStore.selectedProxy)
             if (profile == null) {
@@ -658,7 +684,7 @@ class BaseService {
 
             data.changeState(State.Connecting)
             // @author 雾晚: retain the startup job so stop/reload can cancel and join it.
-            val connectingJob = GlobalScope.launch(Dispatchers.Main.immediate, start = CoroutineStart.LAZY) {
+            val connectingJob = data.serviceScope.launch(start = CoroutineStart.LAZY) {
                 try {
                     data.notification = createNotification(ServiceNotification.genTitle(profile))
 

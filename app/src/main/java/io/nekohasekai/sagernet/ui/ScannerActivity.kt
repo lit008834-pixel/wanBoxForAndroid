@@ -1,9 +1,14 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.ui
 
 import android.Manifest
 import android.content.Intent
 import android.content.pm.ShortcutManager
 import android.graphics.ImageDecoder
+import android.graphics.BitmapFactory
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.*
+import io.nekohasekai.sagernet.utils.ImageBudget
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
@@ -33,6 +38,9 @@ import java.util.concurrent.atomic.AtomicInteger
 class ScannerActivity : ThemedActivity(),
     CameraScan.OnScanResultCallback {
 
+    private fun runOnDefaultDispatcher(block: suspend CoroutineScope.() -> Unit): Job =
+        lifecycleScope.launch(Dispatchers.IO, block = block)
+
     lateinit var binding: LayoutScannerBinding
     lateinit var cameraScan: CameraScan
 
@@ -56,26 +64,16 @@ class ScannerActivity : ThemedActivity(),
         runOnDefaultDispatcher {
             try {
                 it.forEachTry { uri ->
-                    val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                        ImageDecoder.decodeBitmap(
-                            ImageDecoder.createSource(
-                                contentResolver, uri
-                            )
-                        ) { decoder, _, _ ->
-                            decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
-                            decoder.isMutableRequired = true
-                        }
-                    } else {
-                        @Suppress("DEPRECATION") MediaStore.Images.Media.getBitmap(
-                            contentResolver, uri
-                        )
-                    }
-                    val result = CodeUtils.parseCodeResult(bitmap)
-                    onMainDispatcher {
-                        onScanResultCallback(result, true)
+                    val bitmap = io.nekohasekai.sagernet.utils.BoundedImageDecoder.decode(contentResolver, uri)
+                    try {
+                        ensureActive()
+                        val result = CodeUtils.parseCodeResult(bitmap)
+                        importResult(result, true)
+                    } finally {
+                        bitmap.recycle()
                     }
                 }
-                finish()
+                onMainDispatcher { finish() }
             } catch (e: Exception) {
                 Logs.w(e)
                 onMainDispatcher {
@@ -99,8 +97,11 @@ class ScannerActivity : ThemedActivity(),
 
     fun onScanResultCallback(result: Result?, multi: Boolean): Boolean {
         if (!multi && finished.getAndSet(true)) return true
-        if (!multi) finish()
-        runOnDefaultDispatcher {
+        runOnDefaultDispatcher { importResult(result, multi) }
+        return true
+    }
+
+    private suspend fun importResult(result: Result?, multi: Boolean) {
             try {
                 val text = result?.text ?: throw Exception("QR code not found")
                 val rawResults = RawUpdater.parseRaw(text)
@@ -124,10 +125,12 @@ class ScannerActivity : ThemedActivity(),
                     }
                 }
             } catch (e: SubscriptionFoundException) {
-                startActivity(Intent(this@ScannerActivity, MainActivity::class.java).apply {
-                    action = Intent.ACTION_VIEW
-                    data = e.link.toUri()
-                })
+                onMainDispatcher {
+                    startActivity(Intent(this@ScannerActivity, MainActivity::class.java).apply {
+                        action = Intent.ACTION_VIEW
+                        data = e.link.toUri()
+                    })
+                }
             } catch (e: Throwable) {
                 Logs.w(e)
                 onMainDispatcher {
@@ -136,8 +139,7 @@ class ScannerActivity : ThemedActivity(),
                     Toast.makeText(app, text, Toast.LENGTH_SHORT).show()
                 }
             }
-        }
-        return true
+            if (!multi) onMainDispatcher { finish() }
     }
 
     /**

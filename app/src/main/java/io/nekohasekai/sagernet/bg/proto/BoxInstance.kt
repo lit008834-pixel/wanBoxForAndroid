@@ -259,7 +259,7 @@ abstract class BoxInstance(
         cacheFiles.removeAll { it.delete(); true }
 
         if (::processes.isInitialized) {
-            runCatching { processes.close(GlobalScope + Dispatchers.IO) }.onFailure { error ->
+            runCatching { runBlocking { processes.closeAndJoin() } }.onFailure { error ->
                 Logs.w(
                     "BoxLifecycleTrace androidId=$diagnosticId profileId=${profile.id} " +
                         "stage=close-processes failed " +

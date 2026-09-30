@@ -1,6 +1,11 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.ui
 
 import android.annotation.SuppressLint
+import io.nekohasekai.sagernet.utils.SecureNetwork
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import okhttp3.Request
+import org.json.JSONObject
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.MenuItem
@@ -25,6 +30,7 @@ import moe.matsuri.nb4a.utils.WebViewUtil
 
 class WebviewFragment : ToolbarFragment(R.layout.layout_webview), Toolbar.OnMenuItemClickListener {
 
+    private val dashboardClient = SecureNetwork.webDAVClient()
     lateinit var mWebView: WebView
 
     companion object {
@@ -65,12 +71,43 @@ class WebviewFragment : ToolbarFragment(R.layout.layout_webview), Toolbar.OnMenu
         mWebView.settings.apply {
             domStorageEnabled = true
             javaScriptEnabled = true
-            allowFileAccess = true
-            // 允许 HTTPS 外部面板（如 https://board.zash.run.place/）安全请求本地 HTTP Clash API（http://127.0.0.1:9090）
-            mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+            allowFileAccess = false
+            allowContentAccess = false
+            // HTTPS 外部面板不能访问本地明文 API；内置面板使用同源认证。
+            mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             cacheMode = WebSettings.LOAD_DEFAULT
         }
         mWebView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                val target = request?.url?.toString()?.toHttpUrlOrNull() ?: return true
+                return !target.isHttps && !(target.host == "127.0.0.1" && target.port == 9090)
+            }
+
+            override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
+                val url = request?.url?.toString()?.toHttpUrlOrNull() ?: return null
+                if (url.host != "127.0.0.1" || url.port != 9090 || url.scheme != "http" ||
+                    url.encodedPath !in setOf("/ui", "/ui/", "/ui/index.html") || request.method != "GET") return null
+                return try {
+                    dashboardClient.newCall(Request.Builder().url(url).build()).execute().use { response ->
+                        if (!response.isSuccessful) return null
+                        val html = SecureNetwork.text(response.body)
+                        // Seed the bundled YACD before its JS starts. Secret stays on this local origin;
+                        // it is never sent to a remote dashboard or an application log.
+                        val secret = JSONObject.quote(DataStore.clashApiSecret)
+                        val bootstrap = """
+                            <script>(function(){var k="yacd.metacubex.one",s={};
+                            try{s=JSON.parse(localStorage.getItem(k)||"{}")}catch(e){}
+                            s.clashAPIConfigs=[{baseURL:"http://127.0.0.1:9090",secret:$secret,addedAt:0}];
+                            s.selectedClashAPIConfigIndex=0;localStorage.setItem(k,JSON.stringify(s));})();</script>
+                        """.trimIndent()
+                        val document = html.replaceFirst("<head>", "<head>" + bootstrap)
+                        WebResourceResponse("text/html", "UTF-8", document.byteInputStream())
+                    }
+                } catch (e: Exception) {
+                    null
+                }
+            }
+
             override fun onReceivedError(
                 view: WebView?, request: WebResourceRequest?, error: WebResourceError?
             ) {
@@ -136,6 +173,11 @@ class WebviewFragment : ToolbarFragment(R.layout.layout_webview), Toolbar.OnMenu
             url.startsWith("https://board.zash.run.place/#/setup") -> PRESET_ZASHBOARD_URL
             else -> url
         }
+        val parsed = targetUrl.toHttpUrlOrNull()
+        if (parsed == null || (!parsed.isHttps && !(parsed.host == "127.0.0.1" && parsed.port == 9090))) {
+            this.view?.let { Snackbar.make(it, R.string.dashboard_secure_url, Snackbar.LENGTH_LONG).show() }
+            return
+        }
         mWebView.loadUrl(targetUrl)
         updateToolbarSubtitle()
     }
@@ -160,6 +202,8 @@ class WebviewFragment : ToolbarFragment(R.layout.layout_webview), Toolbar.OnMenu
                 Logs.w("Failed to destroy WebView: ${e.message}")
             }
         }
+        dashboardClient.dispatcher.cancelAll()
+        dashboardClient.connectionPool.evictAll()
         super.onDestroyView()
     }
 
