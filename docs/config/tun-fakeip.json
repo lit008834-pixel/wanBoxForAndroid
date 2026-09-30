@@ -27,6 +27,7 @@
       {
         "domain": [
           "localhost",
+          "pool.ntp.org",
           "proxy.example.com"
         ],
         "domain_suffix": [

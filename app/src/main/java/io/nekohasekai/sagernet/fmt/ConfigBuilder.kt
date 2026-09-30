@@ -1850,7 +1850,7 @@ fun buildConfig(
             if (useFakeDns) {
                 // @author 雾晚: sing-box expresses Fake-IP exceptions as DNS rules.
                 dns.rules.add(0, DNSRule_DefaultOptions().apply {
-                    domain = listOf("localhost")
+                    domain = listOf("localhost", "pool.ntp.org")
                     domain_suffix = listOf(".lan", ".local", ".localhost", ".pool.ntp.org")
                     domain_regex = listOf("(?i)^(ntp|time)([0-9]+)?[.]")
                     server = "dns-direct"
