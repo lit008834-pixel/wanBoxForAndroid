@@ -28,7 +28,8 @@ jobs:
           path: |
             app/libs/libcore.aar
             app/executableSo
-          key: ${{ hashFiles('.github/workflows/*', 'golang_status', 'libcore_status') }}
+          # @author 雾晚: share the verified cache for exactly the same core inputs.
+          key: native-audit-${{ hashFiles('libcore/**', 'buildScript/lib/**', 'buildScript/init/**', 'nb4a.properties') }}
       - name: Install Golang
         if: steps.cache.outputs.cache-hit != 'true'
         uses: actions/setup-go@v5

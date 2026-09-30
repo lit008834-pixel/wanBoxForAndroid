@@ -25,6 +25,7 @@ adb shell wm density 320
 adb shell am force-stop com.google.android.apps.nexuslauncher || true
 for quick in ui.QuickEnableShortcut ui.QuickDisableShortcut QuickToggleShortcut; do
   adb shell am force-stop "$package"
+  adb shell am force-stop com.wanbox.auditprobe
   adb logcat -c
   adb shell am start -n com.wanbox.auditprobe/.ControlProbe --es target "$package" --es quick "$quick"
   for attempt in $(seq 1 30); do
