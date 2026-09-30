@@ -44,7 +44,7 @@ class AuditDatabaseTest {
         val parsed = BackupRestore.parse(content(false))
         assertEquals("有效备份", parsed.groups!!.single().name)
         assertEquals(701L, parsed.profiles!!.single().id)
-        assertEquals("127.0.0.1", parsed.profiles.single().requireBean().serverAddress)
+        assertEquals("127.0.0.1", parsed.profiles!!.single().requireBean().serverAddress)
         try { BackupRestore.parse(content(true)); fail("truncated payload accepted") }
         catch (_: Exception) {}
         val bytes = io.nekohasekai.sagernet.fmt.KryoConverters.serialize(group)
