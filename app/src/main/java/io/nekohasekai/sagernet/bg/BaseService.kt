@@ -321,6 +321,7 @@ class BaseService {
         }
 
         fun startRunner() {
+            if (data.destroyed) return
             this as Context
             if (Build.VERSION.SDK_INT >= 26) startForegroundService(Intent(this, javaClass))
             else startService(Intent(this, javaClass))
@@ -436,6 +437,11 @@ class BaseService {
         }
 
         fun stopRunner(restart: Boolean = false, msg: String? = null) {
+            // Serialize network callbacks, UI stops and service destruction on Main.
+            if (android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) {
+                data.serviceScope.launch { stopRunner(restart, msg) }
+                return
+            }
             DataStore.baseService = null
             DataStore.vpnService = null
             DataStore.mixedInboundAuthed = false
@@ -617,9 +623,13 @@ class BaseService {
         }
 
         fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+            if (data.destroyed) return Service.START_NOT_STICKY
             DataStore.baseService = this
 
             val data = data
+            if (data.state == State.Connecting && data.proxy == null && data.connectingJob?.isActive != true) {
+                data.changeState(State.Stopped)
+            }
             if (data.state != State.Stopped) return Service.START_STICKY
             var profile = SagerDatabase.proxyDao.getById(DataStore.selectedProxy)
             if (profile == null) {
@@ -672,7 +682,6 @@ class BaseService {
                 data.closeReceiverRegistered = true
             }
 
-            if (data.destroyed) return Service.START_NOT_STICKY
             data.changeState(State.Connecting)
             // @author 雾晚: retain the startup job so stop/reload can cancel and join it.
             val connectingJob = data.serviceScope.launch(start = CoroutineStart.LAZY) {
