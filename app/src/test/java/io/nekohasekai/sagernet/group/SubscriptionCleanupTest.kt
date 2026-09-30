@@ -22,7 +22,7 @@ class SubscriptionCleanupTest {
             name = "first"
         }
         val b = a.clone().apply { name = "renamed" }
-        fun hash(bean: VMessBean) = Protocols.Deduplication(bean, "vless").hash()
+        fun hash(bean: VMessBean) = Protocols.Deduplication(bean, bean.javaClass.name).hash()
         assertEquals(hash(a), hash(b))
         b.type = "ws"
         assertNotEquals(hash(a), hash(b))

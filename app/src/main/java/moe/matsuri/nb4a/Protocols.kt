@@ -20,9 +20,9 @@ object Protocols {
         fun hash(): String {
             // @author 雾晚: Include every protocol/transport/authentication field.
             // Names are presentation only; sharing an endpoint is not a duplicate.
-            val copy = bean.clone()
-            copy.serverAddress = copy.serverAddress?.trim()?.lowercase(java.util.Locale.ROOT)
-            val tree = moe.matsuri.nb4a.utils.JavaUtil.gson.toJsonTree(copy).asJsonObject
+            // Kryo clone omits inactive/unknown transport fields; snapshot JSON instead.
+            val tree = moe.matsuri.nb4a.utils.JavaUtil.gson.toJsonTree(bean).asJsonObject
+            tree.addProperty("serverAddress", bean.serverAddress?.trim()?.lowercase(java.util.Locale.ROOT))
             tree.remove("name")
             val identity = type + ":" + tree.toString()
             return java.security.MessageDigest.getInstance("SHA-256")
