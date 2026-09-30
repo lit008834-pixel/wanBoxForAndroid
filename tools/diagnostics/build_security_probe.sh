@@ -8,4 +8,5 @@ javac --release 8 -cp "$android_jar" -d probe/classes tools/security-probe/Contr
 "$build_tools/d8" --lib "$android_jar" --output probe/dex probe/classes/com/wanbox/auditprobe/ControlProbe.class
 "$build_tools/aapt" package -f -M tools/security-probe/AndroidManifest.xml -I "$android_jar" -F probe/probe-unsigned.apk
 (cd probe/dex && zip ../probe-unsigned.apk classes.dex)
-"$build_tools/apksigner" sign --ks "$HOME/.android/debug.keystore" --ks-pass pass:android --out probe/probe.apk probe/probe-unsigned.apk
+keytool -genkeypair -keystore probe/probe.keystore -storepass android -keypass android -alias probe -dname 'CN=WanBox independent audit probe' -keyalg RSA -keysize 2048 -validity 2
+"$build_tools/apksigner" sign --ks probe/probe.keystore --ks-pass pass:android --out probe/probe.apk probe/probe-unsigned.apk
