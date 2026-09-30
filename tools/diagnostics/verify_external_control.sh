@@ -3,14 +3,18 @@
 set -euo pipefail
 # @author ÎíÍí: preserve evidence even when the external probe fails.
 trap 'adb logcat -d > probe/external-control-logcat.txt || true' EXIT
+apk=$(find app/build/outputs/apk/oss/debug -name '*x86_64*.apk' | head -n 1)
+test -s "$apk"
+# Instrumentation runners may uninstall the target after their tests finish.
+adb install -r "$apk"
 if [[ -n "${PROBE_TARGET:-}" ]]; then
   package=$PROBE_TARGET
 else
   AAPT=$(find "${ANDROID_HOME}/build-tools" -name aapt | sort -V | tail -n 1)
-  apk=$(find app/build/outputs/apk/oss/debug -name '*x86_64*.apk' | head -n 1)
   package=$("$AAPT" dump badging "$apk" | sed -n "s/^package: name='\([^']*\)'.*/\1/p")
   test -n "$package"
 fi
+adb shell pm list packages | tr -d '\r' | grep -Fx "package:$package"
 adb install -r probe/probe.apk
 for quick in ui.QuickEnableShortcut ui.QuickDisableShortcut QuickToggleShortcut; do
   adb shell am force-stop "$package"
