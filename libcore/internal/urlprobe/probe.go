@@ -11,10 +11,15 @@ import (
 // Measure includes DNS, dialing, TLS and response headers in one bounded GET.
 // It never hides setup latency with a second warmed request or another endpoint.
 func Measure(client *http.Client, link string, timeout time.Duration) (int32, error) {
+	return MeasureContext(context.Background(), client, link, timeout)
+}
+
+// MeasureContext also observes service shutdown and group cancellation.
+func MeasureContext(parent context.Context, client *http.Client, link string, timeout time.Duration) (int32, error) {
 	if timeout <= 0 {
 		return 0, fmt.Errorf("invalid probe timeout")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, link, nil)
 	if err != nil {
