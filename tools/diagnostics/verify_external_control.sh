@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # @author é›¾æ™š
 set -euo pipefail
-# @author ÎíÍí: preserve evidence even when the external probe fails.
+# @author é›¾æ™š: preserve evidence even when the external probe fails.
 trap 'adb logcat -d > probe/external-control-logcat.txt || true' EXIT
 apk=$(find app/build/outputs/apk/oss/debug -name '*x86_64*.apk' | head -n 1)
 test -s "$apk"
@@ -16,7 +16,7 @@ else
 fi
 adb shell pm list packages | tr -d '\r' | grep -Fx "package:$package"
 adb install -r probe/probe.apk
-# @author ÎíÍí: CI's Google launcher can show an unrelated ANR over the app.
+# @author é›¾æ™š: CI's Google launcher can show an unrelated ANR over the app.
 # Hide system error overlays only on this disposable emulator; the assertions
 # still require the actual target confirmation dialog and a stopped service.
 adb shell settings put global hide_error_dialogs 1
@@ -33,8 +33,12 @@ for quick in ui.QuickEnableShortcut ui.QuickDisableShortcut QuickToggleShortcut;
   done
   adb logcat -d -s WanBoxAuditProbe:I | grep -q PROBE_SENT
   adb logcat -d -s WanBoxAuditProbe:I | grep -q PRIVATE_ACTIVITY_REJECTED
-  adb shell uiautomator dump /sdcard/audit-window.xml
-  adb pull /sdcard/audit-window.xml probe/window.xml
+  for attempt in $(seq 1 10); do
+    adb shell uiautomator dump /sdcard/audit-window.xml
+    adb pull /sdcard/audit-window.xml probe/window.xml
+    if grep -q 'shortcut\|proxy connection\|ä»£ç†è¿žæŽ¥' probe/window.xml; then break; fi
+    sleep 1
+  done
   grep -q 'shortcut\|proxy connection\|ä»£ç†è¿žæŽ¥' probe/window.xml
   if adb shell dumpsys activity services "$package" | grep -E 'ServiceRecord.*(VpnService|RootTunService|ProxyService)'; then
     echo 'External caller changed service state without user confirmation' >&2

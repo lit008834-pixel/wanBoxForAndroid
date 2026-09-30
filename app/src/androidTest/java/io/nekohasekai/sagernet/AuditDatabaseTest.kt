@@ -23,7 +23,7 @@ class AuditDatabaseTest {
         FrameworkSQLiteOpenHelperFactory()
     )
 
-    // @author 雾晚
+    // @author 闆炬櫄
     @Test fun backupParserAcceptsValidRecordsAndRejectsDamagedPayloads() {
         fun record(bean: io.nekohasekai.sagernet.fmt.Serializable, damage: Boolean = false): String {
             val payload = io.nekohasekai.sagernet.fmt.KryoConverters.serialize(bean)
@@ -37,12 +37,12 @@ class AuditDatabaseTest {
             initializeDefaultValues(); serverAddress = "127.0.0.1"; serverPort = 1080
         }
         val profile = ProxyEntity(id = 701, groupId = 700).putBean(bean)
-        val group = ProxyGroup(id = 700, name = "有效备份")
+        val group = ProxyGroup(id = 700, name = "鏈夋晥澶囦唤")
         fun content(damaged: Boolean) = JSONObject().put("version", 1)
             .put("profiles", org.json.JSONArray().put(record(profile)))
             .put("groups", org.json.JSONArray().put(record(group, damaged)))
         val parsed = BackupRestore.parse(content(false))
-        assertEquals("有效备份", parsed.groups!!.single().name)
+        assertEquals("鏈夋晥澶囦唤", parsed.groups!!.single().name)
         assertEquals(701L, parsed.profiles!!.single().id)
         assertEquals("127.0.0.1", parsed.profiles!!.single().requireBean().serverAddress)
         try { BackupRestore.parse(content(true)); fail("truncated payload accepted") }

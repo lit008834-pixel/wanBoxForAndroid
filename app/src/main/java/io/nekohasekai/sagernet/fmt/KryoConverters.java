@@ -53,7 +53,7 @@ public class KryoConverters {
         }
     }
 
-    // @author ÎíÍí: reject declared lengths before Kryo allocates arrays or strings.
+    // @author é›¾æ™š: reject declared lengths before Kryo allocates arrays or strings.
     private static final class BackupInput extends ByteBufferInput {
         BackupInput(byte[] bytes) { super(java.nio.ByteBuffer.wrap(bytes)); }
 
