@@ -445,7 +445,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                 adapter.filter("")
             } else {
                 val lower = trimmed.lowercase()
-                lifecycleScope.launch {
+                viewLifecycleOwner.lifecycleScope.launch {
                     val matched = withContext(Dispatchers.Default) {
                         val all = adapter.allConfigurationIdList
                         val map = adapter.configurationList

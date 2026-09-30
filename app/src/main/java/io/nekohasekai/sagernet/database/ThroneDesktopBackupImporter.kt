@@ -723,7 +723,7 @@ object ThroneDesktopBackupImporter {
         }
         s["domain_strategy"]?.let {
             // general fallback
-            if (store.getString("domain_strategy_for_server") == null) {
+            if (s["outbound_domain_strategy"] == null && PublicDatabase.kvPairDao["domain_strategy_for_server"] == null) {
                 putStr("domain_strategy_for_server", it)
             }
         }
