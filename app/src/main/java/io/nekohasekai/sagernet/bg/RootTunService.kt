@@ -5,8 +5,6 @@ import android.annotation.SuppressLint
 import android.app.Service
 import android.content.Intent
 import android.os.PowerManager
-import android.os.SystemClock
-import android.util.Base64
 import io.nekohasekai.sagernet.Key
 import io.nekohasekai.sagernet.R
 import io.nekohasekai.sagernet.SagerNet
@@ -24,11 +22,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.io.IOException
-import java.net.InetSocketAddress
-import java.net.Socket
-import java.net.URL
-import javax.net.ssl.SSLSocket
-import javax.net.ssl.SSLSocketFactory
 import kotlin.concurrent.thread
 
 class RootTunService : Service(), BaseService.Interface {
@@ -63,52 +56,11 @@ class RootTunService : Service(), BaseService.Interface {
                 val profile = data.proxy?.profile ?: return 0
                 return runBlocking { TestInstance(profile, url, timeoutMs).doTest() }
             }
-            val target = URL(url)
-            val host = target.host
-            val port = if (target.port > 0) target.port else target.defaultPort
-            if (host.isBlank() || port <= 0) throw IOException("Invalid test URL")
-            val timeout = timeoutMs.coerceIn(1_000, 30_000)
-            val started = SystemClock.elapsedRealtime()
-            Socket().use { socket ->
-                socket.connect(InetSocketAddress("127.0.0.1", DataStore.mixedPort), timeout)
-                socket.soTimeout = timeout
-                val authority = if (host.contains(':')) "[$host]:$port" else "$host:$port"
-                val credentials = if (DataStore.mixedInboundNeedsAuth) {
-                    val value = "${DataStore.mixedUsername}:${DataStore.mixedPassword}"
-                    "Proxy-Authorization: Basic ${Base64.encodeToString(value.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)}\r\n"
-                } else ""
-                socket.getOutputStream().write(
-                    "CONNECT $authority HTTP/1.1\r\nHost: $authority\r\n${credentials}\r\n"
-                        .toByteArray(Charsets.US_ASCII)
-                )
-                val proxyReader = socket.getInputStream().bufferedReader(Charsets.US_ASCII)
-                val proxyStatus = proxyReader.readLine() ?: throw IOException("Proxy closed connection")
-                if (!proxyStatus.contains(" 200 ")) throw IOException("Proxy CONNECT failed: $proxyStatus")
-                while (true) {
-                    if (proxyReader.readLine().isNullOrEmpty()) break
-                }
-                val stream = if (target.protocol.equals("https", true)) {
-                    (SSLSocketFactory.getDefault() as SSLSocketFactory)
-                        .createSocket(socket, host, port, false).also { wrapped ->
-                            val tls = wrapped as SSLSocket
-                            tls.sslParameters = tls.sslParameters.apply {
-                                endpointIdentificationAlgorithm = "HTTPS"
-                            }
-                            tls.soTimeout = timeout
-                            tls.startHandshake()
-                        }
-                } else socket
-                val path = target.file.takeIf { it.isNotBlank() } ?: "/"
-                stream.getOutputStream().write(
-                    "GET $path HTTP/1.1\r\nHost: $authority\r\nConnection: close\r\n\r\n"
-                        .toByteArray(Charsets.UTF_8)
-                )
-                val status = stream.getInputStream().bufferedReader(Charsets.US_ASCII).readLine()
-                    ?: throw IOException("Test server closed connection")
-                val code = status.split(' ').getOrNull(1)?.toIntOrNull() ?: 0
-                if (code !in 200..399) throw IOException("Test server returned $code")
-                (SystemClock.elapsedRealtime() - started).coerceAtLeast(1).toInt()
-            }
+            io.nekohasekai.sagernet.utils.ProxyUrlProbe.measure(
+                url, DataStore.mixedPort, timeoutMs,
+                DataStore.mixedUsername.takeIf { DataStore.mixedInboundNeedsAuth },
+                DataStore.mixedPassword
+            )
         } catch (error: Exception) {
             Logs.w("Root TUN URL test failed: ${error.message}")
             0

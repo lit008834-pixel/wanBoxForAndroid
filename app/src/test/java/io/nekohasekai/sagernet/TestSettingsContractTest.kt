@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet
 
 import io.nekohasekai.sagernet.ktx.PreferenceProxy
@@ -14,7 +15,7 @@ class TestSettingsContractTest {
     fun freshInstallDefaultsMatchThroneBaseline() {
         val defaults = defaultResources()
 
-        assertEquals("https://cp.cloudflare.com/generate_204", defaults["default_connection_test_url"])
+        assertEquals("https://www.gstatic.com/generate_204", defaults["default_connection_test_url"])
         assertEquals("10", defaults["default_connection_test_concurrent"])
         assertEquals("simple_download", defaults["default_speed_test_mode"])
         assertEquals("8000", defaults["default_speed_test_timeout_ms"])

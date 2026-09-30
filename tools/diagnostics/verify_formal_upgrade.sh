@@ -2,7 +2,7 @@
 # @author 雾晚
 set -euo pipefail
 
-preview=previous/wanBoxForAndroid-3.0.2-preview.1-x86_64-release.apk
+preview=previous/wanBoxForAndroid-3.0.3-preview.4-x86_64-release.apk
 own=previous/OwnBox-2.9.1-x86_64-release.apk
 shopt -s nullglob
 new_apks=(apks/wanBoxForAndroid-*-x86_64.apk)

@@ -156,7 +156,7 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     private val userIndex by lazy { Binder.getCallingUserHandle().hashCode() }
 
     var mixedPort: Int
-        get() = getLocalPort(Key.MIXED_PORT, 2080)
+        get() = getLocalPort(Key.MIXED_PORT, 7890)
         set(value) = saveLocalPort(Key.MIXED_PORT, value)
 
     var disableMixedInbound by configurationStore.boolean(Key.DISABLE_MIXED_INBOUND)

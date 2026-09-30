@@ -1,0 +1,114 @@
+{
+  "log": {
+    "level": "warn",
+    "timestamp": true
+  },
+  "dns": {
+    "servers": [
+      {
+        "type": "udp",
+        "tag": "dns-direct",
+        "server": "223.5.5.5"
+      },
+      {
+        "type": "https",
+        "tag": "dns-proxy",
+        "server": "1.1.1.1",
+        "path": "/dns-query",
+        "detour": "proxy"
+      }
+    ],
+    "rules": [
+      {
+        "domain": [
+          "localhost",
+          "proxy.example.com"
+        ],
+        "domain_suffix": [
+          ".lan",
+          ".local",
+          ".localhost",
+          ".cn",
+          ".pool.ntp.org"
+        ],
+        "domain_regex": [
+          "(?i)^(ntp|time)([0-9]+)?[.]"
+        ],
+        "server": "dns-direct"
+      }
+    ],
+    "final": "dns-proxy",
+    "strategy": "ipv4_only",
+    "independent_cache": true
+  },
+  "inbounds": [
+    {
+      "type": "mixed",
+      "tag": "mixed-in",
+      "listen": "127.0.0.1",
+      "listen_port": 7890
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "selector",
+      "tag": "proxy",
+      "outbounds": [
+        "node"
+      ],
+      "default": "node"
+    },
+    {
+      "type": "trojan",
+      "tag": "node",
+      "server": "proxy.example.com",
+      "server_port": 443,
+      "password": "REPLACE_WITH_YOUR_PASSWORD",
+      "domain_resolver": "dns-direct",
+      "tls": {
+        "enabled": true,
+        "server_name": "proxy.example.com"
+      },
+      "tcp_fast_open": true,
+      "connect_timeout": "3s",
+      "multiplex": {
+        "enabled": false,
+        "protocol": "h2mux",
+        "max_connections": 4,
+        "min_streams": 4
+      }
+    },
+    {
+      "type": "direct",
+      "tag": "direct"
+    }
+  ],
+  "route": {
+    "default_domain_resolver": "dns-direct",
+    "auto_detect_interface": true,
+    "rules": [
+      {
+        "domain": [
+          "www.gstatic.com"
+        ],
+        "outbound": "proxy"
+      },
+      {
+        "ip_is_private": true,
+        "outbound": "direct"
+      },
+      {
+        "domain": [
+          "localhost"
+        ],
+        "domain_suffix": [
+          ".lan",
+          ".local",
+          ".cn"
+        ],
+        "outbound": "direct"
+      }
+    ],
+    "final": "proxy"
+  }
+}
