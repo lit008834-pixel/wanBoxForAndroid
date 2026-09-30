@@ -16,6 +16,13 @@ else
 fi
 adb shell pm list packages | tr -d '\r' | grep -Fx "package:$package"
 adb install -r probe/probe.apk
+# @author ÎíÍí: CI's Google launcher can show an unrelated ANR over the app.
+# Hide system error overlays only on this disposable emulator; the assertions
+# still require the actual target confirmation dialog and a stopped service.
+adb shell settings put global hide_error_dialogs 1
+adb shell wm size 720x1280
+adb shell wm density 320
+adb shell am force-stop com.google.android.apps.nexuslauncher || true
 for quick in ui.QuickEnableShortcut ui.QuickDisableShortcut QuickToggleShortcut; do
   adb shell am force-stop "$package"
   adb logcat -c
