@@ -122,11 +122,14 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
         viewBinding = binding
 
         binding.actionExport.setOnClickListener {
+            val exportProfiles = binding.backupConfigurations.isChecked
+            val exportRules = binding.backupRules.isChecked
+            val includeSettings = binding.backupSettings.isChecked
             runOnDefaultDispatcher {
                 backupData = doBackup(
-                    binding.backupConfigurations.isChecked,
-                    binding.backupRules.isChecked,
-                    binding.backupSettings.isChecked
+                    exportProfiles,
+                    exportRules,
+                    includeSettings
                 )
                 onMainDispatcher {
                     startFilesForResult(
@@ -137,11 +140,14 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
         }
 
         binding.actionShare.setOnClickListener {
+            val exportProfiles = binding.backupConfigurations.isChecked
+            val exportRules = binding.backupRules.isChecked
+            val includeSettings = binding.backupSettings.isChecked
             runOnDefaultDispatcher {
                 backupData = doBackup(
-                    binding.backupConfigurations.isChecked,
-                    binding.backupRules.isChecked,
-                    binding.backupSettings.isChecked
+                    exportProfiles,
+                    exportRules,
+                    includeSettings
                 )
                 app.cacheDir.mkdirs()
                 val cacheFile = File(
@@ -209,7 +215,7 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
             return
         }
         isBackupInProgress = true
-        val activity = requireActivity()
+        val activity = app
         runOnDefaultDispatcher {
             try {
                 isWebDAVBackup = true
@@ -324,7 +330,7 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
                 }
 
                 onMainDispatcher {
-                    MessageStore.showMessage(activity, R.string.webdav_backup_success)
+                    MessageStore.showMessage(app.getString(R.string.webdav_backup_success))
                 }
             } catch (e: Exception) {
                 isWebDAVBackup = false  // 确保发生异常时也重置标志
@@ -341,7 +347,7 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
                 }
                 
                 onMainDispatcher {
-                    MessageStore.showMessage(activity, errorMessage)
+                    MessageStore.showMessage(errorMessage)
                 }
             } finally {
                 isBackupInProgress = false
@@ -355,7 +361,7 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
             return
         }
         isRestoreInProgress = true
-        val activity = requireActivity()
+        val activity = app
         restoreJob = runOnDefaultDispatcher {
             try {
                 val client = webDAVClient
@@ -469,7 +475,7 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
                 onMainDispatcher {
                     // 如果 Fragment 已经被销毁，取消恢复操作
                     if (!isAdded) {
-                        MessageStore.showMessage(activity, R.string.restore_cancelled)
+                        MessageStore.showMessage(app.getString(R.string.restore_cancelled))
                         return@onMainDispatcher
                     }
 
@@ -487,6 +493,9 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
                     MaterialAlertDialogBuilder(requireContext()).setTitle(R.string.backup_import)
                         .setView(import.root)
                         .setPositiveButton(R.string.backup_import) { _, _ ->
+                            val restoreProfiles = import.backupConfigurations.isChecked
+                            val restoreRules = import.backupRules.isChecked
+                            val restoreSettings = import.backupSettings.isChecked
                             SagerNet.stopService()
 
                             val binding = LayoutProgressBinding.inflate(layoutInflater)
@@ -499,14 +508,14 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
                                 runCatching {
                                     // 再次检查是否已被取消
                                     if (!isAdded) {
-                                        MessageStore.showMessage(activity, R.string.restore_cancelled)
+                                        MessageStore.showMessage(app.getString(R.string.restore_cancelled))
                                         return@runOnDefaultDispatcher
                                     }
                                     finishImport(
                                         json,
-                                        import.backupConfigurations.isChecked,
-                                        import.backupRules.isChecked,
-                                        import.backupSettings.isChecked
+                                        restoreProfiles,
+                                        restoreRules,
+                                        restoreSettings
                                     )
                                     ProcessPhoenix.triggerRebirth(
                                         activity, Intent(activity, MainActivity::class.java)
@@ -514,7 +523,7 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
                                 }.onFailure {
                                     Logs.w(it)
                                     onMainDispatcher {
-                                        MessageStore.showMessage(activity, it.readableMessage)
+                                        MessageStore.showMessage(it.readableMessage)
                                     }
                                 }
 
@@ -529,7 +538,7 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
             } catch (e: Exception) {
                 Logs.w(e)
                 onMainDispatcher {
-                    MessageStore.showMessage(activity, e.readableMessage)
+                    MessageStore.showMessage(e.readableMessage)
                 }
             } finally {
                 isRestoreInProgress = false
@@ -628,7 +637,7 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
         }
 
     private suspend fun startImportThroneDesktop(file: Uri) {
-        val activity = requireActivity()
+        val activity = app
         val fileName = app.contentResolver.query(file, null, null, null, null)
             ?.use { cursor ->
                 cursor.moveToFirst()
@@ -665,6 +674,9 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
                     .setMessage(R.string.backup_import_throne_desktop_summary)
                     .setView(import.root)
                     .setPositiveButton(R.string.backup_import) { _, _ ->
+                        val restoreProfiles = import.backupConfigurations.isChecked
+                        val restoreRules = import.backupRules.isChecked
+                        val restoreSettings = import.backupSettings.isChecked
                         SagerNet.stopService()
                         val progress = LayoutProgressBinding.inflate(layoutInflater)
                         progress.content.text = getString(R.string.backup_importing)
@@ -674,19 +686,21 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
                             .show()
                         runOnDefaultDispatcher {
                             runCatching {
+                                val owner = currentCoroutineContext()
                                 ThroneDesktopBackupImporter.import(
                                     parsed,
-                                    import.backupConfigurations.isChecked && parsed.hasProfiles,
-                                    import.backupRules.isChecked && parsed.hasRoutes,
-                                    import.backupSettings.isChecked && parsed.hasSettings,
+                                    restoreProfiles && parsed.hasProfiles,
+                                    restoreRules && parsed.hasRoutes,
+                                    restoreSettings && parsed.hasSettings,
+                                    checkActive = { owner.ensureActive() },
                                 )
-                                triggerFullRestart(requireContext())
+                                triggerFullRestart(app)
                             }.onFailure {
                                 Logs.w(it)
                                 parsed.dbFile.delete()
                                 onMainDispatcher {
                                     dialog.dismiss()
-                                    MessageStore.showMessage(activity, it.readableMessage)
+                                    MessageStore.showMessage(it.readableMessage)
                                 }
                             }
                         }
@@ -702,13 +716,13 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
         } catch (e: Exception) {
             Logs.w(e)
             onMainDispatcher {
-                MessageStore.showMessage(activity, e.readableMessage)
+                MessageStore.showMessage(e.readableMessage)
             }
         }
     }
 
     suspend fun startImport(file: Uri) {
-        val activity = requireActivity()
+        val activity = app
         val fileName = app.contentResolver.query(file, null, null, null, null)
             ?.use { cursor ->
                 cursor.moveToFirst()
@@ -750,6 +764,9 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
                 MaterialAlertDialogBuilder(requireContext()).setTitle(R.string.backup_import)
                     .setView(import.root)
                     .setPositiveButton(R.string.backup_import) { _, _ ->
+                        val restoreProfiles = import.backupConfigurations.isChecked
+                        val restoreRules = import.backupRules.isChecked
+                        val restoreSettings = import.backupSettings.isChecked
                         SagerNet.stopService()
 
                         val binding = LayoutProgressBinding.inflate(layoutInflater)
@@ -762,16 +779,16 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
                             runCatching {
                                 finishImport(
                                     json,
-                                    import.backupConfigurations.isChecked,
-                                    import.backupRules.isChecked,
-                                    import.backupSettings.isChecked
+                                    restoreProfiles,
+                                    restoreRules,
+                                    restoreSettings
                                 )
-                                triggerFullRestart(requireContext())
+                                triggerFullRestart(app)
                             }.onFailure {
                                 Logs.w(it)
                                 onMainDispatcher {
                                     dialog.dismiss()
-                                    MessageStore.showMessage(activity, it.readableMessage)
+                                    MessageStore.showMessage(it.readableMessage)
                                 }
                             }
                         }
@@ -782,16 +799,17 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
         } catch (e: Exception) {
             Logs.w(e)
             onMainDispatcher {
-                MessageStore.showMessage(activity, e.readableMessage)
+                MessageStore.showMessage(e.readableMessage)
             }
         }
     }
 
-    fun finishImport(
+    suspend fun finishImport(
         content: JSONObject, profile: Boolean, rule: Boolean, setting: Boolean
     ) {
         val plan = BackupRestore.parse(content)
-        BackupRestore.apply(plan, profile, rule, setting)
+        val context = currentCoroutineContext()
+        BackupRestore.apply(plan, profile, rule, setting) { context.ensureActive() }
     }
 
     private fun showMessage(message: String) {

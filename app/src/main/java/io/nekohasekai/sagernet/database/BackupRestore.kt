@@ -65,7 +65,8 @@ object BackupRestore {
      * Nested independent Room transactions would only be atomic per database.
      */
     @Synchronized
-    fun apply(plan: Plan, profile: Boolean, rule: Boolean, setting: Boolean) {
+    fun apply(plan: Plan, profile: Boolean, rule: Boolean, setting: Boolean, checkActive: () -> Unit = {}) {
+        checkActive()
         val room = SagerDatabase.instance
         val sql = room.openHelper.writableDatabase
         val settings = plan.settings?.takeIf { setting }
@@ -85,20 +86,24 @@ object BackupRestore {
         }
         try {
             room.runInTransaction {
+                checkActive()
                 if (profile && plan.profiles != null) {
                     room.proxyDao().reset()
                     room.groupDao().reset()
                     room.groupDao().insert(plan.groups!!)
                     room.proxyDao().insert(plan.profiles)
                 }
+                checkActive()
                 if (rule && plan.rules != null) {
                     room.rulesDao().reset()
                     room.rulesDao().insert(plan.rules)
                 }
+                checkActive()
                 if (settings != null) {
                     sql.execSQL("DELETE FROM backup_settings.KeyValuePair")
                     sql.compileStatement("INSERT INTO backup_settings.KeyValuePair (`key`, valueType, value) VALUES (?, ?, ?)").use { insert ->
                         settings.forEach {
+                            checkActive()
                             insert.bindString(1, it.key)
                             insert.bindLong(2, it.valueType.toLong())
                             insert.bindBlob(3, it.value)
@@ -107,6 +112,7 @@ object BackupRestore {
                         }
                     }
                 }
+                checkActive()
             }
         } finally {
             if (settings != null) sql.execSQL("DETACH DATABASE backup_settings")

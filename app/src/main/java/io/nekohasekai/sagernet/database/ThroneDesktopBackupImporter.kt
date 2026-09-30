@@ -129,6 +129,7 @@ object ThroneDesktopBackupImporter {
         importProfiles: Boolean,
         importRules: Boolean,
         importSettings: Boolean,
+        checkActive: () -> Unit = {},
     ) {
         val db = SQLiteDatabase.openDatabase(
             parsed.dbFile.path,
@@ -152,7 +153,7 @@ object ThroneDesktopBackupImporter {
             val settings = if (changes.isEmpty()) null else
                 (PublicDatabase.kvPairDao.all().associateBy { it.key } + changes.associateBy { it.key }).values.toList()
             BackupRestore.apply(BackupRestore.Plan(configuration?.second, configuration?.first, rules, settings),
-                configuration != null, rules != null, settings != null)
+                configuration != null, rules != null, settings != null, checkActive)
         } finally {
             db.close()
             parsed.dbFile.delete()

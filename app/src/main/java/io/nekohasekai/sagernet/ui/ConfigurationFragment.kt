@@ -338,7 +338,7 @@ class ConfigurationFragment @JvmOverloads constructor(
     private fun isCurrentProfile(profileId: Long) = currentProfileSnapshot == profileId
 
     private fun isCurrentGroupPagerAdapter(candidate: GroupPagerAdapter): Boolean {
-        return ::adapter.isInitialized && adapter === candidate
+        return groupPagerView != null && ::adapter.isInitialized && adapter === candidate
     }
 
     fun getCurrentGroupFragment(): GroupFragment? {
@@ -2305,6 +2305,7 @@ class ConfigurationFragment @JvmOverloads constructor(
         private val reloadGeneration = AtomicLong()
 
         fun reload(now: Boolean = false) {
+            if (groupPagerView == null || (!now && !isCurrentGroupPagerAdapter(this))) return
             val generation = reloadGeneration.incrementAndGet()
 
             if (!select) {
@@ -2450,7 +2451,8 @@ class ConfigurationFragment @JvmOverloads constructor(
         }
 
         override suspend fun groupAdd(group: ProxyGroup) {
-            tabLayout.post {
+            tabLayoutView?.post {
+                if (!isCurrentGroupPagerAdapter(this)) return@post
                 groupList.add(group)
 
                 if (groupList.any { !it.ungrouped }) tabLayout.post {

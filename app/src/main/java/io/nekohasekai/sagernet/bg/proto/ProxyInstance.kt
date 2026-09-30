@@ -39,7 +39,7 @@ class ProxyInstance(profile: ProxyEntity, var service: BaseService.Interface? = 
         super.init()
         pluginConfigs.forEach { (_, plugin) ->
             val (_, content) = plugin
-            Logs.d(content)
+            Logs.d("External proxy configuration prepared (credentials omitted)")
         }
     }
 

@@ -88,6 +88,18 @@ class AuditDatabaseTest {
             assertEquals("before", PublicDatabase.kvPairDao["audit"]?.string)
             assertEquals(listOf(701L), SagerDatabase.proxyDao.getAll().map { it.id })
             assertEquals(listOf(702L), SagerDatabase.rulesDao.allRules().map { it.id })
+            var checks = 0
+            try {
+                BackupRestore.apply(BackupRestore.Plan(emptyList(), listOf(ProxyGroup(id=800,name="cancelled")), emptyList(),
+                    listOf(KeyValuePair("audit").put("cancelled"))), true, true, true) {
+                    if (++checks == 5) throw kotlinx.coroutines.CancellationException("page destroyed")
+                }
+                fail("cancelled restore committed")
+            } catch (_: kotlinx.coroutines.CancellationException) {}
+            assertEquals(listOf(700L), SagerDatabase.groupDao.allGroups().map { it.id })
+            assertEquals(listOf(701L), SagerDatabase.proxyDao.getAll().map { it.id })
+            assertEquals(listOf(702L), SagerDatabase.rulesDao.allRules().map { it.id })
+            assertEquals("before", PublicDatabase.kvPairDao["audit"]?.string)
             try {
                 BackupRestore.parse(JSONObject("""{"version":1,"profiles":[],"groups":["bad"],"settings":[]}"""))
                 fail("corrupt group accepted")
