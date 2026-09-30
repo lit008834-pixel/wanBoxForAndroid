@@ -1,3 +1,4 @@
+// @author 雾晚
 /*******************************************************************************
  *                                                                             *
  *  Copyright (C) 2017 by Max Lv <max.c.lv@gmail.com>                          *
@@ -53,15 +54,31 @@ class QuickToggleShortcut : Activity(), SagerConnection.Callback {
             finish()
         } else {
             profileId = intent.getLongExtra("profile", -1L)
-            connection.connect(this, this)
+            confirmControl()
             if (Build.VERSION.SDK_INT >= 25) {
                 getSystemService<ShortcutManager>()!!.reportShortcutUsed(if (profileId >= 0) "shortcut-profile-$profileId" else "toggle")
             }
         }
     }
 
+    private fun confirmControl() {
+        android.app.AlertDialog.Builder(this)
+            .setTitle(R.string.app_name)
+            .setMessage(R.string.shortcut_control_confirm)
+            .setPositiveButton(android.R.string.ok) { _, _ -> connection.connect(this, this) }
+            .setNegativeButton(android.R.string.cancel) { _, _ -> finish() }
+            .setOnCancelListener { finish() }
+            .show().also { dialog ->
+                dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).filterTouchesWhenObscured = true
+            }
+    }
+
     override fun onServiceConnected(service: ISagerNetService) {
-        val state = BaseService.State.values()[service.state]
+        if (profileId >= 0 && io.nekohasekai.sagernet.database.ProfileManager.getProfile(profileId) == null) {
+            finish()
+            return
+        }
+        val state = BaseService.State.values().getOrNull(service.state) ?: return
         when {
             state.canStop -> {
                 if (profileId == DataStore.selectedProxy || profileId == -1L) {

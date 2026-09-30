@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.bg
 
 import android.os.Build
@@ -75,7 +76,7 @@ class GuardedProcessPool(private val onFatal: suspend (IOException) -> Unit) : C
                 }
             } catch (e: IOException) {
                 Logs.w("error occurred. stop guard: ${Commandline.toString(cmd)}")
-                GlobalScope.launch(Dispatchers.Main) { onFatal(e) }
+                fatalScope.launch { onFatal(e) }
             } finally {
                 if (running) withContext(NonCancellable) {  // clean-up cannot be cancelled
                     if (Build.VERSION.SDK_INT < 24) {
@@ -99,7 +100,9 @@ class GuardedProcessPool(private val onFatal: suspend (IOException) -> Unit) : C
         }
     }
 
-    override val coroutineContext = Dispatchers.Main.immediate + Job()
+    private val fatalScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    override val coroutineContext = Dispatchers.IO + SupervisorJob()
     var processCount = 0
 
     @MainThread
@@ -116,8 +119,14 @@ class GuardedProcessPool(private val onFatal: suspend (IOException) -> Unit) : C
         processCount += 1
     }
 
+    suspend fun closeAndJoin() {
+        fatalScope.cancel()
+        coroutineContext[Job]!!.cancelAndJoin()
+    }
+
     @MainThread
     fun close(scope: CoroutineScope) {
+        fatalScope.cancel()
         cancel()
         coroutineContext[Job]!!.also { job -> scope.launch { job.cancelAndJoin() } }
     }

@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.ui
 
 import android.content.Intent
@@ -24,7 +25,8 @@ import io.nekohasekai.sagernet.databinding.LayoutBackupBinding
 import io.nekohasekai.sagernet.databinding.LayoutImportBinding
 import io.nekohasekai.sagernet.databinding.LayoutProgressBinding
 import io.nekohasekai.sagernet.ktx.*
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.*
+import androidx.lifecycle.lifecycleScope
 import moe.matsuri.nb4a.utils.Util
 import org.json.JSONArray
 import org.json.JSONObject
@@ -32,6 +34,8 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.net.URL
 import java.util.*
+import io.nekohasekai.sagernet.utils.BoundedInput
+import io.nekohasekai.sagernet.utils.SecureNetwork
 import okhttp3.Credentials
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -51,7 +55,13 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 class BackupFragment : NamedFragment(R.layout.layout_backup) {
 
-    private lateinit var binding: LayoutBackupBinding
+    private val webDAVClient = SecureNetwork.webDAVClient()
+    private var viewBinding: LayoutBackupBinding? = null
+    private val binding get() = requireNotNull(viewBinding)
+
+    private fun runOnDefaultDispatcher(block: suspend CoroutineScope.() -> Unit): Job {
+        return viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO, block = block).also { currentJob = it }
+    }
     private lateinit var backupData: ByteArray
     private var isWebDAVBackup = false
     private var isBackupInProgress = false
@@ -61,16 +71,18 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
     private var restoreJob: kotlinx.coroutines.Job? = null
 
     override fun onDestroyView() {
-        super.onDestroyView()
+        webDAVClient.dispatcher.cancelAll()
+        webDAVClient.connectionPool.evictAll()
+        currentJob?.cancel()
+        restoreJob?.cancel()
+        currentJob = null
+        restoreJob = null
         snackbar?.dismiss()
         snackbar = null
-        // 如果正在进行恢复操作，取消它
-        if (isRestoreInProgress) {
-            restoreJob?.cancel()
-            restoreJob = null
-            isRestoreInProgress = false
-            MessageStore.showMessage(requireActivity(), R.string.restore_cancelled)
-        }
+        viewBinding = null
+        isRestoreInProgress = false
+        isBackupInProgress = false
+        super.onDestroyView()
     }
 
     override fun onDestroy() {
@@ -107,6 +119,7 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
         super.onViewCreated(view, savedInstanceState)
 
         val binding = LayoutBackupBinding.bind(view)
+        viewBinding = binding
 
         binding.actionExport.setOnClickListener {
             runOnDefaultDispatcher {
@@ -161,6 +174,11 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
         }
 
         setupWebDAV(binding)
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.backup)
+            .setMessage(R.string.backup_security_notice)
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
     }
 
     private fun setupWebDAV(binding: LayoutBackupBinding) {
@@ -202,7 +220,7 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
                 )
                 isWebDAVBackup = false
                 
-                val client = OkHttpClient()
+                val client = webDAVClient
 
                 // 规范化 URL
                 val baseUrl = DataStore.webdavServer!!.trimEnd('/')
@@ -255,7 +273,7 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
                         401 -> throw Exception("Authentication failed")
                         else -> {
                             if (!response.isSuccessful) {
-                                val errorBody = response.body?.string()
+                                val errorBody = SecureNetwork.text(response.body)
                                 Logs.e("WebDAV backup - PROPFIND error: $errorBody")
                                 throw Exception("Failed to check directory (${response.code}): ${response.message}")
                             }
@@ -277,7 +295,7 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
 
                     client.newCall(mkcolRequest).execute().use { response ->
                         if (!response.isSuccessful) {
-                            val errorBody = response.body?.string()
+                            val errorBody = SecureNetwork.text(response.body)
                             Logs.e("WebDAV backup - MKCOL error: $errorBody")
                             throw Exception("Failed to create directory (${response.code}): ${response.message}")
                         }
@@ -298,7 +316,7 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
 
                 client.newCall(putRequest).execute().use { response ->
                     if (!response.isSuccessful) {
-                        val errorBody = response.body?.string()
+                        val errorBody = SecureNetwork.text(response.body)
                         Logs.e("WebDAV backup - PUT error: $errorBody")
                         throw Exception("Upload failed (${response.code}): ${response.message}\n$errorBody")
                     }
@@ -340,7 +358,7 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
         val activity = requireActivity()
         restoreJob = runOnDefaultDispatcher {
             try {
-                val client = OkHttpClient()
+                val client = webDAVClient
                 val baseUrl = DataStore.webdavServer!!.trimEnd('/')
                 val path = DataStore.webdavPath?.trim('/')?.takeIf { it.isNotEmpty() } ?: "Throne"
 
@@ -373,12 +391,12 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
                 // 获取最新的备份文件名
                 val latestBackup = client.newCall(propfindRequest).execute().use { response ->
                     if (!response.isSuccessful && response.code != 207) {
-                        val errorBody = response.body?.string()
+                        val errorBody = SecureNetwork.text(response.body)
                         Logs.e("WebDAV restore - PROPFIND error: $errorBody")
                         throw Exception("Failed to list directory: ${response.message}")
                     }
 
-                    val responseBody = response.body?.string() ?: throw Exception("Empty response")
+                    val responseBody = SecureNetwork.text(response.body) ?: throw Exception("Empty response")
                     Logs.d("WebDAV restore - Directory listing: $responseBody")
                     
                     val patterns = listOf(
@@ -427,11 +445,11 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
 
                 val content = client.newCall(getRequest).execute().use { response ->
                     if (!response.isSuccessful) {
-                        val errorBody = response.body?.string()
+                        val errorBody = SecureNetwork.text(response.body)
                         Logs.e("WebDAV restore - GET error: $errorBody")
                         throw Exception("Download failed (${response.code}): ${response.message}")
                     }
-                    response.body?.bytes() ?: throw Exception("Empty backup file")
+                    response.body?.byteStream()?.use { BoundedInput.read(it, BoundedInput.SOURCE_BYTES) } ?: throw Exception("Empty backup file")
                 }
 
                 Logs.d("WebDAV restore - Successfully downloaded backup file, size: ${content.size}")
@@ -439,22 +457,15 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
                 // 根据文件类型处理内容
                 val backupContent = if (latestBackup.endsWith(".zip")) {
                     // ZIP 文件处理
-                    ZipInputStream(content.inputStream()).use { zis ->
-                        zis.nextEntry?.let { entry ->
-                            if (entry.name.endsWith(".json")) {
-                                zis.readBytes().toString(Charsets.UTF_8)
-                            } else {
-                                throw Exception("Invalid backup file format")
-                            }
-                        } ?: throw Exception("Invalid backup file format")
-                    }
+                    BoundedInput.backupZip(content.inputStream())
                 } else {
                     // JSON 文件处理
+                    require(content.size <= BoundedInput.JSON_BYTES) { "备份 JSON 超过安全限制" }
                     content.toString(Charsets.UTF_8)
                 }
 
                 // 解析并导入备份数据
-                val json = JSONObject(backupContent)
+                val json = JSONObject(backupContent).also { BackupRestore.parse(it) }
                 onMainDispatcher {
                     // 如果 Fragment 已经被销毁，取消恢复操作
                     if (!isAdded) {
@@ -618,7 +629,7 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
 
     private suspend fun startImportThroneDesktop(file: Uri) {
         val activity = requireActivity()
-        val fileName = requireContext().contentResolver.query(file, null, null, null, null)
+        val fileName = app.contentResolver.query(file, null, null, null, null)
             ?.use { cursor ->
                 cursor.moveToFirst()
                 cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME).let(cursor::getString)
@@ -636,7 +647,7 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
         }
 
         try {
-            val bytes = requireContext().contentResolver.openInputStream(file)!!.use { it.readBytes() }
+            val bytes = app.contentResolver.openInputStream(file)!!.use { BoundedInput.read(it, BoundedInput.SOURCE_BYTES) }
             val parsed = ThroneDesktopBackupImporter.parse(bytes, app.cacheDir)
             onMainDispatcher {
                 if (!isAdded) {
@@ -698,7 +709,7 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
 
     suspend fun startImport(file: Uri) {
         val activity = requireActivity()
-        val fileName = requireContext().contentResolver.query(file, null, null, null, null)
+        val fileName = app.contentResolver.query(file, null, null, null, null)
             ?.use { cursor ->
                 cursor.moveToFirst()
                 cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME).let(cursor::getString)
@@ -716,23 +727,15 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
         }
 
         try {
-            val content = requireContext().contentResolver.openInputStream(file)!!.use { input ->
+            val content = app.contentResolver.openInputStream(file)!!.use { input ->
                 if (fileName.endsWith(".zip")) {
-                    ZipInputStream(BufferedInputStream(input)).use { zis ->
-                        zis.nextEntry?.let { entry ->
-                            if (entry.name.endsWith(".json")) {
-                                zis.readBytes().toString(Charsets.UTF_8)
-                            } else {
-                                throw Exception("Invalid backup file format")
-                            }
-                        } ?: throw Exception("Invalid backup file format")
-                    }
+                    BoundedInput.backupZip(input)
                 } else {
-                    input.readBytes().toString(Charsets.UTF_8)
+                    BoundedInput.text(input)
                 }
             }
 
-            val json = JSONObject(content)
+            val json = JSONObject(content).also { BackupRestore.parse(it) }
             onMainDispatcher {
                 val import = LayoutImportBinding.inflate(layoutInflater)
                 if (!json.has("profiles")) {
@@ -787,61 +790,8 @@ class BackupFragment : NamedFragment(R.layout.layout_backup) {
     fun finishImport(
         content: JSONObject, profile: Boolean, rule: Boolean, setting: Boolean
     ) {
-        if (profile && content.has("profiles")) {
-            val profiles = mutableListOf<ProxyEntity>()
-            val jsonProfiles = content.getJSONArray("profiles")
-            for (i in 0 until jsonProfiles.length()) {
-                val data = Util.b64Decode(jsonProfiles[i] as String)
-                val parcel = Parcel.obtain()
-                parcel.unmarshall(data, 0, data.size)
-                parcel.setDataPosition(0)
-                profiles.add(ProxyEntity.CREATOR.createFromParcel(parcel))
-                parcel.recycle()
-            }
-            SagerDatabase.proxyDao.reset()
-            SagerDatabase.proxyDao.insert(profiles)
-
-            val groups = mutableListOf<ProxyGroup>()
-            val jsonGroups = content.getJSONArray("groups")
-            for (i in 0 until jsonGroups.length()) {
-                val data = Util.b64Decode(jsonGroups[i] as String)
-                val parcel = Parcel.obtain()
-                parcel.unmarshall(data, 0, data.size)
-                parcel.setDataPosition(0)
-                groups.add(ProxyGroup.CREATOR.createFromParcel(parcel))
-                parcel.recycle()
-            }
-            SagerDatabase.groupDao.reset()
-            SagerDatabase.groupDao.insert(groups)
-        }
-        if (rule && content.has("rules")) {
-            val rules = mutableListOf<RuleEntity>()
-            val jsonRules = content.getJSONArray("rules")
-            for (i in 0 until jsonRules.length()) {
-                val data = Util.b64Decode(jsonRules[i] as String)
-                val parcel = Parcel.obtain()
-                parcel.unmarshall(data, 0, data.size)
-                parcel.setDataPosition(0)
-                rules.add(ParcelizeBridge.createRule(parcel))
-                parcel.recycle()
-            }
-            SagerDatabase.rulesDao.reset()
-            SagerDatabase.rulesDao.insert(rules)
-        }
-        if (setting && content.has("settings")) {
-            val settings = mutableListOf<KeyValuePair>()
-            val jsonSettings = content.getJSONArray("settings")
-            for (i in 0 until jsonSettings.length()) {
-                val data = Util.b64Decode(jsonSettings[i] as String)
-                val parcel = Parcel.obtain()
-                parcel.unmarshall(data, 0, data.size)
-                parcel.setDataPosition(0)
-                settings.add(KeyValuePair.CREATOR.createFromParcel(parcel))
-                parcel.recycle()
-            }
-            PublicDatabase.kvPairDao.reset()
-            PublicDatabase.kvPairDao.insert(settings)
-        }
+        val plan = BackupRestore.parse(content)
+        BackupRestore.apply(plan, profile, rule, setting)
     }
 
     private fun showMessage(message: String) {

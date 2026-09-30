@@ -21,7 +21,7 @@ jobs:
         run: ./run lib core
       - name: Test bounded URL probes and configuration templates
         run: |
-          (cd libcore && go test ./internal/urlprobe ./protocol/urltest)
+          (cd libcore && go test ./internal/... ./protocol/urltest)
           python3 -m unittest discover -s tools -p test_clean_subscription.py
           go -C ../sing-box run ./cmd/sing-box check -c "$GITHUB_WORKSPACE/docs/config/local-proxy.json"
           go -C ../sing-box run ./cmd/sing-box check -c "$GITHUB_WORKSPACE/docs/config/tun-fakeip.json"
@@ -77,14 +77,31 @@ jobs:
           echo "ndk.dir=${ANDROID_HOME}/ndk/25.0.8775105" >> local.properties
           ./run init action gradle
           ./gradlew app:assembleOssDebug
-      - name: Test theme and tile behavior
+      - name: Test complete unit suite and security contracts
         run: |
-          ./gradlew app:testOssDebugUnitTest \
-            --tests "moe.matsuri.nb4a.ui.ThemeColorInputTest" \
-            --tests "io.nekohasekai.sagernet.utils.ThemeMappingTest" \
-            --tests "io.nekohasekai.sagernet.CustomIconManagerTest" \
-            --tests "io.nekohasekai.sagernet.TileIconResourceTest" \
-            --tests "io.nekohasekai.sagernet.ui.TileNavigationTest" \
-            --tests "io.nekohasekai.sagernet.group.SubscriptionCleanupTest" \
-            --tests "io.nekohasekai.sagernet.utils.ProxyUrlProbeTest" \
-            --tests "io.nekohasekai.sagernet.TestSettingsContractTest"
+          ./gradlew app:testOssDebugUnitTest app:assembleOssDebugAndroidTest
+          python3 tools/check_android_security.py
+          bash tools/diagnostics/build_security_probe.sh
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Validate database migrations, rollback and external control
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7_pro
+          script: ./gradlew app:connectedOssDebugAndroidTest && bash tools/diagnostics/verify_external_control.sh
+      - name: Preserve complete test reports
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: audit-test-reports
+          path: |
+            app/build/reports/tests
+            app/build/reports/androidTests
+            app/build/outputs/androidTest-results
+            probe/window.xml

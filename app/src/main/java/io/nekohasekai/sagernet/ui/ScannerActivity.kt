@@ -1,9 +1,14 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.ui
 
 import android.Manifest
 import android.content.Intent
 import android.content.pm.ShortcutManager
 import android.graphics.ImageDecoder
+import android.graphics.BitmapFactory
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.*
+import io.nekohasekai.sagernet.utils.ImageBudget
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
@@ -33,6 +38,9 @@ import java.util.concurrent.atomic.AtomicInteger
 class ScannerActivity : ThemedActivity(),
     CameraScan.OnScanResultCallback {
 
+    private fun runOnDefaultDispatcher(block: suspend CoroutineScope.() -> Unit): Job =
+        lifecycleScope.launch(Dispatchers.IO, block = block)
+
     lateinit var binding: LayoutScannerBinding
     lateinit var cameraScan: CameraScan
 
@@ -61,21 +69,31 @@ class ScannerActivity : ThemedActivity(),
                             ImageDecoder.createSource(
                                 contentResolver, uri
                             )
-                        ) { decoder, _, _ ->
+                        ) { decoder, info, _ ->
+                            val size = ImageBudget.target(info.size.width, info.size.height)
+                            decoder.setTargetSize(size.first, size.second)
                             decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
                             decoder.isMutableRequired = true
                         }
                     } else {
-                        @Suppress("DEPRECATION") MediaStore.Images.Media.getBitmap(
-                            contentResolver, uri
-                        )
+                        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                        contentResolver.openInputStream(uri)!!.use { BitmapFactory.decodeStream(it, null, bounds) }
+                        val options = BitmapFactory.Options().apply {
+                            inSampleSize = ImageBudget.sample(bounds.outWidth, bounds.outHeight)
+                        }
+                        contentResolver.openInputStream(uri)!!.use {
+                            BitmapFactory.decodeStream(it, null, options)
+                        } ?: error("无法读取二维码图片")
                     }
-                    val result = CodeUtils.parseCodeResult(bitmap)
-                    onMainDispatcher {
-                        onScanResultCallback(result, true)
+                    try {
+                        ensureActive()
+                        val result = CodeUtils.parseCodeResult(bitmap)
+                        importResult(result, true)
+                    } finally {
+                        bitmap.recycle()
                     }
                 }
-                finish()
+                onMainDispatcher { finish() }
             } catch (e: Exception) {
                 Logs.w(e)
                 onMainDispatcher {
@@ -99,8 +117,11 @@ class ScannerActivity : ThemedActivity(),
 
     fun onScanResultCallback(result: Result?, multi: Boolean): Boolean {
         if (!multi && finished.getAndSet(true)) return true
-        if (!multi) finish()
-        runOnDefaultDispatcher {
+        runOnDefaultDispatcher { importResult(result, multi) }
+        return true
+    }
+
+    private suspend fun importResult(result: Result?, multi: Boolean) {
             try {
                 val text = result?.text ?: throw Exception("QR code not found")
                 val rawResults = RawUpdater.parseRaw(text)
@@ -124,10 +145,12 @@ class ScannerActivity : ThemedActivity(),
                     }
                 }
             } catch (e: SubscriptionFoundException) {
-                startActivity(Intent(this@ScannerActivity, MainActivity::class.java).apply {
-                    action = Intent.ACTION_VIEW
-                    data = e.link.toUri()
-                })
+                onMainDispatcher {
+                    startActivity(Intent(this@ScannerActivity, MainActivity::class.java).apply {
+                        action = Intent.ACTION_VIEW
+                        data = e.link.toUri()
+                    })
+                }
             } catch (e: Throwable) {
                 Logs.w(e)
                 onMainDispatcher {
@@ -136,8 +159,7 @@ class ScannerActivity : ThemedActivity(),
                     Toast.makeText(app, text, Toast.LENGTH_SHORT).show()
                 }
             }
-        }
-        return true
+            if (!multi) onMainDispatcher { finish() }
     }
 
     /**

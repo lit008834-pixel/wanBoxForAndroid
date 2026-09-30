@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- @author 闆炬櫄: database backup requires client-side encryption (Android 9+).
+     Older devices can use explicit in-app exports; no unencrypted device transfer. -->
+<full-backup-content>
+    <include domain="database" path="sager_net.db" requireFlags="clientSideEncryption"/>
+    <include domain="database" path="configuration.db" requireFlags="clientSideEncryption"/>
+    <include domain="device_database" path="configuration.db" requireFlags="clientSideEncryption"/>
+</full-backup-content>

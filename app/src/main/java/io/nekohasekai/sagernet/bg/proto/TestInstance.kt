@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.bg.proto
 
 import android.os.SystemClock
@@ -12,7 +13,10 @@ import io.nekohasekai.sagernet.ktx.readableMessage
 import io.nekohasekai.sagernet.ktx.runOnDefaultDispatcher
 import io.nekohasekai.sagernet.ktx.tryResume
 import io.nekohasekai.sagernet.ktx.tryResumeWithException
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.ensureActive
 import libcore.Libcore
 import moe.matsuri.nb4a.net.LocalResolverImpl
 import java.util.concurrent.atomic.AtomicLong
@@ -28,75 +32,31 @@ class TestInstance(profile: ProxyEntity, val link: String, private val timeout: 
         Logs.d("URLTestTrace ktId=$traceId profileId=${profile.id} profile=$traceName stage=$stage $message")
     }
 
-    suspend fun doTest(): Int {
-        return suspendCoroutine { c ->
-            val totalStarted = SystemClock.elapsedRealtime()
-            processes = GuardedProcessPool {
-                Logs.w("URLTestTrace ktId=$traceId profileId=${profile.id} profile=$traceName stage=plugin-exit elapsed=${SystemClock.elapsedRealtime() - totalStarted}ms error=${it.readableMessage}")
-                c.tryResumeWithException(it)
-            }
-            runOnDefaultDispatcher {
-                var stage = "init"
-                try {
-                    trace(
-                        "begin",
-                        "mode=isolated-box currentProfile=${DataStore.currentProfile} " +
-                                "isCurrent=${profile.id == DataStore.currentProfile} " +
-                                "serviceState=${DataStore.serviceState} network=${SagerNet.underlyingNetwork} " +
-                                "link=$link timeout=${timeout}ms thread=${Thread.currentThread().name}"
-                    )
-                    var started = SystemClock.elapsedRealtime()
-                    init()
-                    trace("init", "ok elapsed=${SystemClock.elapsedRealtime() - started}ms")
-
-                    stage = "launch"
-                    started = SystemClock.elapsedRealtime()
-                    launch()
-                    trace(
-                        "launch",
-                        "ok elapsed=${SystemClock.elapsedRealtime() - started}ms plugins=${processes.processCount}"
-                    )
-
-                    if (processes.processCount > 0) {
-                        stage = "plugin-wait"
-                        started = SystemClock.elapsedRealtime()
-                        delay(500)
-                        trace(
-                            "plugin-wait",
-                            "ok elapsed=${SystemClock.elapsedRealtime() - started}ms plugins=${processes.processCount}"
-                        )
-                    }
-
-                    stage = "core-urltest"
-                    started = SystemClock.elapsedRealtime()
-                    trace("core-urltest", "begin")
-                    val latency = Libcore.urlTest(box, link, timeout)
-                    trace(
-                        "core-urltest",
-                        "ok elapsed=${SystemClock.elapsedRealtime() - started}ms latency=${latency}ms"
-                    )
-                    c.tryResume(latency)
-                } catch (e: Exception) {
-                    Logs.w(
-                        "URLTestTrace ktId=$traceId profileId=${profile.id} profile=$traceName " +
-                                "stage=$stage failed totalElapsed=${SystemClock.elapsedRealtime() - totalStarted}ms " +
-                                "error=${e.readableMessage}"
-                    )
-                    c.tryResumeWithException(e)
-                } finally {
-                    val closeStarted = SystemClock.elapsedRealtime()
-                    runCatching { close() }
-                        .onFailure {
-                            Logs.w(
-                                "URLTestTrace ktId=$traceId profileId=${profile.id} profile=$traceName " +
-                                        "stage=close failed error=${it.readableMessage}"
-                            )
-                        }
-                    trace(
-                        "close",
-                        "done elapsed=${SystemClock.elapsedRealtime() - closeStarted}ms " +
-                                "totalElapsed=${SystemClock.elapsedRealtime() - totalStarted}ms"
-                    )
+    suspend fun doTest(): Int = kotlinx.coroutines.coroutineScope {
+        val owner = this
+        processes = GuardedProcessPool { error ->
+            owner.cancel("测速插件退出", error)
+        }
+        val probe = Libcore.newURLTestSession()
+        val cancellation = launch(kotlinx.coroutines.Dispatchers.IO, start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) {
+            try { kotlinx.coroutines.awaitCancellation() } finally { probe.cancel() }
+        }
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                init()
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                launch()
+                if (processes.processCount > 0) delay(500)
+                val latency = probe.test(box, link, timeout.coerceIn(1, 30000))
+                // Never publish a result from an already cancelled caller.
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                latency
+            } finally {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                    probe.cancel()
+                    cancellation.cancel()
+                    cancellation.join()
+                    close()
                 }
             }
         }
@@ -114,7 +74,7 @@ class TestInstance(profile: ProxyEntity, val link: String, private val timeout: 
 
     override suspend fun loadConfig() {
         // don't call destroyAllJsi here
-        if (BuildConfig.DEBUG) Logs.d(config.config)
+        if (BuildConfig.DEBUG) Logs.d("Core configuration prepared (credentials omitted)")
         // 测速实例用 NewTestSingBoxInstance：不注册 PlatformLogWriter，
         // 官方内核不再强制创建 CacheFile/ClashServer（见 libcore/box.go 批注）。
         val started = SystemClock.elapsedRealtime()

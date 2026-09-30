@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.bg.proto
 
 import io.nekohasekai.sagernet.BuildConfig
@@ -110,7 +111,7 @@ class AndroidSpeedTestSession(profile: ProxyEntity) : BoxInstance(profile), Spee
         init()
         launchExternal()
         if (processes.processCount > 0) delay(500)
-        if (BuildConfig.DEBUG) Logs.d(config.config)
+        if (BuildConfig.DEBUG) Logs.d("Core configuration prepared (credentials omitted)")
 
         val session = Libcore.newSpeedTestSession(
             profile.id.toString(),

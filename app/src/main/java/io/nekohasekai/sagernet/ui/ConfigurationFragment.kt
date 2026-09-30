@@ -1,4 +1,7 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.ui
+
+import io.nekohasekai.sagernet.utils.BoundedInput
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -181,9 +184,19 @@ class ConfigurationFragment @JvmOverloads constructor(
         const val ALL_GROUPS_SENTINEL_ID = -1L
     }
 
+    private fun runOnDefaultDispatcher(block: suspend kotlinx.coroutines.CoroutineScope.() -> Unit): kotlinx.coroutines.Job =
+        viewLifecycleOwner.lifecycleScope.launch(kotlinx.coroutines.Dispatchers.Default, block = block)
+
     lateinit var adapter: GroupPagerAdapter
-    lateinit var tabLayout: TabLayout
-    lateinit var groupPager: ViewPager2
+    private var tabLayoutView: TabLayout? = null
+    var tabLayout: TabLayout
+        get() = requireNotNull(tabLayoutView)
+        set(value) { tabLayoutView = value }
+    private var groupPagerView: ViewPager2? = null
+    var groupPager: ViewPager2
+        get() = requireNotNull(groupPagerView)
+        set(value) { groupPagerView = value }
+    private var tabMediator: TabLayoutMediator? = null
 
     val alwaysShowAddress by lazy { DataStore.alwaysShowAddress }
 
@@ -331,7 +344,7 @@ class ConfigurationFragment @JvmOverloads constructor(
     fun getCurrentGroupFragment(): GroupFragment? {
         return try {
             if (!::adapter.isInitialized) return null
-            val pos = if (::groupPager.isInitialized) groupPager.currentItem else adapter.selectedGroupIndex
+            val pos = if (groupPagerView != null) groupPager.currentItem else adapter.selectedGroupIndex
             val group = adapter.groupList.getOrNull(pos) ?: return null
             adapter.groupFragments[group.id]
                 ?: (childFragmentManager.findFragmentByTag("f" + group.id) as? GroupFragment)
@@ -393,7 +406,7 @@ class ConfigurationFragment @JvmOverloads constructor(
     override fun onQueryTextChange(query: String): Boolean {
         currentSearchQuery = query
         searchJob?.cancel()
-        searchJob = lifecycleScope.launch {
+        searchJob = viewLifecycleOwner.lifecycleScope.launch {
             if (query.isNotBlank()) {
                 delay(180)
             }
@@ -807,7 +820,7 @@ class ConfigurationFragment @JvmOverloads constructor(
         }
 
         val touchSlop = ViewConfiguration.get(requireContext()).scaledTouchSlop
-        TabLayoutMediator(tabLayout, groupPager) { tab, position ->
+        tabMediator = TabLayoutMediator(tabLayout, groupPager) { tab, position ->
             if (adapter.groupList.size > position) {
                 tab.text = adapter.groupList[position].displayName()
             }
@@ -827,7 +840,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                         longPressRunnable?.let { v.removeCallbacks(it) }
 
                         val runnable = Runnable {
-                            if (!isAdded || isDetached) return@Runnable
+                            if (!isAdded || isDetached || viewLifecycleOwnerLiveData.value == null) return@Runnable
                             val pos = tab.position
                             if (pos in 0 until adapter.groupList.size) {
                                 val group = adapter.groupList[pos]
@@ -858,7 +871,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                 }
                 false
             }
-        }.attach()
+        }.also { it.attach() }
 
         toolbar.setOnClickListener {
             val fragment = getCurrentGroupFragment()
@@ -920,6 +933,23 @@ class ConfigurationFragment @JvmOverloads constructor(
                 adapter.groupFragments.values.forEach { it.adapter?.reloadProfiles() }
             }
         }
+    }
+
+    override fun onDestroyView() {
+        searchJob?.cancel()
+        searchJob = null
+        tabMediator?.detach()
+        tabMediator = null
+        groupPagerView?.unregisterOnPageChangeCallback(updateSelectedCallback)
+        groupPagerView?.adapter = null
+        groupPagerView = null
+        tabLayoutView = null
+        if (::adapter.isInitialized) {
+            GroupManager.removeListener(adapter)
+            ProfileManager.removeListener(adapter)
+            adapter.groupFragments.clear()
+        }
+        super.onDestroyView()
     }
 
     override fun onDestroy() {
@@ -995,21 +1025,17 @@ class ConfigurationFragment @JvmOverloads constructor(
                     val proxies = mutableListOf<AbstractBean>()
                     if (fileName != null && fileName.endsWith(".zip")) {
                         // try parse wireguard zip
-                        val zip =
-                            ZipInputStream(requireContext().contentResolver.openInputStream(file)!!)
-                        while (true) {
-                            val entry = zip.nextEntry ?: break
-                            if (entry.isDirectory) continue
-                            val fileText = zip.bufferedReader().readText()
-                            RawUpdater.parseRaw(fileText, entry.name)
-                                ?.let { pl -> proxies.addAll(pl) }
-                            zip.closeEntry()
+                        requireContext().contentResolver.openInputStream(file)!!.use { input ->
+                            BoundedInput.zip(input) { name, bytes ->
+                                if (bytes.size > BoundedInput.JSON_BYTES) throw BoundedInput.LimitExceeded(BoundedInput.JSON_BYTES)
+                                RawUpdater.parseRaw(bytes.toString(Charsets.UTF_8), name)
+                                    ?.let { pl -> proxies.addAll(pl) }
+                            }
                         }
-                        zip.closeQuietly()
                     } else {
                         val fileText =
                             requireContext().contentResolver.openInputStream(file)!!.use {
-                                it.bufferedReader().readText()
+                                BoundedInput.text(it)
                             }
                         RawUpdater.parseRaw(fileText, fileName ?: "")
                             ?.let { pl -> proxies.addAll(pl) }
@@ -1048,7 +1074,7 @@ class ConfigurationFragment @JvmOverloads constructor(
 
     fun isCurrentAllGroups(): Boolean {
         if (!::adapter.isInitialized) return false
-        val pos = if (::groupPager.isInitialized) groupPager.currentItem else adapter.selectedGroupIndex
+        val pos = if (groupPagerView != null) groupPager.currentItem else adapter.selectedGroupIndex
         val group = adapter.groupList.getOrNull(pos) ?: return false
         return group.id == ALL_GROUPS_SENTINEL_ID
     }
@@ -2372,6 +2398,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                                 }
                                 refreshProfileState()
                                 newSelectedGroupIndex?.let { selectedGroupIndex = it }
+                                groupFragments.keys.retainAll(newGroupList.map { it.id }.toSet())
                                 groupList = newGroupList
                                 notifyDataSetChanged()
                                 if (!isUserInteractingWithPager && newSelectedGroupIndex != null && groupPager.currentItem != selectedGroupIndex) {
@@ -2478,7 +2505,10 @@ class ConfigurationFragment @JvmOverloads constructor(
             return LayoutProfileListBinding.inflate(inflater).root
         }
 
-        lateinit var undoManager: UndoSnackbarManager<ProxyEntity>
+        private var undoManagerValue: UndoSnackbarManager<ProxyEntity>? = null
+        var undoManager: UndoSnackbarManager<ProxyEntity>
+            get() = requireNotNull(undoManagerValue)
+            set(value) { undoManagerValue = value }
         var adapter: ConfigurationAdapter? = null
 
         override fun onSaveInstanceState(outState: Bundle) {
@@ -2495,7 +2525,7 @@ class ConfigurationFragment @JvmOverloads constructor(
             savedInstanceState?.getParcelable<ProxyGroup>("proxyGroup")?.also {
                 proxyGroup = it
                 isAllGroupsTab = (it.id == ALL_GROUPS_SENTINEL_ID)
-                onViewCreated(requireView(), null)
+                if (adapter == null) onViewCreated(requireView(), null)
             }
         }
 
@@ -2504,7 +2534,10 @@ class ConfigurationFragment @JvmOverloads constructor(
                 return DataStore.serviceState.let { it.canStop || it == BaseService.State.Stopped }
             }
 
-        lateinit var layoutManager: RecyclerView.LayoutManager
+        private var layoutManagerValue: RecyclerView.LayoutManager? = null
+        var layoutManager: RecyclerView.LayoutManager
+            get() = requireNotNull(layoutManagerValue)
+            set(value) { layoutManagerValue = value }
         private lateinit var itemTouchHelper: ItemTouchHelper
         private val alwaysShowAddress: Boolean
             get() = (parentFragment as? ConfigurationFragment)?.alwaysShowAddress == true
@@ -2578,7 +2611,12 @@ class ConfigurationFragment @JvmOverloads constructor(
             })
             itemTouchHelper.attachToRecyclerView(configurationListView)
         }
-        lateinit var configurationListView: RecyclerView
+        private var listView: RecyclerView? = null
+        var configurationListView: RecyclerView
+            get() = requireNotNull(listView)
+            set(value) { listView = value }
+        private fun runOnDefaultDispatcher(block: suspend kotlinx.coroutines.CoroutineScope.() -> Unit): kotlinx.coroutines.Job =
+            viewLifecycleOwner.lifecycleScope.launch(kotlinx.coroutines.Dispatchers.Default, block = block)
 
         val select by lazy {
             try {
@@ -2600,13 +2638,13 @@ class ConfigurationFragment @JvmOverloads constructor(
         override fun onResume() {
             super.onResume()
 
-            if (::configurationListView.isInitialized && configurationListView.size == 0) {
+            if ((listView != null) && configurationListView.size == 0) {
                 configurationListView.adapter = adapter
                 runOnDefaultDispatcher {
                     adapter?.reloadProfiles()
                 }
-            } else if (!::configurationListView.isInitialized) {
-                onViewCreated(requireView(), null)
+            } else if (!(listView != null)) {
+                if (adapter == null) onViewCreated(requireView(), null)
             }
             checkOrderMenu()
             updateSubscriptionInfoCard()
@@ -2744,6 +2782,7 @@ class ConfigurationFragment @JvmOverloads constructor(
 
         override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
             if (!::proxyGroup.isInitialized) return
+            (parentFragment as? ConfigurationFragment)?.adapter?.groupFragments?.set(proxyGroup.id, this)
 
             configurationListView = view.findViewById(R.id.configuration_list)
             configurationListView.descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
@@ -2964,6 +3003,26 @@ class ConfigurationFragment @JvmOverloads constructor(
         private var activeNodePopupMenu: PopupMenu? = null
 
         override fun onDestroyView() {
+            if ((listView != null)) {
+                if (::itemTouchHelper.isInitialized) itemTouchHelper.attachToRecyclerView(null)
+                configurationListView.clearOnScrollListeners()
+                configurationListView.setOnTouchListener(null)
+                configurationListView.adapter = null
+                configurationListView.layoutManager = null
+                configurationListView.recycledViewPool.clear()
+            }
+            adapter?.let {
+                ProfileManager.removeListener(it)
+                GroupManager.removeListener(it)
+            }
+            if ((undoManagerValue != null)) undoManager.flush()
+            adapter = null
+            listView = null
+            layoutManagerValue = null
+            undoManagerValue = null
+            (parentFragment as? ConfigurationFragment)?.adapter?.groupFragments?.let { fragments ->
+                if (::proxyGroup.isInitialized && fragments[proxyGroup.id] === this) fragments.remove(proxyGroup.id)
+            }
             activeNodePopupMenu?.dismiss()
             activeNodePopupMenu = null
             super.onDestroyView()
@@ -2979,7 +3038,7 @@ class ConfigurationFragment @JvmOverloads constructor(
 
             super.onDestroy()
 
-            if (!::undoManager.isInitialized) return
+            if (!(undoManagerValue != null)) return
             undoManager.flush()
         }
 
@@ -3326,19 +3385,19 @@ class ConfigurationFragment @JvmOverloads constructor(
             }
 
             override fun commit(actions: List<Pair<Int, ProxyEntity>>) {
-                val profiles = actions.map { it.second }
-                runOnDefaultDispatcher {
-                    for (entity in profiles) {
-                        ProfileManager.deleteProfile(entity.groupId, entity.id)
-                    }
+                // A committed deletion must survive view destruction. Capture IDs only.
+                val ids = actions.map { it.second.groupId to it.second.id }
+                app.applicationScope.launch {
+                    for ((groupId, id) in ids) ProfileManager.deleteProfile(groupId, id)
                 }
             }
 
             override suspend fun onAdd(profile: ProxyEntity) {
                 if (profile.groupId != proxyGroup.id && !configurationIdList.contains(profile.id)) return
 
-                configurationListView.post {
-                    if (::undoManager.isInitialized) {
+                listView?.post {
+                    if (adapter !== this || listView == null) return@post
+                    if ((undoManagerValue != null)) {
                         undoManager.flush()
                     }
                     if (configurationIdList.contains(profile.id)) {
@@ -3363,8 +3422,9 @@ class ConfigurationFragment @JvmOverloads constructor(
                 }
                 val index = configurationIdList.indexOf(profile.id)
                 if (index < 0) return
-                configurationListView.post {
-                    if (::undoManager.isInitialized) {
+                listView?.post {
+                    if (adapter !== this || listView == null) return@post
+                    if ((undoManagerValue != null)) {
                         undoManager.flush()
                     }
                     val cachedProfile = configurationList[profile.id]
@@ -3398,6 +3458,7 @@ class ConfigurationFragment @JvmOverloads constructor(
             override suspend fun onUpdated(data: List<TrafficData>) {
                 try {
                     onMainDispatcher {
+                        if (adapter !== this@ConfigurationAdapter || listView == null) return@onMainDispatcher
                         for (update in data) {
                             val cached = configurationList[update.id] ?: continue
                             if (cached.tx == update.tx && cached.rx == update.rx) continue
@@ -3421,7 +3482,8 @@ class ConfigurationFragment @JvmOverloads constructor(
                 val index = configurationIdList.indexOf(profileId)
                 if (index < 0) return
 
-                configurationListView.post {
+                listView?.post {
+                    if (adapter !== this || listView == null) return@post
                     configurationIdList.removeAt(index)
                     configurationList.remove(profileId)
                     notifyItemRemoved(index)
@@ -3513,7 +3575,8 @@ class ConfigurationFragment @JvmOverloads constructor(
                     }
                 }
 
-                configurationListView.post {
+                listView?.post {
+                    if (adapter !== this || listView == null) return@post
                     configurationList.clear()
                     configurationList.putAll(newProfileMap)
                     allConfigurationIdList.clear()

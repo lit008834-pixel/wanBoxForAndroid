@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.bg.proto
 
 import io.nekohasekai.sagernet.SagerNet
@@ -85,7 +86,8 @@ class TrafficLooper
     }
 
     fun start() {
-        job = sc.launch { loop() }
+        if (job?.isActive == true) return
+        job = sc.launch(Dispatchers.Default) { loop() }
     }
 
     var selectorNowId = -114514L

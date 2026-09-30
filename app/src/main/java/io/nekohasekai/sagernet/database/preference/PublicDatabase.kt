@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.database.preference
 
 import androidx.room.Database
@@ -19,8 +20,7 @@ abstract class PublicDatabase : RoomDatabase() {
                 .setJournalMode(JournalMode.TRUNCATE)
                 .allowMainThreadQueries()
                 .enableMultiInstanceInvalidation()
-                .fallbackToDestructiveMigration()
-                .setQueryExecutor { GlobalScope.launch { it.run() } }
+                .setQueryExecutor(java.util.concurrent.Executors.newFixedThreadPool(2))
                 .build()
         }
 

@@ -38,6 +38,11 @@ abstract class ThemedActivity : AppCompatActivity {
     private var lastCustomThemeColor: Int = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        if (io.nekohasekai.sagernet.SagerNet.databaseFailure != null) {
+            setTheme(R.style.Theme_SagerNet_LightGray)
+            super.onCreate(null)
+            return
+        }
         lastUseSystemTheme = DataStore.useSystemTheme
         lastWallpaperColor = if (DataStore.useSystemTheme) Theme.getSystemWallpaperColor(this) else null
         lastAppTheme = DataStore.appTheme
@@ -124,6 +129,7 @@ abstract class ThemedActivity : AppCompatActivity {
 
     override fun onResume() {
         super.onResume()
+        if (io.nekohasekai.sagernet.SagerNet.databaseFailure != null) return
         val currentWallpaperColor = if (DataStore.useSystemTheme) Theme.getSystemWallpaperColor(this) else null
         if (lastUseSystemTheme != DataStore.useSystemTheme ||
             (DataStore.useSystemTheme && lastWallpaperColor != currentWallpaperColor) ||

@@ -1,3 +1,4 @@
+// @author 雾晚
 package libcore
 
 import (
@@ -11,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"libcore/device"
+	"libcore/internal/bounded"
 	"libcore/ech"
 	"log"
 	"net"
@@ -80,6 +82,11 @@ type httpClient struct {
 func NewHttpClient() HTTPClient {
 	client := new(httpClient)
 	client.h1h2Client.Transport = &client.h1h2Transport
+    client.h1h2Client.Timeout = 60 * time.Second
+    client.h1h2Client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+        if len(via) >= 10 { return errors.New("too many redirects") }
+        return secureResourceURL(req.URL)
+    }
 	client.h1h2Transport.TLSClientConfig = &client.tls
 	client.h1h2Transport.DisableKeepAlives = true
 	return client
@@ -192,11 +199,20 @@ func (r *httpRequest) AllowInsecure() {
 	r.tls.InsecureSkipVerify = true
 }
 
+func secureResourceURL(u *url.URL) error {
+    host := u.Hostname()
+    if u.Scheme != "https" && !(u.Scheme == "http" && (host == "127.0.0.1" || host == "localhost" || host == "::1")) {
+        return errors.New("external resources require HTTPS")
+    }
+    return nil
+}
+
 func (r *httpRequest) SetURL(link string) (err error) {
 	r.request.URL, err = url.Parse(link)
 	if err != nil {
 		return
 	}
+	if err = secureResourceURL(r.request.URL); err != nil { return }
 	if r.request.URL.User != nil {
 		user := r.request.URL.User.Username()
 		password, _ := r.request.URL.User.Password()
@@ -395,7 +411,7 @@ func (h *httpResponse) GetHeader(key string) *StringBox {
 func (h *httpResponse) GetContent() ([]byte, error) {
 	h.getContentOnce.Do(func() {
 		defer h.Body.Close()
-		h.content, h.contentError = io.ReadAll(h.Body)
+		h.content, h.contentError = bounded.Read(h.Body, bounded.JSONBytes)
 	})
 	return h.content, h.contentError
 }

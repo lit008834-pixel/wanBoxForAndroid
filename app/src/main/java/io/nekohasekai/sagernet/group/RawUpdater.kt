@@ -1,6 +1,8 @@
 package io.nekohasekai.sagernet.group
 
 import android.annotation.SuppressLint
+import io.nekohasekai.sagernet.utils.BoundedInput
+import io.nekohasekai.sagernet.utils.SecureNetwork
 import io.nekohasekai.sagernet.R
 import io.nekohasekai.sagernet.SubscriptionFilterMode
 import io.nekohasekai.sagernet.database.*
@@ -57,12 +59,12 @@ object RawUpdater : GroupUpdater() {
         var proxies: List<AbstractBean>
         if (link.startsWith("content://")) {
             val contentText = app.contentResolver.openInputStream(link.toUri())
-                ?.bufferedReader()
-                ?.readText()
+                ?.use { BoundedInput.text(it) }
 
             proxies = contentText?.let { parseRaw(contentText) }
                 ?: error(app.getString(R.string.no_proxies_found_in_subscription))
         } else {
+            SecureNetwork.requireSecure(link.toHttpUrlOrNull() ?: error("无效订阅地址"))
 
             val preferredUa = subscription.customUserAgent?.takeIf { it.isNotBlank() }
                 ?: DataStore.defaultSubscriptionUserAgent

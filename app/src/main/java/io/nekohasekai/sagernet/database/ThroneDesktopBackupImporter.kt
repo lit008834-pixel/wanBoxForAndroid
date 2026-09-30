@@ -1,6 +1,8 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.database
 
 import android.database.sqlite.SQLiteDatabase
+import io.nekohasekai.sagernet.database.preference.KeyValuePair
 import io.nekohasekai.sagernet.GroupType
 import io.nekohasekai.sagernet.IPv6Mode
 import io.nekohasekai.sagernet.Key
@@ -50,6 +52,7 @@ object ThroneDesktopBackupImporter {
     class InvalidBackupException(message: String) : Exception(message)
 
     fun parse(bytes: ByteArray, cacheDir: File): ParsedBackup {
+        require(bytes.size <= io.nekohasekai.sagernet.utils.BoundedInput.SOURCE_BYTES)
         if (bytes.size < 8) throw InvalidBackupException("file too small")
         val buf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
         val magicBytes = ByteArray(4)
@@ -110,7 +113,7 @@ object ThroneDesktopBackupImporter {
         dbFile.writeBytes(databaseBytes!!)
 
         // Refine availability by actual row counts (selective backup may leave empty tables)
-        val refined = refineAvailability(dbFile, hasProfiles, hasRoutes, hasSettings)
+        val refined = try { refineAvailability(dbFile, hasProfiles, hasRoutes, hasSettings) } catch (e: Throwable) { dbFile.delete(); throw e }
         return ParsedBackup(
             formatVersion = formatVersion,
             meta = meta,
@@ -134,15 +137,22 @@ object ThroneDesktopBackupImporter {
         )
         try {
             val settingsMap = readSettings(db)
-            if (importProfiles && parsed.hasProfiles) {
-                importGroupsAndProfiles(db, settingsMap)
+            val configuration = if (importProfiles && parsed.hasProfiles) readGroupsAndProfiles(db, settingsMap) else null
+            val rules = if (importRules && parsed.hasRoutes) readRoutes(db, settingsMap) else null
+            val changes = if (importSettings && parsed.hasSettings) readSettingsChanges(settingsMap) else mutableListOf()
+            if (configuration != null) {
+                settingsMap["current_group"]?.toLongOrNull()?.takeIf { id -> configuration.first.any { it.id == id } }?.let {
+                    changes.add(KeyValuePair(Key.PROFILE_GROUP).put(it))
+                }
+                settingsMap["remember_id"]?.toLongOrNull()?.takeIf { id -> configuration.second.any { it.id == id } }?.let {
+                    changes.add(KeyValuePair(Key.PROFILE_ID).put(it))
+                    changes.add(KeyValuePair(Key.PROFILE_CURRENT).put(it))
+                }
             }
-            if (importRules && parsed.hasRoutes) {
-                importRoutes(db, settingsMap)
-            }
-            if (importSettings && parsed.hasSettings) {
-                applySettings(settingsMap)
-            }
+            val settings = if (changes.isEmpty()) null else
+                (PublicDatabase.kvPairDao.all().associateBy { it.key } + changes.associateBy { it.key }).values.toList()
+            BackupRestore.apply(BackupRestore.Plan(configuration?.second, configuration?.first, rules, settings),
+                configuration != null, rules != null, settings != null)
         } finally {
             db.close()
             parsed.dbFile.delete()
@@ -228,7 +238,7 @@ object ThroneDesktopBackupImporter {
 
     // region profiles
 
-    private fun importGroupsAndProfiles(db: SQLiteDatabase, settings: Map<String, String>) {
+    private fun readGroupsAndProfiles(db: SQLiteDatabase, settings: Map<String, String>): Pair<List<ProxyGroup>, List<ProxyEntity>> {
         data class DeskGroup(
             val id: Long,
             val name: String,
@@ -396,25 +406,8 @@ object ThroneDesktopBackupImporter {
             proxies.add(entity)
         }
 
-        SagerDatabase.proxyDao.reset()
-        SagerDatabase.groupDao.reset()
-        SagerDatabase.groupDao.insert(groups)
-        if (proxies.isNotEmpty()) {
-            SagerDatabase.proxyDao.insert(proxies)
-        }
-
-        // selected group / profile from desktop settings (IDs preserved)
-        settings["current_group"]?.toLongOrNull()?.takeIf { it > 0 }?.let {
-            if (groups.any { g -> g.id == it }) {
-                DataStore.selectedGroup = it
-            }
-        }
-        settings["remember_id"]?.toLongOrNull()?.takeIf { it > 0 }?.let { rid ->
-            if (proxies.any { it.id == rid }) {
-                DataStore.selectedProxy = rid
-                DataStore.currentProfile = rid
-            }
-        }
+        require(proxies.all { p -> groups.any { it.id == p.groupId } }) { "备份节点引用无效分组" }
+        return groups to proxies
     }
 
     private fun convertOutbound(outboundJson: String, name: String, typeHint: String): AbstractBean {
@@ -456,7 +449,7 @@ object ThroneDesktopBackupImporter {
 
     // region routes
 
-    private fun importRoutes(db: SQLiteDatabase, settings: Map<String, String>) {
+    private fun readRoutes(db: SQLiteDatabase, settings: Map<String, String>): List<RuleEntity> {
         val currentRouteId = settings["current_route_id"]?.toLongOrNull()
         val routeProfileIds = ArrayList<Long>()
         try {
@@ -468,8 +461,7 @@ object ThroneDesktopBackupImporter {
             Logs.w(e)
         }
         if (routeProfileIds.isEmpty()) {
-            SagerDatabase.rulesDao.reset()
-            return
+            return emptyList()
         }
         val targetIds = if (currentRouteId != null && routeProfileIds.contains(currentRouteId)) {
             listOf(currentRouteId)
@@ -604,10 +596,7 @@ object ThroneDesktopBackupImporter {
             }
         }
 
-        SagerDatabase.rulesDao.reset()
-        if (rules.isNotEmpty()) {
-            SagerDatabase.rulesDao.insert(rules)
-        }
+        return rules
     }
 
     private fun mapOutboundId(desktopId: Int): Long = when (desktopId) {
@@ -636,13 +625,13 @@ object ThroneDesktopBackupImporter {
 
     // region settings
 
-    private fun applySettings(s: Map<String, String>) {
-        val store = DataStore.configurationStore
+    private fun readSettingsChanges(s: Map<String, String>): MutableList<KeyValuePair> {
+        val changes = mutableListOf<KeyValuePair>()
 
-        fun putBool(key: String, value: Boolean) = store.putBoolean(key, value)
-        fun putStr(key: String, value: String) = store.putString(key, value)
-        fun putIntStr(key: String, value: Int) = store.putString(key, value.toString())
-        fun putInt(key: String, value: Int) = store.putInt(key, value)
+        fun putBool(key: String, value: Boolean) = changes.add(KeyValuePair(key).put(value))
+        fun putStr(key: String, value: String) = changes.add(KeyValuePair(key).put(value))
+        fun putIntStr(key: String, value: Int) = changes.add(KeyValuePair(key).put(value.toString()))
+        fun putInt(key: String, value: Int) = changes.add(KeyValuePair(key).put(value.toLong()))
 
         s["remote_dns"]?.takeIf { it.isNotBlank() }?.let { putStr(Key.REMOTE_DNS, normalizeDns(it)) }
         s["direct_dns"]?.takeIf { it.isNotBlank() }?.let { putStr(Key.DIRECT_DNS, normalizeDns(it)) }
@@ -759,7 +748,7 @@ object ThroneDesktopBackupImporter {
         }
 
         // touch PublicDatabase so Room flush is consistent with other backup path
-        PublicDatabase.kvPairDao.get(Key.REMOTE_DNS)
+        return changes
     }
 
     private fun normalizeDns(raw: String): String {
