@@ -2,15 +2,14 @@ package libcore
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
 	"libcore/device"
+	"libcore/internal/urlprobe"
 	"log"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"runtime"
 	"runtime/debug"
@@ -19,7 +18,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"golang.org/x/net/http2"
 
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/experimental/v2rayapi"
@@ -435,230 +433,37 @@ func (b *BoxInstance) SelectOutbound(tag string) bool {
 	}
 	return false
 }
-
-const (
-	defaultFallbackURL = "https://www.gstatic.com/generate_204"
-	defaultCFURL       = "https://cp.cloudflare.com/generate_204"
-	browserUserAgent   = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-)
-
-func getFallbackLink(primaryLink string) string {
-	if strings.Contains(primaryLink, "cloudflare.com") {
-		return defaultFallbackURL
-	}
-	return defaultCFURL
-}
-
+// @author 雾晚: Root and in-process probes use one cold GET and one total deadline.
 func UrlTest(i *BoxInstance, link string, timeout int32) (latency int32, err error) {
-	defer device.DeferPanicToError("box.UrlTest", func(err_ error) { err = err_ })
+	defer device.DeferPanicToError("box.UrlTest", func(e error) { err = e })
 	if i == nil {
 		i = mainInstance
 	}
-	boxPlatformLogWriter.WriteMessage(sblog.LevelDebug, fmt.Sprintf("box.UrlTest link=%s timeout=%dms instance=%v", link, timeout, i != nil))
-
-	primaryTimeout := timeout
-	fallbackTimeout := int32(2000)
-	if timeout > 3500 {
-		primaryTimeout = timeout - 1500
-		fallbackTimeout = 2000
-	} else if timeout < 2000 {
-		fallbackTimeout = timeout
-	}
-
-	if i == nil {
-		// 无实例：直连测试（单 GET，计时含拨号）
-		client := &http.Client{Timeout: time.Duration(primaryTimeout) * time.Millisecond}
-		latency, err = urlTestDirect(client, link)
-		if err != nil {
-			fallback := getFallbackLink(link)
-			boxPlatformLogWriter.WriteMessage(sblog.LevelDebug, fmt.Sprintf("box.UrlTest direct failed: %v, trying fallback: %s", err, fallback))
-			fbClient := &http.Client{Timeout: time.Duration(fallbackTimeout) * time.Millisecond}
-			latency, err = urlTestDirect(fbClient, fallback)
-		}
-	} else {
-		latency, err = urlTest(i, link, primaryTimeout)
-		if err != nil {
-			primaryErr := err
-			fallback := getFallbackLink(link)
-			boxPlatformLogWriter.WriteMessage(sblog.LevelDebug, fmt.Sprintf("box.UrlTest primary failed: %v, trying fallback: %s", err, fallback))
-			var fbErr error
-			latency, fbErr = urlTest(i, fallback, fallbackTimeout)
-			if fbErr != nil {
-				err = primaryErr
-			} else {
-				err = nil
-			}
-		}
-	}
-	boxPlatformLogWriter.WriteMessage(sblog.LevelDebug, fmt.Sprintf("box.UrlTest result latency=%dms err=%v", latency, err))
-	return
-}
-
-// UrlTestFull 对齐官方 sing-box 与 Throne 真实 TTFB 测速标准（与 UrlTest 保持一致的单次请求 TTFB 算法）。
-func UrlTestFull(i *BoxInstance, link string, timeout int32) (latency int32, err error) {
-	return UrlTest(i, link, timeout)
-}
-
-// urlTest 对齐 Throne 及业界基准（两阶段 Keep-Alive 预热探测）：
-// 阶段一（预热）：通过 outbound 建立代理隧道并完成目标端 HTTP 握手，将保活长连接推入连接池；
-// 若中转/CDN 对 HEAD 请求不兼容（返回 EOF/405/403/400+ 等），自动以 GET 请求重试预热；
-// 阶段二（测量）：复用连接池中已就绪的长连接发送探测，测得纯 1-RTT 网络往返时延（~150-250ms），
-// 彻底消除冷启动握手与 TLS 重建带来的额外虚高延迟，且严格保持真实低延迟水平不退化。
-func urlTest(instance *BoxInstance, link string, timeout int32) (int32, error) {
-	outbound := instance.Outbound().Default()
-	if outbound == nil {
-		return 0, E.New("no default outbound")
-	}
-
 	if link == "" {
-		link = defaultFallbackURL
+		link = "https://www.gstatic.com/generate_204"
 	}
-	linkURL, err := url.Parse(link)
-	if err != nil {
-		return 0, E.Cause(err, "parse test link")
-	}
-	hostname := linkURL.Hostname()
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Millisecond)
-	defer cancel()
-
-	transport := &http.Transport{
-		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+	transport := &http.Transport{ForceAttemptHTTP2: true}
+	if i != nil {
+		outbound := i.Outbound().Default()
+		if outbound == nil {
+			return 0, E.New("no default outbound")
+		}
+		transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
 			return outbound.DialContext(ctx, network, M.ParseSocksaddr(addr))
-		},
-		TLSClientConfig: &tls.Config{
-			ServerName:         hostname,
-			InsecureSkipVerify: true,
-			NextProtos:         []string{"h2", "http/1.1"},
-		},
-		ForceAttemptHTTP2: true,
-		DisableKeepAlives: false,
-		MaxIdleConns:      5,
-		IdleConnTimeout:   10 * time.Second,
+		}
 	}
-	_ = http2.ConfigureTransport(transport)
 	defer transport.CloseIdleConnections()
-
 	client := &http.Client{
 		Transport: transport,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
 	}
-
-	req1, err := http.NewRequestWithContext(ctx, http.MethodGet, link, nil)
-	if err != nil {
-		return 0, err
-	}
-	req1.Header.Set("User-Agent", browserUserAgent)
-
-	start1 := time.Now()
-	resp1, err := client.Do(req1)
-	if err == nil {
-		_, _ = io.CopyN(io.Discard, resp1.Body, 8192)
-		_ = resp1.Body.Close()
-		if resp1.StatusCode >= 500 {
-			err = fmt.Errorf("HTTP error %d", resp1.StatusCode)
-		}
-	}
-
-	if err != nil {
-		return 0, err
-	}
-	pass1 := time.Since(start1)
-
-	// 阶段二：复用保活连接，测得纯 1-RTT 真实低延迟
-	req2, err2 := http.NewRequestWithContext(ctx, http.MethodGet, link, nil)
-	if err2 == nil {
-		req2.Header.Set("User-Agent", browserUserAgent)
-		start2 := time.Now()
-		resp2, err2Do := client.Do(req2)
-		if err2Do == nil {
-			_, _ = io.CopyN(io.Discard, resp2.Body, 8192)
-			_ = resp2.Body.Close()
-			if resp2.StatusCode < 500 {
-				latency := int32(time.Since(start2).Milliseconds())
-				if latency <= 0 {
-					latency = 1
-				}
-				return latency, nil
-			}
-		}
-	}
-
-	// 备选回退：若远端不支持 Keep-Alive，则使用第一阶段耗时
-	latency := int32(pass1.Milliseconds())
-	if latency <= 0 {
-		latency = 1
-	}
-	return latency, nil
+	return urlprobe.Measure(client, link, time.Duration(timeout)*time.Millisecond)
 }
 
-// urlTestDirect 为直连测速：同样采用两阶段 Keep-Alive 探测纯 RTT。
-func urlTestDirect(client *http.Client, link string) (int32, error) {
-	methodUsed := http.MethodHead
-	req1, err := http.NewRequest(http.MethodHead, link, nil)
-	if err != nil {
-		return 0, err
-	}
-	req1.Header.Set("User-Agent", browserUserAgent)
-	start1 := time.Now()
-	resp1, err := client.Do(req1)
-	if err == nil {
-		_, _ = io.Copy(io.Discard, resp1.Body)
-		_ = resp1.Body.Close()
-		if resp1.StatusCode >= 500 {
-			err = fmt.Errorf("HTTP error %d", resp1.StatusCode)
-		}
-	}
-
-	if err != nil {
-		req1Get, errGet := http.NewRequest(http.MethodGet, link, nil)
-		if errGet == nil {
-			req1Get.Header.Set("User-Agent", browserUserAgent)
-			start1 = time.Now()
-			resp1Get, errGetDo := client.Do(req1Get)
-			if errGetDo == nil {
-				_, _ = io.Copy(io.Discard, resp1Get.Body)
-				_ = resp1Get.Body.Close()
-				if resp1Get.StatusCode < 500 {
-					err = nil
-					methodUsed = http.MethodGet
-				} else {
-					err = fmt.Errorf("HTTP error %d", resp1Get.StatusCode)
-				}
-			}
-		}
-	}
-
-	if err != nil {
-		return 0, err
-	}
-	pass1 := time.Since(start1)
-
-	req2, err := http.NewRequest(methodUsed, link, nil)
-	if err == nil {
-		req2.Header.Set("User-Agent", browserUserAgent)
-		start2 := time.Now()
-		resp2, err2 := client.Do(req2)
-		if err2 == nil {
-			_, _ = io.Copy(io.Discard, resp2.Body)
-			_ = resp2.Body.Close()
-			if resp2.StatusCode < 500 {
-				latency := int32(time.Since(start2).Milliseconds())
-				if latency <= 0 {
-					latency = 1
-				}
-				return latency, nil
-			}
-		}
-	}
-
-	latency := int32(pass1.Milliseconds())
-	if latency <= 0 {
-		latency = 1
-	}
-	return latency, nil
+func UrlTestFull(i *BoxInstance, link string, timeout int32) (int32, error) {
+	return UrlTest(i, link, timeout)
 }
 
 var protectCloser io.Closer

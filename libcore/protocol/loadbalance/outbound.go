@@ -1,3 +1,4 @@
+// @author 雾晚
 package loadbalance
 
 import (
@@ -215,7 +216,7 @@ func NewLoadBalance(ctx context.Context, router adapter.Router, logger log.Conte
 	}
 	link := options.URL
 	if link == "" {
-		link = urltestPkg.DefaultCFURL
+		link = urltestPkg.DefaultFallbackURL
 	}
 	lb := &LoadBalance{
 		Adapter:                      outbound.NewAdapter(TypeLoadBalance, tag, []string{N.NetworkTCP, N.NetworkUDP}, options.Outbounds),

@@ -178,6 +178,14 @@ object RawUpdater : GroupUpdater() {
             }
         }
 
+        // @author 雾晚: subscription metadata is not a connectable node.
+        proxies = proxies.filterNot { SubscriptionCleanup.isNotice(it.displayName()) }
+            .distinctBy { Protocols.Deduplication(it, it.javaClass.name).hash() }
+        if (proxies.isEmpty()) throw IllegalArgumentException(app.getString(R.string.no_proxies_found))
+        proxies.forEach { proxy ->
+            SubscriptionCleanup.cleanName(proxy.displayName()).takeIf { it.isNotBlank() }
+                ?.let { proxy.name = it }
+        }
         val proxiesMap = LinkedHashMap<String, AbstractBean>()
         for (proxy in proxies) {
             var index = 0
@@ -250,7 +258,13 @@ object RawUpdater : GroupUpdater() {
 
         for (bean in proxies) {
             val name = bean.displayName()
-            val existingIndex = remainingExists.indexOfFirst { it.displayName() == name }
+            val existingIndex = remainingExists.indexOfFirst {
+                SubscriptionCleanup.cleanName(it.displayName()) == name &&
+                    Protocols.Deduplication(it.requireBean(), it.requireBean().javaClass.name).hash() ==
+                    Protocols.Deduplication(bean, bean.javaClass.name).hash()
+            }.takeIf { it >= 0 } ?: remainingExists.indexOfFirst {
+                SubscriptionCleanup.cleanName(it.displayName()) == name
+            }
             if (existingIndex >= 0) {
                 val entity = remainingExists.removeAt(existingIndex)
                 val existsBean = entity.requireBean()

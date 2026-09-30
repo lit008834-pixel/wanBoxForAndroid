@@ -149,7 +149,7 @@ internal fun buildLoadBalanceOutbound(
         this.strategy = strategy ?: "round_robin"
         url = testUrl?.takeIf { it.isNotBlank() }
             ?: runCatching { DataStore.connectionTestURL }.getOrNull()?.takeIf { it.isNotBlank() }
-            ?: "https://cp.cloudflare.com/generate_204"
+            ?: "https://www.gstatic.com/generate_204"
         val iv = (intervalSec?.takeIf { it > 0 } ?: 300L).coerceAtLeast(10L)
         interval = "${iv}s"
         tolerance = toleranceMs?.takeIf { it >= 0 } ?: 300
@@ -172,7 +172,7 @@ internal fun buildUrlTestOutbound(
         outbounds = memberTags
         url = testUrl?.takeIf { it.isNotBlank() }
             ?: runCatching { DataStore.connectionTestURL }.getOrNull()?.takeIf { it.isNotBlank() }
-            ?: "https://cp.cloudflare.com/generate_204"
+            ?: "https://www.gstatic.com/generate_204"
         val iv = (intervalSec?.takeIf { it > 0 } ?: 300L).coerceAtLeast(10L)
         interval = "${iv}s"
         // 50ms tolerance: prevents micro-jitter (< 50ms delta) from triggering node switch.
@@ -1743,6 +1743,17 @@ fun buildConfig(
             // 构建最优先前置路由规则（须位于所有用户规则之前）
             val topRouteRules = mutableListOf<Rule_DefaultOptions>()
 
+            // @author 雾晚: match Root's configured probe before sniff/resolve and user routes.
+            // This keeps local CONNECT measurements on the same selected proxy as core tests.
+            if (isRootTun) {
+                val probeHost = runCatching { java.net.URI(DataStore.connectionTestURL).host }.getOrNull()
+                if (!probeHost.isNullOrBlank()) topRouteRules.add(Rule_DefaultOptions().apply {
+                    inbound = listOf(TAG_MIXED)
+                    domain = listOf(probeHost)
+                    outbound = mainProxyTag
+                })
+            }
+
             // 1. sing-box 1.13：sniff（须位于规则最前）
             if (needSniff) {
                 topRouteRules.add(Rule_DefaultOptions().apply {
@@ -1751,7 +1762,9 @@ fun buildConfig(
             }
 
             // 2. resolve 动作：强制单栈解析杜绝远端 VPS 双栈泄露；用户显式开启 resolveDestination 时按策略传出
-            if (DataStore.resolveDestination || ipv6Mode == IPv6Mode.DISABLE || ipv6Mode == IPv6Mode.ONLY) {
+            // @author 雾晚: outbound strategy already handles address families.
+            // Do not force remote DNS before every HTTP CONNECT / TLS handshake.
+            if (DataStore.resolveDestination) {
                 topRouteRules.add(Rule_DefaultOptions().apply {
                     action = "resolve"
                     strategy = genDomainStrategy(true)
@@ -1835,6 +1848,13 @@ fun buildConfig(
             })
             // FakeDNS obj (sing-box 1.14: fakeip configured as a server in dns.servers)
             if (useFakeDns) {
+                // @author 雾晚: sing-box expresses Fake-IP exceptions as DNS rules.
+                dns.rules.add(0, DNSRule_DefaultOptions().apply {
+                    domain = listOf("localhost", "pool.ntp.org")
+                    domain_suffix = listOf(".lan", ".local", ".localhost", ".pool.ntp.org")
+                    domain_regex = listOf("(?i)^(ntp|time)([0-9]+)?[.]")
+                    server = "dns-direct"
+                })
                 dns.servers.add(DNSServerOptions().apply {
                     type = "fakeip"
                     tag = "dns-fake"

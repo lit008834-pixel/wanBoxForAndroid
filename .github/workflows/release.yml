@@ -175,13 +175,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p previous
-          gh release download v3.0.2-preview.1-app-id.10 \
+          gh release download v3.0.3-preview.4 \
             -R lit008834-pixel/wanBoxForAndroid \
-            -p wanBoxForAndroid-3.0.2-preview.1-x86_64-release.apk -D previous
+            -p wanBoxForAndroid-3.0.3-preview.4-x86_64-release.apk -D previous
           gh release download v2.9.1-preview \
             -R Own716/OwnBoxForAndroid \
             -p OwnBox-2.9.1-x86_64-release.apk -D previous
-          echo '9427370e3809e903ceae8dfa759bd85970aae36203442b04e1da6ee5686893fc  previous/wanBoxForAndroid-3.0.2-preview.1-x86_64-release.apk' | sha256sum --check
+          echo 'e50d27c36077e4e7c21d057107d1a5cfbaa2ab2d0e0c4e7e007885ab3f5fa9d0  previous/wanBoxForAndroid-3.0.3-preview.4-x86_64-release.apk' | sha256sum --check
           # @author 雾晚: 上游测试 APK 附件可变，验证包名和 APK 签名后用于模拟器。
           OWNBOX=previous/OwnBox-2.9.1-x86_64-release.apk
           AAPT=$(find "${ANDROID_HOME}/build-tools" -name aapt | sort -V | tail -n 1)
