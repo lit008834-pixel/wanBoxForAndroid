@@ -21,6 +21,7 @@ object BackupRestore {
         require(array.length() <= 100000) { "备份记录数量超过限制" }
         return (0 until array.length()).map { index ->
             val bytes = Util.b64Decode(array.getString(index))
+            require(bytes.size >= 4 && bytes.size % 4 == 0) { "备份记录长度无效" }
             val parcel = Parcel.obtain()
             try {
                 parcel.unmarshall(bytes, 0, bytes.size)
@@ -35,8 +36,12 @@ object BackupRestore {
     /** Decode all sections before any destructive statement, including unselected sections. */
     fun parse(content: JSONObject): Plan {
         require(content.getInt("version") == 1) { "不支持的备份版本" }
-        val profiles = decode(content, "profiles", ProxyEntity.CREATOR::createFromParcel)
-        val groups = decode(content, "groups", ProxyGroup.CREATOR::createFromParcel)
+        val profiles = decode(content, "profiles") { parcel ->
+            io.nekohasekai.sagernet.fmt.KryoConverters.deserializeStrict(ProxyEntity(), parcel.createByteArray())
+        }
+        val groups = decode(content, "groups") { parcel ->
+            io.nekohasekai.sagernet.fmt.KryoConverters.deserializeStrict(ProxyGroup(), parcel.createByteArray())
+        }
         val rules = decode(content, "rules", ParcelizeBridge::createRule)
         val settings = decode(content, "settings", KeyValuePair.CREATOR::createFromParcel)
         require((profiles == null) == (groups == null)) { "备份缺少节点或分组" }

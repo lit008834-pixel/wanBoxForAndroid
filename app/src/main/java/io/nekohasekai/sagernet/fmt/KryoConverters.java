@@ -1,3 +1,4 @@
+// @author é›¾æ™š
 package io.nekohasekai.sagernet.fmt;
 
 import androidx.room.TypeConverter;
@@ -38,6 +39,41 @@ import moe.matsuri.nb4a.utils.JavaUtil;
 public class KryoConverters {
 
     private static final byte[] NULL = new byte[0];
+    private static final ThreadLocal<Boolean> STRICT_BACKUP = new ThreadLocal<>();
+
+    /** Strict validation propagates to nested beans without changing legacy DB reads. */
+    public static <T extends Serializable> T deserializeStrict(T bean, byte[] bytes) {
+        Boolean previous = STRICT_BACKUP.get();
+        STRICT_BACKUP.set(true);
+        try {
+            return deserialize(bean, bytes);
+        } finally {
+            if (previous == null) STRICT_BACKUP.remove();
+            else STRICT_BACKUP.set(previous);
+        }
+    }
+
+    // @author ÎíÍí: reject declared lengths before Kryo allocates arrays or strings.
+    private static final class BackupInput extends ByteBufferInput {
+        BackupInput(byte[] bytes) { super(java.nio.ByteBuffer.wrap(bytes)); }
+
+        @Override public byte[] readBytes(int length) {
+            if (length < 0 || length > limit() - position())
+                throw new KryoException("Invalid backup byte array length");
+            return super.readBytes(length);
+        }
+
+        @Override public String readString() {
+            int start = position();
+            if (readVarIntFlag()) {
+                int count = readVarIntFlag(true);
+                if (count < 0 || count > 1 && count - 1 > limit() - position())
+                    throw new KryoException("Invalid backup string length");
+            }
+            setPosition(start);
+            return super.readString();
+        }
+    }
 
     @TypeConverter
     public static byte[] serialize(Serializable bean) {
@@ -51,6 +87,18 @@ public class KryoConverters {
     }
 
     public static <T extends Serializable> T deserialize(T bean, byte[] bytes) {
+        if (Boolean.TRUE.equals(STRICT_BACKUP.get())) {
+            if (bytes == null || bytes.length == 0) throw new KryoException("Missing backup record payload");
+            ByteBufferInput strict = new BackupInput(bytes);
+            try {
+                bean.deserializeFromBuffer(strict);
+                if (strict.position() != bytes.length) throw new KryoException("Unexpected trailing backup bytes");
+                bean.initializeDefaultValues();
+                return bean;
+            } finally {
+                strict.close();
+            }
+        }
         if (bytes == null) return bean;
         ByteArrayInputStream input = new ByteArrayInputStream(bytes);
         ByteBufferInput buffer = KryosKt.byteBuffer(input);

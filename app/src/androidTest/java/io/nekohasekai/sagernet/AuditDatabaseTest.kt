@@ -23,6 +23,39 @@ class AuditDatabaseTest {
         FrameworkSQLiteOpenHelperFactory()
     )
 
+    // @author 雾晚
+    @Test fun backupParserAcceptsValidRecordsAndRejectsDamagedPayloads() {
+        fun record(bean: io.nekohasekai.sagernet.fmt.Serializable, damage: Boolean = false): String {
+            val payload = io.nekohasekai.sagernet.fmt.KryoConverters.serialize(bean)
+            val parcel = android.os.Parcel.obtain()
+            return try {
+                parcel.writeByteArray(if (damage) payload.copyOf(1) else payload)
+                android.util.Base64.encodeToString(parcel.marshall(), android.util.Base64.NO_WRAP)
+            } finally { parcel.recycle() }
+        }
+        val bean = io.nekohasekai.sagernet.fmt.socks.SOCKSBean().apply {
+            initializeDefaultValues(); serverAddress = "127.0.0.1"; serverPort = 1080
+        }
+        val profile = ProxyEntity(id = 701, groupId = 700).putBean(bean)
+        val group = ProxyGroup(id = 700, name = "有效备份")
+        fun content(damaged: Boolean) = JSONObject().put("version", 1)
+            .put("profiles", org.json.JSONArray().put(record(profile)))
+            .put("groups", org.json.JSONArray().put(record(group, damaged)))
+        val parsed = BackupRestore.parse(content(false))
+        assertEquals("有效备份", parsed.groups!!.single().name)
+        assertEquals(701L, parsed.profiles!!.single().id)
+        assertEquals("127.0.0.1", parsed.profiles.single().requireBean().serverAddress)
+        try { BackupRestore.parse(content(true)); fail("truncated payload accepted") }
+        catch (_: Exception) {}
+        val bytes = io.nekohasekai.sagernet.fmt.KryoConverters.serialize(group)
+        try {
+            io.nekohasekai.sagernet.fmt.KryoConverters.deserializeStrict(ProxyGroup(), bytes + byteArrayOf(0))
+            fail("trailing Kryo bytes accepted")
+        } catch (_: Exception) {}
+        // A failed strict parse must not leave normal DB deserialization in strict mode.
+        assertEquals(700L, io.nekohasekai.sagernet.fmt.KryoConverters.deserialize(ProxyGroup(), bytes).id)
+    }
+
     @Test fun realHistoricalSchemasUpgradeWithoutLosingRows() {
         for (version in 1..3) {
             val name = "audit-migration-$version"

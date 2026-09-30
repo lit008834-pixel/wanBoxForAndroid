@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet
 
 import org.junit.Assert.assertFalse
@@ -40,8 +41,11 @@ class SpeedTestAndroidContractTest {
             .substringBefore("inner class TestDialog")
         assertTrue(source.contains("confirmSpeedTest()"))
         assertTrue(source.contains("sessionFactory = ::AndroidSpeedTestSession"))
-        assertTrue(lifecycle.contains("speedTestRunner?.cancel()"))
-        assertTrue(lifecycle.contains("speedTestJob?.cancel()"))
+        val cleanup = source.substringAfter("private fun cancelViewTests()").substringBefore("override fun onDestroy()")
+        assertTrue(lifecycle.contains("cancelViewTests()"))
+        assertTrue(source.substringAfter("override fun onDestroyView()").substringBefore("private fun cancelViewTests()").contains("cancelViewTests()"))
+        assertTrue(cleanup.contains("speedTestRunner?.cancel()"))
+        assertTrue(cleanup.contains("speedTestJob?.cancel()"))
         assertTrue(lifecycle.contains("if (speedTestHidden && speedTestJob != null)"))
         assertTrue(lifecycle.contains("speedTestDialog?.show()"))
         assertTrue(speedTest.contains("formatSpeedTestSnapshot(sample)"))
