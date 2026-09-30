@@ -17,7 +17,19 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: ^1.25
+          cache-dependency-path: libcore/go.sum
+      - uses: actions/cache@v4
+        id: native-cache
+        with:
+          path: |
+            app/libs/libcore.aar
+            app/executableSo
+          key: native-audit-${{ hashFiles('libcore/**', 'buildScript/lib/**', 'buildScript/init/**', 'nb4a.properties') }}
+      - name: Prepare core source for cached tests
+        if: steps.native-cache.outputs.cache-hit == 'true'
+        run: bash buildScript/lib/core/init.sh
       - name: Build native core
+        if: steps.native-cache.outputs.cache-hit != 'true'
         run: ./run lib core
       - name: Test bounded URL probes and configuration templates
         run: |

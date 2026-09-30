@@ -1025,12 +1025,15 @@ class ConfigurationFragment @JvmOverloads constructor(
                     val proxies = mutableListOf<AbstractBean>()
                     if (fileName != null && fileName.endsWith(".zip")) {
                         // try parse wireguard zip
+                        val entries = mutableListOf<Pair<String, ByteArray>>()
                         requireContext().contentResolver.openInputStream(file)!!.use { input ->
                             BoundedInput.zip(input) { name, bytes ->
                                 if (bytes.size > BoundedInput.JSON_BYTES) throw BoundedInput.LimitExceeded(BoundedInput.JSON_BYTES)
-                                RawUpdater.parseRaw(bytes.toString(Charsets.UTF_8), name)
-                                    ?.let { pl -> proxies.addAll(pl) }
+                                entries.add(name to bytes)
                             }
+                        }
+                        for ((name, bytes) in entries) {
+                            RawUpdater.parseRaw(bytes.toString(Charsets.UTF_8), name)?.let { proxies.addAll(it) }
                         }
                     } else {
                         val fileText =
