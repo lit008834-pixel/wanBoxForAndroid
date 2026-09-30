@@ -27,7 +27,9 @@ jobs:
           key: native-audit-${{ hashFiles('libcore/**', 'buildScript/lib/**', 'buildScript/init/**', 'nb4a.properties') }}
       - name: Prepare core source for cached tests
         if: steps.native-cache.outputs.cache-hit == 'true'
-        run: bash buildScript/lib/core/init.sh
+        run: |
+          bash buildScript/lib/core/init.sh
+          (cd libcore && go mod tidy)
       - name: Build native core
         if: steps.native-cache.outputs.cache-hit != 'true'
         run: ./run lib core
