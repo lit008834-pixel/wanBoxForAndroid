@@ -187,7 +187,13 @@ class ConfigurationFragment @JvmOverloads constructor(
     private fun runOnDefaultDispatcher(block: suspend kotlinx.coroutines.CoroutineScope.() -> Unit): kotlinx.coroutines.Job =
         viewLifecycleOwner.lifecycleScope.launch(kotlinx.coroutines.Dispatchers.Default, block = block)
 
-    lateinit var adapter: GroupPagerAdapter
+    private fun runOnMainDispatcher(block: suspend kotlinx.coroutines.CoroutineScope.() -> Unit): Job? =
+        viewLifecycleOwnerLiveData.value?.lifecycleScope?.launch(Dispatchers.Main.immediate, block = block)
+
+    private var pagerAdapter: GroupPagerAdapter? = null
+    var adapter: GroupPagerAdapter
+        get() = requireNotNull(pagerAdapter)
+        set(value) { pagerAdapter = value }
     private var tabLayoutView: TabLayout? = null
     var tabLayout: TabLayout
         get() = requireNotNull(tabLayoutView)
@@ -219,7 +225,7 @@ class ConfigurationFragment @JvmOverloads constructor(
             }
             count = multiSelectedIds.size
         }
-        if (::adapter.isInitialized) {
+        if (pagerAdapter != null) {
             adapter.groupFragments.values.forEach { fragment ->
                 fragment.adapter?.refreshProfileState(setOf(profileId))
             }
@@ -327,7 +333,7 @@ class ConfigurationFragment @JvmOverloads constructor(
         currentProfileSnapshot = currentProfile
         serviceStartedSnapshot = serviceStarted
 
-        if (changedIds.isEmpty() || !::adapter.isInitialized) return
+        if (changedIds.isEmpty() || pagerAdapter == null) return
         adapter.groupFragments.values.forEach { fragment ->
             fragment.adapter?.refreshProfileState(changedIds)
         }
@@ -338,12 +344,12 @@ class ConfigurationFragment @JvmOverloads constructor(
     private fun isCurrentProfile(profileId: Long) = currentProfileSnapshot == profileId
 
     private fun isCurrentGroupPagerAdapter(candidate: GroupPagerAdapter): Boolean {
-        return groupPagerView != null && ::adapter.isInitialized && adapter === candidate
+        return groupPagerView != null && pagerAdapter != null && adapter === candidate
     }
 
     fun getCurrentGroupFragment(): GroupFragment? {
         return try {
-            if (!::adapter.isInitialized) return null
+            if (pagerAdapter == null) return null
             val pos = if (groupPagerView != null) groupPager.currentItem else adapter.selectedGroupIndex
             val group = adapter.groupList.getOrNull(pos) ?: return null
             adapter.groupFragments[group.id]
@@ -936,6 +942,7 @@ class ConfigurationFragment @JvmOverloads constructor(
     }
 
     override fun onDestroyView() {
+        cancelViewTests()
         searchJob?.cancel()
         searchJob = null
         tabMediator?.detach()
@@ -944,15 +951,16 @@ class ConfigurationFragment @JvmOverloads constructor(
         groupPagerView?.adapter = null
         groupPagerView = null
         tabLayoutView = null
-        if (::adapter.isInitialized) {
+        if (pagerAdapter != null) {
             GroupManager.removeListener(adapter)
             ProfileManager.removeListener(adapter)
             adapter.groupFragments.clear()
+            pagerAdapter = null
         }
         super.onDestroyView()
     }
 
-    override fun onDestroy() {
+    private fun cancelViewTests() {
         if (speedTestJob != null) {
             speedTestRunner?.cancel()
             speedTestJob?.cancel()
@@ -965,10 +973,14 @@ class ConfigurationFragment @JvmOverloads constructor(
             speedTestJob = null
             DataStore.runningTest = false
         }
+    }
+
+    override fun onDestroy() {
+        cancelViewTests()
         DataStore.profileCacheStore.unregisterChangeListener(this)
         DataStore.configurationStore.unregisterChangeListener(this)
 
-        if (::adapter.isInitialized) {
+        if (pagerAdapter != null) {
             GroupManager.removeListener(adapter)
             ProfileManager.removeListener(adapter)
         }
@@ -1076,7 +1088,7 @@ class ConfigurationFragment @JvmOverloads constructor(
     }
 
     fun isCurrentAllGroups(): Boolean {
-        if (!::adapter.isInitialized) return false
+        if (pagerAdapter == null) return false
         val pos = if (groupPagerView != null) groupPager.currentItem else adapter.selectedGroupIndex
         val group = adapter.groupList.getOrNull(pos) ?: return false
         return group.id == ALL_GROUPS_SENTINEL_ID
@@ -1695,6 +1707,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                     val rxBytes = sample.downloadBitsPerSecond / 8
                     val txBytes = sample.uploadBitsPerSecond / 8
                     runOnMainDispatcher {
+                    if (speedTestRunner !== runner) return@runOnMainDispatcher
                         (activity as? MainActivity)?.binding?.stats?.updateSpeed(txBytes, rxBytes)
                         try {
                             (activity as? MainActivity)?.connection?.service?.postNotificationSpeed(
@@ -1728,6 +1741,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                             ) > 0
                         ) {
                             runOnMainDispatcher {
+                    if (speedTestRunner !== runner) return@runOnMainDispatcher
                                 adapter.groupFragments.values.forEach { fragment ->
                                     fragment.adapter?.updateSpeedTestResult(sample.profileId, outcome)
                                 }
@@ -1745,6 +1759,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                         }
                     }
                     runOnMainDispatcher {
+                    if (speedTestRunner !== runner) return@runOnMainDispatcher
                         val detail = formatSpeedTestSnapshot(sample)
                         speedTestNotification?.updateNotification(index + 1, total, false, detail)
                         if (!speedTestHidden && isAdded) {
@@ -1760,12 +1775,14 @@ class ConfigurationFragment @JvmOverloads constructor(
                 }
             } catch (_: CancellationException) {
                 runOnMainDispatcher {
+                    if (speedTestRunner !== runner) return@runOnMainDispatcher
                     if (!speedTestHidden && isAdded) {
                         binding.nowTesting.text = getString(R.string.speed_test_stage_cancelled)
                     }
                 }
             } finally {
                 runOnMainDispatcher {
+                    if (speedTestRunner !== runner) return@runOnMainDispatcher
                     (activity as? MainActivity)?.binding?.stats?.updateSpeed(0, 0)
                     try {
                         (activity as? MainActivity)?.connection?.service?.postNotificationSpeed(
@@ -1775,14 +1792,15 @@ class ConfigurationFragment @JvmOverloads constructor(
                     adapter.groupFragments.values.forEach { fragment ->
                         fragment.adapter?.clearSpeedTestLive()
                     }
+                    speedTestNotification?.updateNotification(0, 0, true)
+                    speedTestNotification?.cancel()
+                    speedTestNotification = null
+                    speedTestDialog = null
+                    speedTestHidden = false
+                    speedTestRunner = null
+                    speedTestJob = null
+                    DataStore.runningTest = false
                 }
-                speedTestNotification?.updateNotification(0, 0, true)
-                speedTestNotification = null
-                speedTestDialog = null
-                speedTestHidden = false
-                speedTestRunner = null
-                speedTestJob = null
-                DataStore.runningTest = false
             }
         }
     }
@@ -1848,6 +1866,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                     val rxBytes = sample.downloadBitsPerSecond / 8
                     val txBytes = sample.uploadBitsPerSecond / 8
                     runOnMainDispatcher {
+                    if (speedTestRunner !== runner) return@runOnMainDispatcher
                         (activity as? MainActivity)?.binding?.stats?.updateSpeed(txBytes, rxBytes)
                         try {
                             (activity as? MainActivity)?.connection?.service?.postNotificationSpeed(
@@ -1881,6 +1900,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                             ) > 0
                         ) {
                             runOnMainDispatcher {
+                    if (speedTestRunner !== runner) return@runOnMainDispatcher
                                 adapter.groupFragments.values.forEach { fragment ->
                                     fragment.adapter?.updateSpeedTestResult(sample.profileId, outcome)
                                 }
@@ -1898,6 +1918,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                         }
                     }
                     runOnMainDispatcher {
+                    if (speedTestRunner !== runner) return@runOnMainDispatcher
                         val detail = formatSpeedTestSnapshot(sample)
                         speedTestNotification?.updateNotification(index + 1, total, false, detail)
                         if (!speedTestHidden && isAdded) {
@@ -1913,16 +1934,19 @@ class ConfigurationFragment @JvmOverloads constructor(
                 }
             } catch (_: CancellationException) {
                 runOnMainDispatcher {
+                    if (speedTestRunner !== runner) return@runOnMainDispatcher
                     dialog.dismiss()
                 }
             } catch (e: Exception) {
                 Logs.w(e)
                 runOnMainDispatcher {
+                    if (speedTestRunner !== runner) return@runOnMainDispatcher
                     snackbar(e.readableMessage).show()
                     dialog.dismiss()
                 }
             } finally {
                 runOnMainDispatcher {
+                    if (speedTestRunner !== runner) return@runOnMainDispatcher
                     (activity as? MainActivity)?.binding?.stats?.updateSpeed(0, 0)
                     try {
                         (activity as? MainActivity)?.connection?.service?.postNotificationSpeed(
@@ -1939,10 +1963,10 @@ class ConfigurationFragment @JvmOverloads constructor(
                     speedTestNotification?.cancel()
                     speedTestNotification = null
                     speedTestHidden = false
+                    speedTestRunner = null
+                    speedTestJob = null
+                    DataStore.runningTest = false
                 }
-                speedTestRunner = null
-                speedTestJob = null
-                DataStore.runningTest = false
             }
         }
     }
@@ -2787,7 +2811,7 @@ class ConfigurationFragment @JvmOverloads constructor(
 
         override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
             if (!::proxyGroup.isInitialized) return
-            (parentFragment as? ConfigurationFragment)?.adapter?.groupFragments?.set(proxyGroup.id, this)
+            (parentFragment as? ConfigurationFragment)?.pagerAdapter?.groupFragments?.set(proxyGroup.id, this)
 
             configurationListView = view.findViewById(R.id.configuration_list)
             configurationListView.descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
@@ -3025,7 +3049,7 @@ class ConfigurationFragment @JvmOverloads constructor(
             listView = null
             layoutManagerValue = null
             undoManagerValue = null
-            (parentFragment as? ConfigurationFragment)?.adapter?.groupFragments?.let { fragments ->
+            (parentFragment as? ConfigurationFragment)?.pagerAdapter?.groupFragments?.let { fragments ->
                 if (::proxyGroup.isInitialized && fragments[proxyGroup.id] === this) fragments.remove(proxyGroup.id)
             }
             activeNodePopupMenu?.dismiss()
