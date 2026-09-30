@@ -20,6 +20,7 @@ JSON 标准不允许注释，关键字段在本文注释。模板中的 Trojan �
 - 模板固定 IPv4；启用 IPv6 时需同时配置真实 IPv6 路由与 Fake-IP IPv6 地址，不能仅增加 AAAA 规则。
 - `.cn` 只是最小国内域名示例，不等于完整国内分流库。现有 wanBox 规则继续使用其维护的规则集。
 - `tcp_fast_open=true`：仅示例 TCP 节点启用，生效取决于系统及服务端。出现兼容问题时关闭。
+- `auto`：每 300 秒进行组测速，切换容差 50ms；默认仍手动选择 node，可在 proxy 选择器切到 auto。添加多个节点时同步更新 auto.outbounds。
 - `multiplex.enabled=false`：默认兼容未知服务端。确认服务端支持 sing-box h2mux 后可改 true；VLESS Vision、QUIC 协议或其他不支持的传输不要强开。它不保证降低所有节点延迟。
 - 不设置全局强制 resolve 或 Root auto_redirect。测速先匹配当前代理，避免先执行一次不必要的 DNS 解析。
 - Fake-IP 不是 DNS 加密。系统私人 DNS、应用内 DoH 和不走代理的应用不会自动被普通 mixed 端口接管，不能声称所有设备流量均无 DNS 泄漏。

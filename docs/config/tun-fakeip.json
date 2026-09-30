@@ -80,9 +80,20 @@
       "type": "selector",
       "tag": "proxy",
       "outbounds": [
-        "node"
+        "node",
+        "auto"
       ],
       "default": "node"
+    },
+    {
+      "type": "urltest",
+      "tag": "auto",
+      "outbounds": ["node"],
+      "url": "https://www.gstatic.com/generate_204",
+      "interval": "300s",
+      "tolerance": 50,
+      "idle_timeout": "30m",
+      "interrupt_exist_connections": false
     },
     {
       "type": "trojan",

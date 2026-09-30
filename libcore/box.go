@@ -433,33 +433,37 @@ func (b *BoxInstance) SelectOutbound(tag string) bool {
 	}
 	return false
 }
-
-
 // @author 雾晚: Root and in-process probes use one cold GET and one total deadline.
 func UrlTest(i *BoxInstance, link string, timeout int32) (latency int32, err error) {
-    defer device.DeferPanicToError("box.UrlTest", func(e error) { err = e })
-    if i == nil { i = mainInstance }
-    if link == "" { link = "https://www.gstatic.com/generate_204" }
-    transport := &http.Transport{ForceAttemptHTTP2: true}
-    if i != nil {
-        outbound := i.Outbound().Default()
-        if outbound == nil { return 0, E.New("no default outbound") }
-        transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-            return outbound.DialContext(ctx, network, M.ParseSocksaddr(addr))
-        }
-    }
-    defer transport.CloseIdleConnections()
-    client := &http.Client{
-        Transport: transport,
-        CheckRedirect: func(req *http.Request, via []*http.Request) error {
-            return http.ErrUseLastResponse
-        },
-    }
-    return urlprobe.Measure(client, link, time.Duration(timeout)*time.Millisecond)
+	defer device.DeferPanicToError("box.UrlTest", func(e error) { err = e })
+	if i == nil {
+		i = mainInstance
+	}
+	if link == "" {
+		link = "https://www.gstatic.com/generate_204"
+	}
+	transport := &http.Transport{ForceAttemptHTTP2: true}
+	if i != nil {
+		outbound := i.Outbound().Default()
+		if outbound == nil {
+			return 0, E.New("no default outbound")
+		}
+		transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			return outbound.DialContext(ctx, network, M.ParseSocksaddr(addr))
+		}
+	}
+	defer transport.CloseIdleConnections()
+	client := &http.Client{
+		Transport: transport,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	return urlprobe.Measure(client, link, time.Duration(timeout)*time.Millisecond)
 }
 
 func UrlTestFull(i *BoxInstance, link string, timeout int32) (int32, error) {
-    return UrlTest(i, link, timeout)
+	return UrlTest(i, link, timeout)
 }
 
 var protectCloser io.Closer
