@@ -17,7 +17,7 @@ public class ControlProbe extends Activity {
         try {
             startActivity(new Intent().setComponent(new ComponentName(target, base+"ui.NodeSelectDialogActivity")));
             throw new AssertionError("private activity allowed an external caller");
-        } catch (SecurityException expected) {
+        } catch (SecurityException | android.content.ActivityNotFoundException expected) {
             Log.i("WanBoxAuditProbe", "PRIVATE_ACTIVITY_REJECTED");
         }
         sendBroadcast(new Intent(target+".widget.ACTION_TOGGLE").setComponent(

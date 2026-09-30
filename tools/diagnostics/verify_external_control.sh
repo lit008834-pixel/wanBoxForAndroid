@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # @author é›¾æ™š
 set -euo pipefail
+# @author ÎíÍí: preserve evidence even when the external probe fails.
+trap 'adb logcat -d > probe/external-control-logcat.txt || true' EXIT
 if [[ -n "${PROBE_TARGET:-}" ]]; then
   package=$PROBE_TARGET
 else
@@ -14,7 +16,11 @@ for quick in ui.QuickEnableShortcut ui.QuickDisableShortcut QuickToggleShortcut;
   adb shell am force-stop "$package"
   adb logcat -c
   adb shell am start -n com.wanbox.auditprobe/.ControlProbe --es target "$package" --es quick "$quick"
-  sleep 2
+  for attempt in $(seq 1 30); do
+    if adb logcat -d -s WanBoxAuditProbe:I | grep -q PROBE_SENT; then break; fi
+    sleep 1
+  done
+  adb logcat -d -s WanBoxAuditProbe:I | grep -q PROBE_SENT
   adb logcat -d -s WanBoxAuditProbe:I | grep -q PRIVATE_ACTIVITY_REJECTED
   adb shell uiautomator dump /sdcard/audit-window.xml
   adb pull /sdcard/audit-window.xml probe/window.xml

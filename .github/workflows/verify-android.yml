@@ -138,5 +138,6 @@ jobs:
             app/build/reports/androidTests
             app/build/outputs/androidTest-results
             probe/window.xml
+            probe/external-control-logcat.txt
             audit-baseline/payload.json
             app/build/outputs/mapping
