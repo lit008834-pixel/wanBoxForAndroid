@@ -64,27 +64,7 @@ class ScannerActivity : ThemedActivity(),
         runOnDefaultDispatcher {
             try {
                 it.forEachTry { uri ->
-                    val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                        ImageDecoder.decodeBitmap(
-                            ImageDecoder.createSource(
-                                contentResolver, uri
-                            )
-                        ) { decoder, info, _ ->
-                            val size = ImageBudget.target(info.size.width, info.size.height)
-                            decoder.setTargetSize(size.first, size.second)
-                            decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
-                            decoder.isMutableRequired = true
-                        }
-                    } else {
-                        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                        contentResolver.openInputStream(uri)!!.use { BitmapFactory.decodeStream(it, null, bounds) }
-                        val options = BitmapFactory.Options().apply {
-                            inSampleSize = ImageBudget.sample(bounds.outWidth, bounds.outHeight)
-                        }
-                        contentResolver.openInputStream(uri)!!.use {
-                            BitmapFactory.decodeStream(it, null, options)
-                        } ?: error("无法读取二维码图片")
-                    }
+                    val bitmap = io.nekohasekai.sagernet.utils.BoundedImageDecoder.decode(contentResolver, uri)
                     try {
                         ensureActive()
                         val result = CodeUtils.parseCodeResult(bitmap)

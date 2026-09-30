@@ -75,7 +75,8 @@ class AuditDatabaseTest {
         val originalRules = SagerDatabase.rulesDao.allRules()
         val originalSettings = PublicDatabase.kvPairDao.all()
         try {
-            val old = BackupRestore.Plan(emptyList(), listOf(ProxyGroup(id=700, name="old")), emptyList(),
+            val bean = io.nekohasekai.sagernet.fmt.socks.SOCKSBean().apply { initializeDefaultValues(); serverAddress = "127.0.0.1"; serverPort = 1080 }
+            val old = BackupRestore.Plan(listOf(ProxyEntity(id=701, groupId=700).putBean(bean)), listOf(ProxyGroup(id=700, name="old")), listOf(RuleEntity(id=702, name="old rule")),
                 listOf(KeyValuePair("audit").put("before")))
             BackupRestore.apply(old, true, true, true)
             val duplicate = listOf(KeyValuePair("audit").put("after"), KeyValuePair("audit").put("duplicate"))
@@ -85,8 +86,8 @@ class AuditDatabaseTest {
             } catch (_: android.database.sqlite.SQLiteConstraintException) {}
             assertEquals(listOf(700L), SagerDatabase.groupDao.allGroups().map { it.id })
             assertEquals("before", PublicDatabase.kvPairDao["audit"]?.string)
-            assertTrue(SagerDatabase.proxyDao.getAll().isEmpty())
-            assertTrue(SagerDatabase.rulesDao.allRules().isEmpty())
+            assertEquals(listOf(701L), SagerDatabase.proxyDao.getAll().map { it.id })
+            assertEquals(listOf(702L), SagerDatabase.rulesDao.allRules().map { it.id })
             try {
                 BackupRestore.parse(JSONObject("""{"version":1,"profiles":[],"groups":["bad"],"settings":[]}"""))
                 fail("corrupt group accepted")

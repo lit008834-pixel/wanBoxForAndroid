@@ -2,12 +2,32 @@
 package urlprobe
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
 	"testing"
 	"time"
 )
+
+func TestParentCancellationClosesRequest(t *testing.T) {
+	started := make(chan struct{})
+	closed := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		close(started)
+		<-r.Context().Done()
+		close(closed)
+	}))
+	defer server.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	result := make(chan error, 1)
+	go func() { _, err := MeasureContext(ctx, server.Client(), server.URL, 30*time.Second); result <- err }()
+	select { case <-started: case <-time.After(time.Second): t.Fatal("request did not start") }
+	cancel()
+	select { case err := <-result: if err == nil { t.Fatal("cancelled request succeeded") }; case <-time.After(time.Second): t.Fatal("cancel did not finish request") }
+	select { case <-closed: case <-time.After(time.Second): t.Fatal("socket stayed active") }
+}
 
 func TestSingleRequestIncludesSetup(t *testing.T) {
 	var calls atomic.Int32

@@ -79,9 +79,17 @@ jobs:
           ./gradlew app:assembleOssDebug
       - name: Test complete unit suite and security contracts
         run: |
-          ./gradlew app:testOssDebugUnitTest app:assembleOssDebugAndroidTest
+          ./gradlew app:testOssDebugUnitTest app:assembleOssDebugAndroidTest app:assembleOssRelease
           python3 tools/check_android_security.py
           bash tools/diagnostics/build_security_probe.sh
+      - name: Measure same variant and ABI APK payload
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p audit-baseline
+          gh release download v3.0.3 -R lit008834-pixel/wanBoxForAndroid -p wanBoxForAndroid-3.0.3-arm64-v8a.apk -D audit-baseline
+          echo 'a3737032bf022e16aacb9ab0dafae8ca170fb4bea9b831ad2de69ba360c97bc5  audit-baseline/wanBoxForAndroid-3.0.3-arm64-v8a.apk' | sha256sum --check
+          python3 tools/apk_payload_report.py audit-baseline/*.apk app/build/outputs/apk/oss/release/*arm64-v8a*.apk > audit-baseline/payload.json
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -105,3 +113,5 @@ jobs:
             app/build/reports/androidTests
             app/build/outputs/androidTest-results
             probe/window.xml
+            audit-baseline/payload.json
+            app/build/outputs/mapping
