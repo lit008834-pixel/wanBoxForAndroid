@@ -140,7 +140,8 @@ jobs:
             "$AAPT" dump badging "$apk" | grep -q "^package: name='com.lit008834.pixel.wanboxforandroid' versionCode='$VERSION_CODE' versionName='$VERSION_NAME' "
             manifest=$($AAPT dump xmltree "$apk" AndroidManifest.xml)
             printf '%s\n' "$manifest" | grep -q 'com.lit008834.pixel.wanboxforandroid.cache'
-            printf '%s\n' "$manifest" | grep -q 'com.lit008834.pixel.wanboxforandroid.widget.ACTION_TOGGLE'
+            # @author 雾晚: Match the private receiver used by current Preview and security checks.
+            printf '%s\n' "$manifest" | grep -q 'io.nekohasekai.sagernet.widget.WidgetControlReceiver'
             if ! verify_output=$("$APKSIGNER" verify --verbose --print-certs "$apk" 2>&1); then
               printf '%s\n' "$verify_output"
               exit 1
