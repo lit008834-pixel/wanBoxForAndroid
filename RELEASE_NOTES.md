@@ -1,29 +1,22 @@
-# wanBox 3.0.3 正式版
+# wanBox 3.0.4 正式版
 
 作者：雾晚
 
-## 测速与 Root 模式
+## 本次更新
 
-- 统一节点列表和 Root 底栏测速口径：一次请求到响应头计时，包含建连和 TLS，取消旧版预热后取低值的做法。
-- Root 测速采用标准本地代理 HTTP 客户端，连接、认证和 TLS 共用总超时，避免多阶段分别等待超时。
-- Root 默认测试目标直接进入当前代理，跳过额外嗅探、提前解析与分流绕行；自定义其他目标仍遵循用户规则。
-- 去除强制地址族策略导致的额外提前 DNS 解析，保留用户主动开启的目标解析设置。
-- 默认测试地址改为 gstatic generate_204，手动测速默认总超时 3000ms，组测试默认间隔 300 秒。
-- 保留 Root 首次连接、切换节点和回退 VPN 的生命周期修复。测速失败不作为 Root 权限失效处理。
+- 移除设置页“修改应用图标”入口、选择弹窗、预览布局及切换图标代码。
+- 保留现有系统应用图标、启动与电视入口、历史启动别名。工具页的自定义快捷方式、图标包和 Quick Settings 磁贴功能均保持原实现。
+- 仅双列节点卡片紧凑化：标题中间省略、地址与流量单行，协议与状态在宽度允许时同排显示；状态最多两行，点击可查看完整错误或测速结果。
+- 选中/连接状态采用紧凑标记，保留完整无障碍状态说明。卡片减少纵向留白，菜单仍为 48dp 触控区域。
+- 切回单列恢复完整多行文字与原间距。继续保留手动双列选择，不按字体或宽度自动退为单列。
+- 保留 preview.4 的其他界面及真实延迟显示修复。本次没有修改内核、代理/VPN/Root 服务、排序、拖拽、数据库或签名配置。
 
-## DNS 与订阅
+## 安装与验证
 
-- Fake-IP 增加 localhost、lan/local 及 NTP/time 排除规则。
-- 订阅更新自动过滤套餐到期、剩余流量、官网、防失联、通知等条目，清理 Emoji 装饰。
-- 完全相同配置按协议全参数 SHA-256 去重，保留相同地址但认证、TLS、传输参数不同的有效节点。
-- 新安装本地代理默认端口 7890；升级保留现有端口和自定义测速地址。
-- 提供本地代理 / TUN Fake-IP JSON 模板、中文设置指南及离线订阅清洗脚本。
+- 版本码为 **1670**，高于 preview.4 的 **1665**；沿用 `com.lit008834.pixel.wanboxforandroid` 和原签名，可覆盖升级。OwnBox 仍可独立安装。
+- 本地 `app:testOssDebugUnitTest`：122 项通过；`app:assembleOssDebug` 与 `app:assembleOssDebugAndroidTest` 成功。
+- `app:lintOssDebug` 未通过：149 项报错，首项为 AssetsActivity 的 MissingSuperCall。本次未处理这些历史 Lint 问题，不能声称全局 Lint 通过。
+- 本地无 Android 设备，未提供真机修改前后截图；真机视觉及 Root/VPN 联网回归未执行。仓库设备自动测量不能代替人工验收。
+- 四架构签名构建及模拟器升级检查通过后发布；文件完整性校验值见 SHA256SUMS。
 
-## 升级与限制
-
-- 包名保持 com.lit008834.pixel.wanboxforandroid，签名保持不变，versionCode 为 1645，可覆盖 3.0.3-preview.4。
-- 模板中的节点需要填写真实服务器与凭据；多路复用仅在服务器支持时启用。
-- 完整握手与旧版预热延迟不能直接比较；本次不通过减去握手时间降低显示数字，不保证真实网络的 2000ms 延迟必然降低。
-- 发布前检查配置语法、测速超时、订阅清洗、Android 构建、APK 身份/签名及模拟器覆盖升级。Root 实际网络延迟与不同 Root 管理器兼容性仍需真机反馈。
-- [配置与中文指南](https://github.com/lit008834-pixel/wanBoxForAndroid/tree/v3.0.3/docs/config)
-- [离线订阅清洗脚本](https://github.com/lit008834-pixel/wanBoxForAndroid/blob/v3.0.3/tools/clean_subscription.py)
+具体改动及边界见 `docs/compact-cards-and-icon-picker.zh-CN.md`。

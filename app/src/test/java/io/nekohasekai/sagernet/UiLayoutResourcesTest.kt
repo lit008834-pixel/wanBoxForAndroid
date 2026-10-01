@@ -48,4 +48,28 @@ class UiLayoutResourcesTest {
         assertEquals("@style/Widget.WanBox.Ui.SecondaryButton", element("layout_backup", "action_import_file").getAttribute("style"))
         assertEquals("@style/Widget.WanBox.Ui.SecondaryButton", element("layout_backup", "restore_from_webdav").getAttribute("style"))
     }
+
+    @Test fun gridContainersRemainWrapContentAndSingleColumnXmlKeepsFullText() {
+        for (id in listOf("content", "profile_title_area", "profile_details_area", "profile_status_area")) {
+            assertEquals("wrap_content", element("layout_profile", id).getAttributeNS(androidNs, "layout_height"))
+        }
+        val style = File("src/main/java/io/nekohasekai/sagernet/ui/ProfileCardStyle.kt").readText()
+        assertTrue(style.contains("TextUtils.TruncateAt.MIDDLE"))
+        assertTrue(style.contains("if (compact) 2 else Int.MAX_VALUE"))
+    }
+
+    @Test fun settingsIconPickerRemovedWhileCustomShortcutTileAndLauncherAreRetained() {
+        val root = File("src/main")
+        assertFalse(File(root, "res/xml/global_preferences.xml").readText().contains("changeIcon"))
+        assertFalse(File(root, "java/io/nekohasekai/sagernet/ui/AppIconDialog.kt").exists())
+        val manager = File(root, "java/io/nekohasekai/sagernet/AppIconManager.kt").readText()
+        assertFalse(manager.contains("fun set("))
+        assertFalse(manager.contains("fun loadIcon("))
+        assertTrue(manager.contains("fun init("))
+        val custom = File(root, "java/io/nekohasekai/sagernet/ui/CustomIconFragment.kt").readText()
+        assertTrue(custom.contains("requestPinShortcut"))
+        assertTrue(custom.contains("loadTileAlphaBitmap"))
+        assertTrue(custom.contains("notifyTileUpdate"))
+        assertTrue(File(root, "AndroidManifest.xml").readText().contains("android.intent.category.LEANBACK_LAUNCHER"))
+    }
 }

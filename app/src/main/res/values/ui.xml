@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- @author 雾晚 -->
 <resources>
+    <string name="ui_profile_connected_mark" translatable="false">●</string>
+    <string name="ui_profile_selected_mark" translatable="false">✓</string>
     <dimen name="ui_touch_target">48dp</dimen>
     <dimen name="ui_page_padding">12dp</dimen>
     <dimen name="ui_form_padding">16dp</dimen>
