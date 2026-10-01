@@ -151,13 +151,14 @@ jobs:
           gh release download v3.0.3 \
             -R lit008834-pixel/wanBoxForAndroid \
             -p wanBoxForAndroid-3.0.3-x86_64.apk -D previous
-          gh release download v3.0.3-preview.4 \
+          gh release download v3.0.4-preview.1 \
             -R lit008834-pixel/wanBoxForAndroid \
-            -p wanBoxForAndroid-3.0.3-preview.4-x86_64-release.apk -D previous
+            -p wanBoxForAndroid-3.0.4-preview.1-x86_64-release.apk -D previous
           gh release download v2.9.1-preview \
             -R Own716/OwnBoxForAndroid \
             -p OwnBox-2.9.1-x86_64-release.apk -D previous
           echo '048d1792bfb8f2134fdd2f836f99cc85e8050a54920cbf99c1014f3f98331ba8  previous/wanBoxForAndroid-3.0.3-x86_64.apk' | sha256sum --check
+          echo 'a0659bc001bb3dd3b7ac458b662418d72970a654363ca5df7a3a2f0e47a298e2  previous/wanBoxForAndroid-3.0.4-preview.1-x86_64-release.apk' | sha256sum --check
           # @author 雾晚: 上游 OwnBox 会替换同名附件；该文件只用于临时模拟器验证。
           OWNBOX=previous/OwnBox-2.9.1-x86_64-release.apk
           AAPT=$(find "${ANDROID_HOME}/build-tools" -name aapt | sort -V | tail -n 1)

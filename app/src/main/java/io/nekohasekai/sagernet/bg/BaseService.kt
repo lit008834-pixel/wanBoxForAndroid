@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.bg
 
 import android.app.Service
@@ -45,9 +46,9 @@ class BaseService {
 
     interface ExpectedException
 
-    class Data internal constructor(private val service: Interface) {
-        var state = State.Stopped
-        var proxy: ProxyInstance? = null
+    class Data internal constructor(internal val service: Interface) {
+        @Volatile var state = State.Stopped
+        @Volatile var proxy: ProxyInstance? = null
         var notification: ServiceNotification? = null
         var cacheRecoveryAttempts = 0
         var networkSwitchRetryAttempts = 0
@@ -208,38 +209,26 @@ class BaseService {
             }
         }
 
-        override fun urlTest(): Int {
-            // @author 雾晚: Root TUN owns the core in a separate process; probe its routed network.
-            (data?.proxy?.service as? RootTunService)?.let {
-                return it.urlTest(DataStore.connectionTestURL, DataStore.connectionTestTimeout)
-            }
-            val activeBox = runCatching { data?.proxy?.box }.getOrNull()
-            if (activeBox == null) {
-                error("core not started")
-            }
-            try {
-                return Libcore.urlTest(
-                    activeBox, DataStore.connectionTestURL, DataStore.connectionTestTimeout
-                )
-            } catch (e: Exception) {
-                error(Protocols.genFriendlyMsg(e.readableMessage))
-            }
-        }
+        override fun urlTest(): Int = measureUrl(
+            DataStore.connectionTestURL, DataStore.connectionTestTimeout, false
+        )
 
-        override fun urlTestCustomUrl(url: String, timeoutMs: Int): Int {
-            // @author 雾晚: avoid reading the absent in-process core in Root TUN mode.
-            (data?.proxy?.service as? RootTunService)?.let {
-                return it.urlTest(url, timeoutMs)
-            }
-            val activeBox = runCatching { data?.proxy?.box }.getOrNull()
-            if (activeBox == null) {
-                error("core not started")
-            }
-            try {
-                // urlTestFull 直接经 default outbound 拨号，完全绕过路由规则，杜绝 geosite:cn 等分流劫持
-                return Libcore.urlTestFull(
-                    activeBox, url, timeoutMs
-                )
+        override fun urlTestCustomUrl(url: String, timeoutMs: Int): Int =
+            measureUrl(url, timeoutMs, true)
+
+        private fun measureUrl(url: String, timeoutMs: Int, custom: Boolean): Int {
+            val current = data ?: return 0
+            // The owning service is available even when Root TUN has no ProxyInstance/box yet.
+            val root = current.service as? RootTunService
+            return try {
+                ConnectedUrlTest.measure(
+                    current.state.connected, url, timeoutMs,
+                    root?.let { service -> { target, timeout -> service.urlTest(target, timeout) } },
+                    { runCatching { current.proxy?.box }.getOrNull() }
+                ) { box, target, timeout ->
+                    if (custom) Libcore.urlTestFull(box, target, timeout)
+                    else Libcore.urlTest(box, target, timeout)
+                }
             } catch (e: Exception) {
                 error(Protocols.genFriendlyMsg(e.readableMessage))
             }

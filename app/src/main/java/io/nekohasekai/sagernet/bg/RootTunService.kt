@@ -50,17 +50,24 @@ class RootTunService : Service(), BaseService.Interface {
     // @author 雾晚: probe the running root core through its local mixed inbound,
     // avoiding Android FakeIP resolution and the app process's unopened box.
     fun urlTest(url: String, timeoutMs: Int): Int {
-        if (data.state != BaseService.State.Connected || !readyFile.isFile || rootProcess == null) return 0
+        val process = rootProcess
+        val proxy = data.proxy
+        fun ready() = proxy != null && data.state.connected && readyFile.isFile &&
+            rootProcess === process && data.proxy === proxy &&
+            ConnectedUrlTest.processAlive(process)
         return try {
-            if (DataStore.mixedInboundDisabled) {
-                val profile = data.proxy?.profile ?: return 0
-                return runBlocking { TestInstance(profile, url, timeoutMs).doTest() }
+            ConnectedUrlTest.guardedRoot(::ready) {
+                if (DataStore.mixedInboundDisabled) {
+                    val profile = proxy?.profile ?: return@guardedRoot 0
+                    runBlocking { TestInstance(profile, url, timeoutMs).doTest() }
+                } else {
+                    io.nekohasekai.sagernet.utils.ProxyUrlProbe.measure(
+                        url, DataStore.mixedPort, timeoutMs,
+                        DataStore.mixedUsername.takeIf { DataStore.mixedInboundNeedsAuth },
+                        DataStore.mixedPassword
+                    )
+                }
             }
-            io.nekohasekai.sagernet.utils.ProxyUrlProbe.measure(
-                url, DataStore.mixedPort, timeoutMs,
-                DataStore.mixedUsername.takeIf { DataStore.mixedInboundNeedsAuth },
-                DataStore.mixedPassword
-            )
         } catch (error: Exception) {
             Logs.w("Root TUN URL test failed: ${error.message}")
             0
