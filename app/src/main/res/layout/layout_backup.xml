@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- @author 雾晚 -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:clipToPadding="false"
+    android:paddingBottom="@dimen/main_list_padding_bottom">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -13,9 +17,9 @@
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_margin="8dp"
-            android:clickable="true"
-            android:focusable="true">
+            android:layout_margin="@dimen/ui_page_padding"
+            android:clickable="false"
+            android:focusable="false">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -26,7 +30,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:padding="@dimen/ui_form_padding">
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -40,21 +44,21 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
                         android:checked="true"
-                        android:text="@string/backup_groups_and_configurations" />
+                        android:text="@string/backup_groups_and_configurations" android:minHeight="@dimen/ui_touch_target" />
 
                     <CheckBox
                         android:id="@+id/backup_rules"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:checked="true"
-                        android:text="@string/backup_rules" />
+                        android:text="@string/backup_rules" android:minHeight="@dimen/ui_touch_target" />
 
                     <CheckBox
                         android:id="@+id/backup_settings"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:checked="true"
-                        android:text="@string/backup_settings" />
+                        android:text="@string/backup_settings" android:minHeight="@dimen/ui_touch_target" />
 
                     <TextView
                         android:layout_width="match_parent"
@@ -69,46 +73,48 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginHorizontal="20dp"
-                    android:layout_marginVertical="8dp"
+                    android:layout_marginStart="@dimen/ui_form_padding"
+                    android:layout_marginEnd="@dimen/ui_form_padding"
+                    android:layout_marginTop="@dimen/ui_space_medium"
+                    android:layout_marginBottom="@dimen/ui_space_medium"
                     android:orientation="vertical">
 
                     <!-- 本地备份部分的按钮 -->
                     <Button
                         android:id="@+id/action_share"
-                        style="@style/Widget.SagerNet.Button"
+                        style="@style/Widget.WanBox.Ui.SecondaryButton"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        app:cornerRadius="24dp"
+                        app:cornerRadius="@dimen/button_corner_radius"
                         android:text="@string/share"
-                        android:textColor="?attr/colorOnPrimary" />
+ />
 
                     <Button
                         android:id="@+id/action_export"
-                        style="@style/Widget.SagerNet.Button"
+                        style="@style/Widget.WanBox.Ui.PrimaryButton"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        app:cornerRadius="24dp"
+                        app:cornerRadius="@dimen/button_corner_radius"
                         android:text="@string/action_export_file"
-                        android:textColor="?attr/colorOnPrimary" />
+ />
 
                     <Button
                         android:id="@+id/action_import_file"
-                        style="@style/Widget.SagerNet.Button"
+                        style="@style/Widget.WanBox.Ui.SecondaryButton"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        app:cornerRadius="24dp"
+                        app:cornerRadius="@dimen/button_corner_radius"
                         android:text="@string/action_import_file"
-                        android:textColor="?attr/colorOnPrimary" />
+ />
 
                     <Button
                         android:id="@+id/action_import_throne_desktop"
-                        style="@style/Widget.SagerNet.Button"
+                        style="@style/Widget.WanBox.Ui.SecondaryButton"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        app:cornerRadius="24dp"
+                        app:cornerRadius="@dimen/button_corner_radius"
                         android:text="@string/action_import_throne_desktop"
-                        android:textColor="?attr/colorOnPrimary" />
+ />
 
                 </LinearLayout>
             </LinearLayout>
@@ -118,9 +124,9 @@
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_margin="8dp"
-            android:clickable="true"
-            android:focusable="true">
+            android:layout_margin="@dimen/ui_page_padding"
+            android:clickable="false"
+            android:focusable="false">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -131,7 +137,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:padding="@dimen/ui_form_padding">
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -144,37 +150,39 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginHorizontal="20dp"
-                    android:layout_marginVertical="8dp"
+                    android:layout_marginStart="@dimen/ui_form_padding"
+                    android:layout_marginEnd="@dimen/ui_form_padding"
+                    android:layout_marginTop="@dimen/ui_space_medium"
+                    android:layout_marginBottom="@dimen/ui_space_medium"
                     android:orientation="vertical">
 
                     <!-- WebDAV 备份部分的按钮 -->
                     <Button
                         android:id="@+id/webdav_settings"
-                        style="@style/Widget.SagerNet.Button"
+                        style="@style/Widget.WanBox.Ui.SecondaryButton"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        app:cornerRadius="24dp"
+                        app:cornerRadius="@dimen/button_corner_radius"
                         android:text="@string/webdav_settings"
-                        android:textColor="?attr/colorOnPrimary" />
+ />
 
                     <Button
                         android:id="@+id/backup_to_webdav"
-                        style="@style/Widget.SagerNet.Button"
+                        style="@style/Widget.WanBox.Ui.PrimaryButton"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        app:cornerRadius="24dp"
+                        app:cornerRadius="@dimen/button_corner_radius"
                         android:text="@string/backup_to_webdav"
-                        android:textColor="?attr/colorOnPrimary" />
+ />
 
                     <Button
                         android:id="@+id/restore_from_webdav"
-                        style="@style/Widget.SagerNet.Button"
+                        style="@style/Widget.WanBox.Ui.SecondaryButton"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        app:cornerRadius="24dp"
+                        app:cornerRadius="@dimen/button_corner_radius"
                         android:text="@string/restore_from_webdav"
-                        android:textColor="?attr/colorOnPrimary" />
+ />
 
                 </LinearLayout>
             </LinearLayout>

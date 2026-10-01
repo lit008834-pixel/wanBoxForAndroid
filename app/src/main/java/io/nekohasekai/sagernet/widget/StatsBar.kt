@@ -4,7 +4,6 @@ package io.nekohasekai.sagernet.widget
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.ColorStateList
-import android.graphics.Color
 import android.os.Handler
 import android.os.Looper
 import android.text.format.Formatter
@@ -14,7 +13,6 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.widget.TooltipCompat
 import androidx.coordinatorlayout.widget.CoordinatorLayout
-import androidx.core.graphics.ColorUtils
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.whenStarted
 import com.google.android.material.bottomappbar.BottomAppBar
@@ -23,9 +21,9 @@ import io.nekohasekai.sagernet.bg.BaseService
 import io.nekohasekai.sagernet.database.DataStore
 import io.nekohasekai.sagernet.ktx.*
 import android.app.Activity
+import io.nekohasekai.sagernet.ui.UiChrome
 import io.nekohasekai.sagernet.ui.MainActivity
 import io.nekohasekai.sagernet.utils.LandingIpManager
-import io.nekohasekai.sagernet.utils.Theme
 import kotlin.math.abs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -176,40 +174,18 @@ class StatsBar @JvmOverloads constructor(
         }
     }
 
+    // @author 雾晚: visual tint only; the probe identity, cancellation and result state stay intact.
     fun updateThemeColors() {
         if (!this::statusText.isInitialized) return
-        val currentContext = context ?: return
-        if (Theme.isWhiteTheme()) {
-            backgroundTintList = ColorStateList.valueOf(Color.WHITE)
-        } else if (Theme.isLightGrayTheme()) {
-            backgroundTintList = ColorStateList.valueOf(Color.parseColor("#F5F5F7"))
-        } else if (Theme.isBlackTheme()) {
-            backgroundTintList = ColorStateList.valueOf(Color.BLACK)
-        }
-        val effectiveBgColor = backgroundTintList?.defaultColor
-            ?: currentContext.getColorAttr(R.attr.colorPrimary)
-
-        val isLightBg = ColorUtils.calculateLuminance(effectiveBgColor) > 0.45
-
-        if (isLightBg) {
-            val primaryTextColor = Color.parseColor("#1E293B")
-            val secondaryTextColor = Color.parseColor("#64748B")
-            txText.setTextColor(secondaryTextColor)
-            rxText.setTextColor(secondaryTextColor)
-            statusIpText.setTextColor(primaryTextColor)
-            statusTitleText.setTextColor(secondaryTextColor)
-            statusText.setTextColor(primaryTextColor)
-            (btnIpDetail as? ImageView)?.imageTintList = ColorStateList.valueOf(primaryTextColor)
-        } else {
-            val primaryTextColor = Color.WHITE
-            val secondaryTextColor = Color.parseColor("#CCFFFFFF")
-            txText.setTextColor(secondaryTextColor)
-            rxText.setTextColor(secondaryTextColor)
-            statusIpText.setTextColor(primaryTextColor)
-            statusTitleText.setTextColor(secondaryTextColor)
-            statusText.setTextColor(primaryTextColor)
-            (btnIpDetail as? ImageView)?.imageTintList = ColorStateList.valueOf(primaryTextColor)
-        }
+        backgroundTintList = UiChrome.tint(context)
+        val primary = UiChrome.text(context, secondary = false)
+        val secondary = UiChrome.text(context, secondary = true)
+        txText.setTextColor(secondary)
+        rxText.setTextColor(secondary)
+        statusIpText.setTextColor(primary)
+        statusTitleText.setTextColor(secondary)
+        statusText.setTextColor(primary)
+        (btnIpDetail as? ImageView)?.imageTintList = ColorStateList.valueOf(primary)
     }
 
     private var latencyAttached = false

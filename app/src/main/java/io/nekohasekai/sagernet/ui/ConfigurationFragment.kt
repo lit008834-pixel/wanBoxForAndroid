@@ -35,6 +35,8 @@ import androidx.appcompat.widget.Toolbar
 import androidx.core.graphics.ColorUtils
 import androidx.core.graphics.drawable.DrawableCompat
 import androidx.core.net.toUri
+import androidx.core.view.ViewCompat
+import androidx.core.view.updatePadding
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isGone
@@ -759,6 +761,11 @@ class ConfigurationFragment @JvmOverloads constructor(
                 tabLayout.setTabTextColors(tabUnselectedTextColor, tabSelectedTextColor)
             }
         }
+
+        // @author 雾晚: share surface treatment while preserving the selected theme's tab/icon colors.
+        view.findViewById<View>(R.id.appbar)?.let(UiChrome::apply)
+        toolbar.setBackgroundColor(Color.TRANSPARENT)
+        tabLayout.setBackgroundColor(Color.TRANSPARENT)
 
         val searchItem = toolbar.menu.findItem(R.id.action_search)
         val searchView = (searchItem?.actionView as? SearchView) ?: toolbar.findViewById<SearchView>(R.id.action_search)
@@ -2794,7 +2801,11 @@ class ConfigurationFragment @JvmOverloads constructor(
 
         private fun setupLayoutManager() {
             layoutManager = if (DataStore.groupLayoutMode == 1) {
-                FixedGridLayoutManager(configurationListView, 2)
+                FixedGridLayoutManager(configurationListView, UiLayoutPolicy.columns(
+                    true,
+                    resources.configuration.screenWidthDp.toFloat() - 8f,
+                    resources.configuration.fontScale
+                ))
             } else {
                 FixedLinearLayoutManager(configurationListView)
             }
@@ -2814,7 +2825,7 @@ class ConfigurationFragment @JvmOverloads constructor(
             (parentFragment as? ConfigurationFragment)?.pagerAdapter?.groupFragments?.set(proxyGroup.id, this)
 
             configurationListView = view.findViewById(R.id.configuration_list)
-            configurationListView.descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
+            configurationListView.descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
             setupLayoutManager()
             configurationListView.layoutManager = layoutManager
             adapter = ConfigurationAdapter()
@@ -2822,6 +2833,7 @@ class ConfigurationFragment @JvmOverloads constructor(
             GroupManager.addListener(adapter!!)
             configurationListView.adapter = adapter
             configurationListView.setItemViewCacheSize(20)
+            setupAdaptiveListChrome()
             configurationListView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
                 override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
                     if (newState == RecyclerView.SCROLL_STATE_IDLE) {
@@ -2869,7 +2881,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                 layoutTraffic?.isGone = true
                 tvLastUpdated?.isGone = true
                 val count = adapter?.configurationIdList?.size ?: 0
-                tvNodeCount?.text = "节点数: $count"
+                tvNodeCount?.text = resources.getQuantityString(R.plurals.ui_subscription_node_count, count, count)
                 card.isVisible = true
                 return
             }
@@ -2976,28 +2988,84 @@ class ConfigurationFragment @JvmOverloads constructor(
 
             if (expireMillis > 0L) {
                 val dateStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(expireMillis))
-                tvExpire?.text = "到期: $dateStr"
+                tvExpire?.text = getString(R.string.subscription_expire, dateStr)
                 tvExpire?.isVisible = true
             } else if (fallbackExpireStr != null) {
-                tvExpire?.text = "到期: $fallbackExpireStr"
+                tvExpire?.text = getString(R.string.subscription_expire, fallbackExpireStr)
                 tvExpire?.isVisible = true
             } else {
-                tvExpire?.text = "长期有效"
+                tvExpire?.text = getString(R.string.ui_subscription_no_expiry)
                 tvExpire?.isVisible = true
             }
 
             val count = adapter?.configurationIdList?.size ?: 0
-            tvNodeCount?.text = "节点数: $count"
+            tvNodeCount?.text = resources.getQuantityString(R.plurals.ui_subscription_node_count, count, count)
 
             if (sub.lastUpdated != null && sub.lastUpdated > 0) {
                 val updatedStr = SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(Date(sub.lastUpdated.toLong() * 1000L))
-                tvLastUpdated?.text = "更新于: $updatedStr"
+                tvLastUpdated?.text = getString(R.string.ui_subscription_updated, updatedStr)
                 tvLastUpdated?.isVisible = true
             } else {
                 tvLastUpdated?.isGone = true
             }
 
             card.isVisible = true
+        }
+
+        // @author 雾晚: view-scoped listeners; no preference rewrite or service/test work.
+        private var bottomBarView: View? = null
+        private var bottomBarLayoutListener: View.OnLayoutChangeListener? = null
+        private var bottomSystemInset = 0
+        private var emptyListObserver: RecyclerView.AdapterDataObserver? = null
+
+        private fun updateListBottomPadding() {
+            val list = listView ?: return
+            list.updatePadding(bottom = UiLayoutPolicy.bottomPadding(
+                resources.getDimensionPixelSize(R.dimen.main_list_padding_bottom),
+                bottomBarView?.height ?: 0,
+                dp2px(40),
+                bottomSystemInset
+            ))
+        }
+
+        private fun setupAdaptiveListChrome() {
+            emptyListObserver = object : RecyclerView.AdapterDataObserver() {
+                private fun updateEmptyState() {
+                    view?.findViewById<TextView>(R.id.profiles_empty)?.isVisible = adapter?.itemCount == 0
+                }
+                override fun onChanged() = updateEmptyState()
+                override fun onItemRangeInserted(positionStart: Int, itemCount: Int) = updateEmptyState()
+                override fun onItemRangeRemoved(positionStart: Int, itemCount: Int) = updateEmptyState()
+            }.also { adapter?.registerAdapterDataObserver(it) }
+            configurationListView.addOnLayoutChangeListener { list, left, _, right, _, _, _, _, _ ->
+                val grid = layoutManagerValue as? FixedGridLayoutManager
+                if (grid != null) {
+                    val width = right - left - list.paddingLeft - list.paddingRight
+                    val columns = UiLayoutPolicy.columns(
+                        true, width / resources.displayMetrics.density, resources.configuration.fontScale
+                    )
+                    if (grid.spanCount != columns) {
+                        grid.spanCount = columns
+                        // Rebind the existing row alignment hints after the span count changes.
+                        list.post { if (listView === list) adapter?.notifyDataSetChanged() }
+                    }
+                }
+            }
+            ViewCompat.setOnApplyWindowInsetsListener(configurationListView) { _, insets ->
+                bottomSystemInset = insets.getInsets(
+                    WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+                ).bottom
+                updateListBottomPadding()
+                insets
+            }
+            if (!select) {
+                bottomBarView = (activity as? MainActivity)?.binding?.stats
+                bottomBarLayoutListener = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+                    updateListBottomPadding()
+                }.also { bottomBarView?.addOnLayoutChangeListener(it) }
+            }
+            updateListBottomPadding()
+            ViewCompat.requestApplyInsets(configurationListView)
         }
 
         private fun setupBottomBarScrollDriver() {
@@ -3032,6 +3100,13 @@ class ConfigurationFragment @JvmOverloads constructor(
         private var activeNodePopupMenu: PopupMenu? = null
 
         override fun onDestroyView() {
+            bottomBarLayoutListener?.let { bottomBarView?.removeOnLayoutChangeListener(it) }
+            emptyListObserver?.let { adapter?.unregisterAdapterDataObserver(it) }
+            emptyListObserver = null
+            bottomBarLayoutListener = null
+            bottomBarView = null
+            bottomSystemInset = 0
+            listView?.let { ViewCompat.setOnApplyWindowInsetsListener(it, null) }
             if ((listView != null)) {
                 if (::itemTouchHelper.isInitialized) itemTouchHelper.attachToRecyclerView(null)
                 configurationListView.clearOnScrollListeners()
@@ -3673,6 +3748,7 @@ class ConfigurationFragment @JvmOverloads constructor(
             }
 
             val profileName: TextView = view.findViewById(R.id.profile_name)
+            private val selectionLabel: TextView = view.findViewById(R.id.profile_selection_label)
             val profileType: TextView = view.findViewById(R.id.profile_type)
             val profileAddress: TextView = view.findViewById(R.id.profile_address)
             val profileStatus: TextView = view.findViewById(R.id.profile_status)
@@ -3820,7 +3896,11 @@ class ConfigurationFragment @JvmOverloads constructor(
                 popup.show()
             }
 
-            private fun applySelected(selected: Boolean) {
+            private fun applySelected(selected: Boolean, connected: Boolean) {
+                card.isSelected = selected
+                selectionLabel.isVisible = selected
+                selectionLabel.setText(if (connected) R.string.ui_profile_connected else R.string.ui_profile_selected)
+                ViewCompat.setStateDescription(card, if (selected) selectionLabel.text else null)
                 val ctx = card.context
                 val surface = ctx.getColorAttr(R.attr.colorSurface)
                 card.setCardBackgroundColor(surface)
@@ -3967,7 +4047,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                     selected && DataStore.serviceState.started && pf.isCurrentProfile(proxyEntity.id)
                 editButton.isEnabled = !started
                 removeButton.isEnabled = !started
-                applySelected(selected)
+                applySelected(selected, started && DataStore.serviceState.connected)
 
                 lastBoundTx = tx
                 lastBoundRx = rx
@@ -3985,7 +4065,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                         pf.isCurrentProfile(proxyEntity.id)
                 editButton.isEnabled = !started
                 removeButton.isEnabled = !started
-                applySelected(selected)
+                applySelected(selected, started && DataStore.serviceState.connected)
             }
 
             fun bindTraffic(proxyEntity: ProxyEntity) {

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- @author 雾晚 -->
+<resources>
+    <dimen name="ui_touch_target">48dp</dimen>
+    <dimen name="ui_page_padding">12dp</dimen>
+    <dimen name="ui_form_padding">16dp</dimen>
+    <dimen name="ui_space_small">4dp</dimen>
+    <dimen name="ui_space_medium">8dp</dimen>
+    <dimen name="ui_card_gap">4dp</dimen>
+    <dimen name="ui_text_title">16sp</dimen>
+    <dimen name="ui_text_body">14sp</dimen>
+    <dimen name="ui_text_caption">12sp</dimen>
+    <style name="TextAppearance.WanBox.Ui.Toolbar" parent="TextAppearance.MaterialComponents.Headline6">
+        <item name="android:textSize">20sp</item>
+    </style>
+    <style name="Widget.WanBox.Ui.PrimaryButton" parent="Widget.SagerNet.Button">
+        <item name="android:minHeight">@dimen/ui_touch_target</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:singleLine">false</item>
+        <item name="android:paddingTop">@dimen/ui_space_medium</item>
+        <item name="android:paddingBottom">@dimen/ui_space_medium</item>
+    </style>
+    <style name="Widget.WanBox.Ui.SecondaryButton" parent="Widget.MaterialComponents.Button.OutlinedButton">
+        <item name="android:minHeight">@dimen/ui_touch_target</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:singleLine">false</item>
+        <item name="android:paddingTop">@dimen/ui_space_medium</item>
+        <item name="android:paddingBottom">@dimen/ui_space_medium</item>
+        <item name="android:textColor">?attr/primaryOrTextPrimary</item>
+        <item name="strokeColor">@color/card_stroke</item>
+    </style>
+</resources>

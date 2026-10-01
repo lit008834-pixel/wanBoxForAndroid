@@ -59,6 +59,7 @@ open class ToolbarFragment : Fragment {
         }
         val appbar = view.findViewById<AppBarLayout?>(R.id.appbar)
         if (appbar != null) {
+            UiChrome.apply(appbar)
             ViewCompat.setOnApplyWindowInsetsListener(appbar) { v, insets ->
                 val bars = insets.getInsets(
                     WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()

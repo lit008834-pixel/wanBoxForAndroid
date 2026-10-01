@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- @author 雾晚 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -27,7 +28,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="14dp">
+            android:padding="@dimen/ui_page_padding">
 
             <!-- Top Header: Cloud Icon, Title, Expire Date -->
             <LinearLayout
@@ -56,7 +57,10 @@
 
                 <TextView
                     android:id="@+id/tv_expire_date"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="@dimen/ui_space_medium"
+                    android:gravity="end"
                     android:layout_height="wrap_content"
                     android:textColor="?android:attr/textColorSecondary"
                     android:textSize="12sp"
@@ -84,7 +88,10 @@
 
                 <TextView
                     android:id="@+id/tv_traffic_remaining"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="@dimen/ui_space_medium"
+                    android:gravity="end"
                     android:layout_height="wrap_content"
                     android:textColor="?android:attr/textColorSecondary"
                     android:textSize="12sp"
@@ -105,15 +112,18 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:textColor="?android:attr/textColorSecondary"
-                    android:textSize="11sp"
+                    android:textSize="@dimen/ui_text_caption"
                     tools:text="节点数: 48" />
 
                 <TextView
                     android:id="@+id/tv_last_updated"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="@dimen/ui_space_medium"
+                    android:gravity="end"
                     android:layout_height="wrap_content"
                     android:textColor="?android:attr/textColorSecondary"
-                    android:textSize="11sp"
+                    android:textSize="@dimen/ui_text_caption"
                     tools:text="更新于: 10分钟前" />
             </LinearLayout>
 
@@ -121,11 +131,14 @@
 
     </com.google.android.material.card.MaterialCardView>
 
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
     <com.simplecityapps.recyclerview_fastscroll.views.FastScrollRecyclerView
         android:id="@+id/configuration_list"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
+        android:layout_height="match_parent"
         android:clipChildren="false"
         android:clipToPadding="false"
         android:paddingLeft="4dp"
@@ -137,5 +150,17 @@
         app:fastScrollThumbColor="?colorPrimary"
         app:fastScrollThumbInactiveColor="?colorPrimary"
         tools:listitem="@layout/layout_profile" />
+        <TextView
+            android:id="@+id/profiles_empty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:padding="@dimen/ui_form_padding"
+            android:text="@string/ui_profiles_empty"
+            android:textSize="@dimen/ui_text_body"
+            android:textColor="?android:attr/textColorSecondary"
+            android:accessibilityLiveRegion="polite"
+            android:visibility="gone" />
+    </FrameLayout>
 
 </LinearLayout>
