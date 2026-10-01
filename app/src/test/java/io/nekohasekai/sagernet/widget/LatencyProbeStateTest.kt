@@ -61,4 +61,23 @@ class LatencyProbeStateTest {
         assertEquals(-1, state.latency)
         assertNotNull(state.begin("different-session", 1201))
     }
+    @Test fun redrawPreservesFailureUntilNewRequestOrSessionChange() {
+        val state = LatencyProbeState()
+        val ticket = state.begin("vpn", 1000)!!
+        assertTrue(state.testing)
+        assertTrue(state.complete(ticket, "vpn", 0, 1001))
+        state.release(ticket)
+        assertTrue(state.failed)
+        assertFalse(state.testing)
+        assertFalse(state.synchronize("vpn"))
+        assertTrue(state.failed)
+        val retry = state.begin("vpn", 1002)!!
+        assertFalse(state.failed)
+        assertTrue(state.testing)
+        state.invalidate()
+        assertFalse(state.failed)
+        assertFalse(state.testing)
+        state.release(retry)
+    }
+
 }

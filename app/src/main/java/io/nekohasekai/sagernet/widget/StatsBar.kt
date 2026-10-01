@@ -466,7 +466,11 @@ class StatsBar @JvmOverloads constructor(
                         statusText.text = "${displayedLatency}ms"
                     } else {
                         statusTitleText.visibility = View.GONE
-                        if (cached == null && DataStore.showLandingIp) {
+                        if (latencyState.failed) {
+                            statusText.text = app.getText(R.string.connection_test_fail)
+                        } else if (latencyState.testing) {
+                            statusText.text = app.getText(R.string.connection_test_testing)
+                        } else if (cached == null && DataStore.showLandingIp) {
                             statusText.text = context.getString(R.string.landing_ip_querying)
                         } else {
                             statusText.text = app.getString(R.string.vpn_connected)
