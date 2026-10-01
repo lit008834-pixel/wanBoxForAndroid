@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.widget
 
 import android.annotation.SuppressLint
@@ -28,6 +29,7 @@ import io.nekohasekai.sagernet.utils.Theme
 import kotlin.math.abs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -393,17 +395,32 @@ class StatsBar @JvmOverloads constructor(
         return pendingTransition == Transition.HideAfterStart || transitionJob != null
     }
 
-    private var lastMeasuredLatency: Int = -1
-    private var lastMeasureTime: Long = 0L
-    private var isTestingRealLatency = false
+    private val latencyState = LatencyProbeState()
+    private val lastMeasuredLatency get() = latencyState.latency
     private var activeLatencyJob: Job? = null
 
+    private data class ProbeKey(
+        val service: Any, val mode: String, val profile: Long, val url: String, val timeout: Int
+    )
+
+    private fun probeKey(): ProbeKey? {
+        val activity = context as? MainActivity ?: return null
+        if (!isAttachedToWindow || activity.lifecycle.currentState == androidx.lifecycle.Lifecycle.State.DESTROYED ||
+            !DataStore.serviceState.connected ||
+            currentState != BaseService.State.Connected) return null
+        val service = activity.connection.service ?: return null
+        return ProbeKey(service, DataStore.serviceMode, DataStore.selectedProxy,
+            DataStore.connectionTestURL, DataStore.connectionTestTimeout)
+    }
+
     private fun resetLatencyState() {
-        lastMeasuredLatency = -1
-        lastMeasureTime = 0L
-        isTestingRealLatency = false
+        latencyState.invalidate()
         activeLatencyJob?.cancel()
-        activeLatencyJob = null
+    }
+
+    override fun onDetachedFromWindow() {
+        resetLatencyState()
+        super.onDetachedFromWindow()
     }
 
     private fun formatStatus(latency: Int = lastMeasuredLatency): String {
@@ -412,9 +429,11 @@ class StatsBar @JvmOverloads constructor(
         return if (latency > 0) "$handshakeType 握手 ${latency}ms" else app.getString(R.string.vpn_connected)
     }
 
-    private fun updateStatusViews(latency: Int = lastMeasuredLatency, customStatus: CharSequence? = null) {
+    private fun updateStatusViews(latency: Int? = null, customStatus: CharSequence? = null) {
         runOnUi {
             initViews()
+            if (latencyState.synchronize(probeKey())) activeLatencyJob?.cancel()
+            val displayedLatency = latency ?: lastMeasuredLatency
             if (currentState == BaseService.State.Connected) {
                 val cached = LandingIpManager.getCachedInfo()
                 if (DataStore.showLandingIp && cached != null && cached.ip.isNotBlank()) {
@@ -436,10 +455,10 @@ class StatsBar @JvmOverloads constructor(
                 } else {
                     val isHttps = DataStore.connectionTestURL.startsWith("https://", ignoreCase = true)
                     val handshakeType = if (isHttps) "HTTPS" else "HTTP"
-                    if (latency > 0) {
+                    if (displayedLatency > 0) {
                         statusTitleText.text = "$handshakeType 握手延迟"
                         statusTitleText.visibility = View.VISIBLE
-                        statusText.text = "${latency}ms"
+                        statusText.text = "${displayedLatency}ms"
                     } else {
                         statusTitleText.visibility = View.GONE
                         if (cached == null && DataStore.showLandingIp) {
@@ -572,63 +591,47 @@ class StatsBar @JvmOverloads constructor(
     fun testConnection(silent: Boolean = false) {
         runOnUi {
             val activity = context as? MainActivity ?: return@runOnUi
-            if (currentState != BaseService.State.Connected) return@runOnUi
-
-            val now = android.os.SystemClock.elapsedRealtime()
-
-            // 1. 毫秒级极速响应：若已有真实基准延迟，0ms 瞬间反馈并刷新界面
-            if (lastMeasuredLatency > 0) {
-                val jitter = if (now - lastMeasureTime < 5000L) {
-                    kotlin.random.Random.nextInt(-2, 3)
-                } else {
-                    0
-                }
-                val displayLatency = (lastMeasuredLatency + jitter).coerceAtLeast(1)
-                updateStatusViews(displayLatency)
-            } else if (!silent) {
-                updateStatusViews(customStatus = app.getText(R.string.connection_test_testing))
+            val key = probeKey() ?: return@runOnUi
+            val service = activity.connection.service ?: return@runOnUi
+            if (latencyState.synchronize(key)) {
+                activeLatencyJob?.cancel()
+                updateStatusViews()
             }
-
-            // 2. 避免同时在后台并发堆积过量物理网络请求
-            if (isTestingRealLatency) {
-                return@runOnUi
-            }
-            // 400ms 内已有有效测速结果时，不重复发起物理网络请求，直接依赖毫秒级即时反馈
-            if (now - lastMeasureTime < 400L && lastMeasuredLatency > 0) {
-                return@runOnUi
-            }
-
-            isTestingRealLatency = true
-            val scope = activity.lifecycleScope
-            activeLatencyJob = scope.launch(Dispatchers.IO) {
+            val ticket = latencyState.begin(key, android.os.SystemClock.elapsedRealtime())
+                ?: return@runOnUi
+            updateStatusViews(customStatus = app.getText(R.string.connection_test_testing))
+            activeLatencyJob = activity.lifecycleScope.launch(Dispatchers.IO) {
                 try {
-                    val elapsed = activity.urlTest()
+                    val elapsed = activity.urlTest(service)
                     withContext(Dispatchers.Main) {
-                        isTestingRealLatency = false
-                        if (currentState != BaseService.State.Connected) return@withContext
-                        if (elapsed > 0) {
-                            lastMeasuredLatency = elapsed
-                            lastMeasureTime = android.os.SystemClock.elapsedRealtime()
-                            updateStatusViews(elapsed)
-                        } else if (lastMeasuredLatency <= 0) {
-                            updateStatusViews(customStatus = app.getText(R.string.connection_test_fail))
+                        if (latencyState.complete(ticket, probeKey(), elapsed,
+                                android.os.SystemClock.elapsedRealtime())) {
+                            if (elapsed > 0) updateStatusViews()
+                            else updateStatusViews(customStatus = app.getText(R.string.connection_test_fail))
                         }
                     }
-                } catch (e: Exception) {
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (error: Exception) {
                     withContext(Dispatchers.Main) {
-                        isTestingRealLatency = false
-                        if (currentState != BaseService.State.Connected) return@withContext
-                        Logs.w("testConnection error: $e")
-                        if (lastMeasuredLatency <= 0) {
+                        if (latencyState.complete(ticket, probeKey(), 0,
+                                android.os.SystemClock.elapsedRealtime())) {
+                            Logs.w("testConnection error: $error")
                             updateStatusViews(customStatus = app.getText(R.string.connection_test_fail))
-                            if (!silent) {
-                                activity.snackbar(
-                                    app.getString(
-                                        R.string.connection_test_error, e.readableMessage
-                                    )
-                                ).show()
-                            }
+                            if (!silent) activity.snackbar(app.getString(
+                                R.string.connection_test_error, error.readableMessage)).show()
                         }
+                    }
+                }
+            }.also { job ->
+                // Completion also runs if cancellation happens before the IO coroutine starts.
+                // A blocking Binder call holds this slot until it has actually returned.
+                job.invokeOnCompletion {
+                    runOnUi {
+                        latencyState.release(ticket)
+                        if (activeLatencyJob === job) activeLatencyJob = null
+                        val current = probeKey()
+                        if (current != null && (current != ticket.key || job.isCancelled)) testConnection(silent = true)
                     }
                 }
             }

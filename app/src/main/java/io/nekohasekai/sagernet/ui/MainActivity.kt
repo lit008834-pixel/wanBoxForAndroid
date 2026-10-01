@@ -371,11 +371,11 @@ class MainActivity : ThemedActivity(),
         }
     }
 
-    fun urlTest(): Int {
-        if (!DataStore.serviceState.connected || connection.service == null) {
+    fun urlTest(service: ISagerNetService? = connection.service): Int {
+        if (!DataStore.serviceState.connected || service == null || connection.service !== service) {
             error("not started")
         }
-        return connection.service!!.urlTest()
+        return service.urlTest()
     }
 
     suspend fun importSubscription(uri: Uri) {
@@ -728,8 +728,13 @@ class MainActivity : ThemedActivity(),
         runOnMainDispatcher {
             if (isDestroyed || isFinishing) return@runOnMainDispatcher
             when (key) {
-                Key.SERVICE_MODE -> connection.rebindIfServiceChanged(this@MainActivity)
+                Key.SERVICE_MODE -> {
+                    binding.stats.refreshDisplay()
+                    connection.rebindIfServiceChanged(this@MainActivity)
+                }
+                Key.CONNECTION_TEST_URL, Key.CONNECTION_TEST_TIMEOUT -> binding.stats.refreshDisplay()
                 Key.PROFILE_ID -> {
+                    binding.stats.refreshDisplay()
                     LandingIpManager.clearCache()
                     if (DataStore.serviceState.connected && DataStore.showLandingIp) {
                         binding.stats.refreshLandingIp(forceRefresh = true)
