@@ -3731,7 +3731,6 @@ class ConfigurationFragment @JvmOverloads constructor(
             }
 
             val profileName: TextView = view.findViewById(R.id.profile_name)
-            private val selectionLabel: TextView = view.findViewById(R.id.profile_selection_label)
             val profileType: TextView = view.findViewById(R.id.profile_type)
             val profileAddress: TextView = view.findViewById(R.id.profile_address)
             val profileStatus: TextView = view.findViewById(R.id.profile_status)
