@@ -1126,4 +1126,15 @@
     <string name="database_recovery_notice">The database could not be opened. Your database and journal files have been preserved. Export a diagnostic copy before attempting recovery. This copy contains private keys and passwords; keep it private. No automatic reset will occur.</string>
     <string name="database_recovery_export">Export diagnostic copy</string>
     <string name="backup_security_notice">Manual backups contain node passwords and keys. Store them securely. Cloud database backup requires client-side encryption on Android 9+; on older devices and during device transfer, use manual export and restore.</string>
+
+    <!-- @author 雾晚 -->
+    <string name="ui_profiles_empty">No profiles to display. Check the group or search, or import a profile from the toolbar.</string>
+    <string name="ui_profile_selected">Selected</string>
+    <string name="ui_profile_connected">Connected</string>
+    <string name="ui_subscription_no_expiry">No expiry</string>
+    <string name="ui_subscription_updated">Updated: %1$s</string>
+    <plurals name="ui_subscription_node_count">
+        <item quantity="one">Node: %d</item>
+        <item quantity="other">Nodes: %d</item>
+    </plurals>
 </resources>
