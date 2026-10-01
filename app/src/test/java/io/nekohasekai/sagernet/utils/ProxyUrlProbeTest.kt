@@ -127,21 +127,31 @@ class ProxyUrlProbeTest {
                     server.accept().use { socket ->
                         val reader = socket.getInputStream().bufferedReader()
                         while (!reader.readLine().isNullOrEmpty()) { }
-                        Thread.sleep(80)
+                        Thread.sleep(400)
                         socket.getOutputStream().write(("HTTP/1.1 407 Proxy Authentication Required\r\n" +
                             "Proxy-Authenticate: Basic realm=wanbox\r\nContent-Length: 0\r\n" +
                             "Connection: close\r\n\r\n").toByteArray())
                     }
-                    server.accept().use { Thread.sleep(400) }
+                    server.accept().use { socket ->
+                        socket.soTimeout = 2000
+                        val reader = socket.getInputStream().bufferedReader()
+                        while (!reader.readLine().isNullOrEmpty()) { }
+                        // A fresh per-retry deadline would allow this 204; one total deadline cannot.
+                        Thread.sleep(350)
+                        try {
+                            socket.getOutputStream().write(
+                                "HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n".toByteArray())
+                        } catch (_: java.io.IOException) { /* the correctly timed-out client closed */ }
+                    }
                 }
                 val started = System.nanoTime()
                 try {
                     ProxyUrlProbe.measure("http://unresolvable.invalid/", server.localPort,
-                        200, "alice", "secret")
+                        600, "alice", "secret")
                     fail("Expected total timeout")
                 } catch (_: java.io.IOException) {
                     val elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started)
-                    assertTrue("One 200ms deadline, elapsed=$elapsed", elapsed < 1000)
+                    assertTrue("One 600ms deadline, elapsed=$elapsed", elapsed < 1000)
                 }
                 stalled.get(3, TimeUnit.SECONDS)
             } finally { executor.shutdownNow() }
