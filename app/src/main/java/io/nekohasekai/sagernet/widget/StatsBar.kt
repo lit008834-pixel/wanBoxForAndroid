@@ -212,10 +212,14 @@ class StatsBar @JvmOverloads constructor(
         }
     }
 
+    private var latencyAttached = false
+
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
+        latencyAttached = true
         initViews()
         updateThemeColors()
+        if (currentState == BaseService.State.Connected) testConnection(silent = true)
     }
 
     fun onIpDetailClicked() {
@@ -405,7 +409,7 @@ class StatsBar @JvmOverloads constructor(
 
     private fun probeKey(): ProbeKey? {
         val activity = context as? MainActivity ?: return null
-        if (!isAttachedToWindow || activity.lifecycle.currentState == androidx.lifecycle.Lifecycle.State.DESTROYED ||
+        if (!latencyAttached || !isAttachedToWindow || activity.lifecycle.currentState == androidx.lifecycle.Lifecycle.State.DESTROYED ||
             !DataStore.serviceState.connected ||
             currentState != BaseService.State.Connected) return null
         val service = activity.connection.service ?: return null
@@ -419,6 +423,7 @@ class StatsBar @JvmOverloads constructor(
     }
 
     override fun onDetachedFromWindow() {
+        latencyAttached = false
         resetLatencyState()
         super.onDetachedFromWindow()
     }
