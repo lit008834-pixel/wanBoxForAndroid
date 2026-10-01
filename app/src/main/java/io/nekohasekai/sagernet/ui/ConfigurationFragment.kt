@@ -2801,11 +2801,8 @@ class ConfigurationFragment @JvmOverloads constructor(
 
         private fun setupLayoutManager() {
             layoutManager = if (DataStore.groupLayoutMode == 1) {
-                FixedGridLayoutManager(configurationListView, UiLayoutPolicy.columns(
-                    true,
-                    resources.configuration.screenWidthDp.toFloat() - 8f,
-                    resources.configuration.fontScale
-                ))
+                // @author 雾晚: Honor manual double-column selection at every width/font size.
+                FixedGridLayoutManager(configurationListView, UiLayoutPolicy.columns(true))
             } else {
                 FixedLinearLayoutManager(configurationListView)
             }
@@ -3037,20 +3034,6 @@ class ConfigurationFragment @JvmOverloads constructor(
                 override fun onItemRangeInserted(positionStart: Int, itemCount: Int) = updateEmptyState()
                 override fun onItemRangeRemoved(positionStart: Int, itemCount: Int) = updateEmptyState()
             }.also { adapter?.registerAdapterDataObserver(it) }
-            configurationListView.addOnLayoutChangeListener { list, left, _, right, _, _, _, _, _ ->
-                val grid = layoutManagerValue as? FixedGridLayoutManager
-                if (grid != null) {
-                    val width = right - left - list.paddingLeft - list.paddingRight
-                    val columns = UiLayoutPolicy.columns(
-                        true, width / resources.displayMetrics.density, resources.configuration.fontScale
-                    )
-                    if (grid.spanCount != columns) {
-                        grid.spanCount = columns
-                        // Rebind the existing row alignment hints after the span count changes.
-                        list.post { if (listView === list) adapter?.notifyDataSetChanged() }
-                    }
-                }
-            }
             ViewCompat.setOnApplyWindowInsetsListener(configurationListView) { _, insets ->
                 bottomSystemInset = insets.getInsets(
                     WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
