@@ -14,11 +14,32 @@ import io.nekohasekai.sagernet.ui.ProfileCardStyle
 import io.nekohasekai.sagernet.ui.UiLayoutPolicy
 import android.text.TextUtils
 import android.widget.LinearLayout
+import androidx.core.view.ViewCompat
 import org.junit.Assert.*
 import org.junit.Test
 import java.util.Locale
 
 class UiLayoutAccessibilityTest {
+    @Test fun compactSelectionRetainsFullAccessibleStateAndRestoresLabels() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.runOnMainSync {
+            val context = ContextThemeWrapper(instrumentation.targetContext, R.style.Theme_SagerNet_White)
+            val card = LayoutInflater.from(context).inflate(R.layout.layout_profile, null)
+            val style = ProfileCardStyle(card)
+            val badge = card.findViewById<TextView>(R.id.profile_selection_label)
+            for ((selected, connected) in listOf(false to false, true to false, true to true)) {
+                val state = context.getString(if (connected) R.string.ui_profile_connected else R.string.ui_profile_selected)
+                for (compact in listOf(true, false, true, false)) {
+                    style.apply(compact); style.selection(selected, connected)
+                    assertEquals(if (selected) View.VISIBLE else View.GONE, badge.visibility)
+                    assertEquals(if (selected) state else null, ViewCompat.getStateDescription(card)?.toString())
+                    assertEquals(if (compact) context.getString(
+                        if (connected) R.string.ui_profile_connected_mark else R.string.ui_profile_selected_mark
+                    ) else state, badge.text.toString())
+                }
+            }
+        }
+    }
     @Test fun compactCardsStayTwoColumnsAndRestoreSingleColumnOnReuse() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         instrumentation.runOnMainSync {

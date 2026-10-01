@@ -3888,13 +3888,8 @@ class ConfigurationFragment @JvmOverloads constructor(
 
             private fun applySelected(selected: Boolean, connected: Boolean) {
                 card.isSelected = selected
-                selectionLabel.isVisible = selected
-                selectionLabel.setText(if (connected) R.string.ui_profile_connected else R.string.ui_profile_selected)
-                ViewCompat.setStateDescription(card, if (selected) selectionLabel.text else null)
-                // @author 雾晚: Inline non-color selection feedback without an extra grid row.
-                if (DataStore.groupLayoutMode == 1) {
-                    selectionLabel.text = getString(if (connected) R.string.ui_profile_connected_mark else R.string.ui_profile_selected_mark)
-                }
+                // @author 雾晚: Keep full accessible state while using inline grid feedback.
+                cardStyle.selection(selected, connected)
                 val ctx = card.context
                 val surface = ctx.getColorAttr(R.attr.colorSurface)
                 card.setCardBackgroundColor(surface)

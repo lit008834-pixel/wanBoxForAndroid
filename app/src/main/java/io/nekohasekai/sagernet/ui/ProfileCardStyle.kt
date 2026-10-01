@@ -6,6 +6,8 @@ import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.view.updatePadding
+import androidx.core.view.isVisible
+import androidx.core.view.ViewCompat
 import io.nekohasekai.sagernet.R
 
 /** Fully reapplied at bind time, so recycled grid/list holders never inherit the other style. */
@@ -23,6 +25,15 @@ internal class ProfileCardStyle(private val card: View) {
     private fun dp(value: Int) = (value * card.resources.displayMetrics.density + 0.5f).toInt()
 
     init { statusArea.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> arrangeStatus() } }
+
+    fun selection(selected: Boolean, connected: Boolean) {
+        badge.isVisible = selected
+        val fullState = card.context.getString(if (connected) R.string.ui_profile_connected else R.string.ui_profile_selected)
+        ViewCompat.setStateDescription(card, if (selected) fullState else null)
+        badge.text = if (compact) card.context.getString(
+            if (connected) R.string.ui_profile_connected_mark else R.string.ui_profile_selected_mark
+        ) else fullState
+    }
 
     fun apply(compact: Boolean) {
         this.compact = compact
