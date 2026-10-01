@@ -911,17 +911,6 @@
     <string name="observatory_settings">Observatory Settings</string>
     <string name="advanced_settings">Advanced Settings</string>
     <string name="widget_toggle">Tap to toggle connection</string>
-    <string name="change_icon">Change icon</string>
-        <string name="app_icon_dynamic">Dynamic</string>
-        <string name="app_icon_light_mode">Light mode</string>
-        <string name="app_icon_dark_mode">Dark mode</string>
-        <string name="app_icon_old_nekobox_plus">Old NekoBox+</string>
-        <string name="app_icon_nekobox" translatable="false">NekoBox</string>
-        <string name="app_icon_midnight">Midnight</string>
-        <string name="app_icon_heavens">Heavens</string>
-        <string name="app_icon_black_white">Black and White</string>
-        <string name="app_icon_text">Text</string>
-        <string name="app_icon_selected">Selected</string>
     <string name="switch_node">Switch Node</string>
     <string name="traffic_chart_title">Real-time Traffic Chart</string>
     <string name="traffic_chart_summary">View real-time speed chart and traffic throughput statistics</string>

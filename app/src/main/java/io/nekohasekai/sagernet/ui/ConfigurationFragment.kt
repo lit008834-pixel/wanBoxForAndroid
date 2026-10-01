@@ -3738,6 +3738,7 @@ class ConfigurationFragment @JvmOverloads constructor(
 
             val trafficText: TextView = view.findViewById(R.id.traffic_text)
             private val card = view as MaterialCardView
+            private val cardStyle = ProfileCardStyle(view)
             private val selectedIndicator: View = view.findViewById(R.id.selected_indicator)
             val editButton: ImageView = view.findViewById(R.id.edit)
             val doubleColumnMenuButton: ImageView = view.findViewById(R.id.double_column_menu)
@@ -3763,7 +3764,13 @@ class ConfigurationFragment @JvmOverloads constructor(
                 }
                 profileStatus.setOnClickListener {
                     val proxyEntity = entity
-                    if (proxyEntity.status == 3) {
+                    if (DataStore.groupLayoutMode == 1 && profileStatus.text.isNotBlank()) {
+                        MaterialAlertDialogBuilder(requireContext())
+                            .setTitle(entity.displayName())
+                            .setMessage(proxyEntity.error?.takeIf { proxyEntity.status == 2 || proxyEntity.status == 3 }
+                                ?: "${profileType.text}\n${profileStatus.text}")
+                            .setPositiveButton(android.R.string.ok, null).show()
+                    } else if (proxyEntity.status == 3) {
                         alert(proxyEntity.error ?: "<?>" ).tryToShow()
                     }
                 }
@@ -3884,6 +3891,10 @@ class ConfigurationFragment @JvmOverloads constructor(
                 selectionLabel.isVisible = selected
                 selectionLabel.setText(if (connected) R.string.ui_profile_connected else R.string.ui_profile_selected)
                 ViewCompat.setStateDescription(card, if (selected) selectionLabel.text else null)
+                // @author 雾晚: Inline non-color selection feedback without an extra grid row.
+                if (DataStore.groupLayoutMode == 1) {
+                    selectionLabel.text = getString(if (connected) R.string.ui_profile_connected_mark else R.string.ui_profile_selected_mark)
+                }
                 val ctx = card.context
                 val surface = ctx.getColorAttr(R.attr.colorSurface)
                 card.setCardBackgroundColor(surface)
@@ -3971,8 +3982,10 @@ class ConfigurationFragment @JvmOverloads constructor(
 
                 entity = proxyEntity
                 val bean = proxyEntity.requireBean()
+                cardStyle.apply(DataStore.groupLayoutMode == 1)
 
                 profileName.text = bean.displayName()
+                profileName.contentDescription = profileName.text
                 profileType.text = proxyEntity.displayType()
                 val protocolColor = requireContext().getProtocolColor(proxyEntity.type)
                 val chipBg = android.graphics.drawable.GradientDrawable().apply {
@@ -4008,6 +4021,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                     bean.displayAddress()
                 } else ""
                 profileAddress.text = address
+                profileAddress.contentDescription = address
                 profileAddress.isSelected = true
                 val trafficRowEmpty =
                     (!showTraffic || proxyEntity.status <= 0) && address.isBlank()

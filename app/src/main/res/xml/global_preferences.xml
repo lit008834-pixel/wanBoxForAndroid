@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- @author 雾晚 -->
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
@@ -92,11 +93,6 @@
             app:key="appLanguage"
             app:title="@string/language"
             app:useSimpleSummaryProvider="true" />
-
-        <Preference
-            app:icon="@drawable/ic_baseline_app_shortcut_24"
-            app:key="changeIcon"
-            app:title="@string/change_icon" />
 
         <SwitchPreference
             app:key="showBottomBar"
