@@ -97,7 +97,11 @@ class RouteRuleCompatibilityTest {
                 assertEquals("reject", rejected.getString("action")); assertFalse(rejected.has("outbound"))
                 assertTrue(list.any { it.optJSONArray("package_name")?.toString()?.contains(context.packageName) == true })
                 assertTrue(list.none { it.toString().contains("disabled.route.invalid") })
-                assertTrue(root.getJSONObject("route").getJSONArray("rule_set").toString().contains("https://example.com/rules.srs"))
+                // @author 雾晚: compare decoded URL values; Android JSONObject escapes slashes.
+                val generatedSets = root.getJSONObject("route").getJSONArray("rule_set")
+                assertTrue("Remote rule-set URL missing in $mode", (0 until generatedSets.length()).any {
+                    generatedSets.getJSONObject(it).optString("url") == "https://example.com/rules.srs"
+                })
                 assertTrue(list.none { it.has("override_destination") || it.has("reject_method") })
                 assertEquals(rules, SagerDatabase.rulesDao.allRules())
             }
