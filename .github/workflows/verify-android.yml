@@ -35,7 +35,8 @@ jobs:
         run: ./run lib core
       - name: Test bounded URL probes and configuration templates
         run: |
-          (cd libcore && go test ./internal/... ./protocol/urltest)
+          (cd libcore && go test ./internal/... ./protocol/urltest ./protocol/loadbalance)
+          (cd libcore && go test -race ./protocol/loadbalance)
           python3 -m unittest discover -s tools -p test_clean_subscription.py
           go -C ../sing-box run ./cmd/sing-box check -c "$GITHUB_WORKSPACE/docs/config/local-proxy.json"
           go -C ../sing-box run ./cmd/sing-box check -c "$GITHUB_WORKSPACE/docs/config/tun-fakeip.json"
