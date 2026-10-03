@@ -4,7 +4,7 @@
     <PreferenceCategory app:title="@string/rr_basic">
         <EditTextPreference app:key="routeName" app:title="@string/route_name" app:useSimpleSummaryProvider="true" />
 <moe.matsuri.nb4a.ui.SimpleMenuPreference app:key="rr_action" app:title="@string/rr_action" app:entries="@array/rr_action_entries" app:entryValues="@array/rr_action_values" app:useSimpleSummaryProvider="true" />
-        <io.nekohasekai.sagernet.widget.OutboundPreference app:key="routeOutbound" app:title="@string/rr_action" app:useSimpleSummaryProvider="true" />
+        <io.nekohasekai.sagernet.widget.OutboundPreference app:key="routeOutbound" app:title="@string/rr_outbound" app:useSimpleSummaryProvider="true" />
     </PreferenceCategory>
     <PreferenceCategory app:title="@string/rr_common">
         <io.nekohasekai.sagernet.widget.AppListPreference app:key="routePackages" app:title="@string/apps" app:summary="@string/rr_apps_modes" />

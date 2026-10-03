@@ -1056,6 +1056,8 @@
     <string name="rr_hide_advanced">收起高级选项</string>
     <string name="rr_action">动作</string>
     <string name="rr_inherit">使用出站目标决定动作</string>
+    <string name="rr_outbound">出站目标</string>
+    <string name="rr_default">默认 / 未设置</string>
     <string name="rr_method">拒绝方式</string>
     <string name="rr_strategy">域名解析策略</string>
     <string name="rr_sniffer">嗅探协议</string>

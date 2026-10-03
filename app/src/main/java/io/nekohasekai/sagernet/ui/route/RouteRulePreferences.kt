@@ -39,8 +39,11 @@ class RouteRulePreferences(private val fragment: PreferenceFragmentCompat) {
                     preferenceScreenState()
                     true
                 } catch (_: Exception) {
+                    val reason = if (runCatching { RouteRuleEditor.json(DataStore.serverConfig) }.isFailure)
+                        R.string.rr_json_error else R.string.rr_value_error
                     MaterialAlertDialogBuilder(context).setTitle(R.string.rr_invalid)
-                        .setMessage(R.string.rr_json_error).setPositiveButton(android.R.string.ok, null).show()
+                        .setMessage(context.getString(R.string.rr_problem, preference.title, context.getString(reason)))
+                        .setPositiveButton(android.R.string.ok, null).show()
                     false
                 }
             }

@@ -1141,6 +1141,8 @@
     <string name="rr_hide_advanced">Hide advanced options</string>
     <string name="rr_action">Action</string>
     <string name="rr_inherit">Use outbound selection</string>
+    <string name="rr_outbound">Outbound target</string>
+    <string name="rr_default">Default / unset</string>
     <string name="rr_method">Reject method</string>
     <string name="rr_strategy">Resolve strategy</string>
     <string name="rr_sniffer">Sniff protocols</string>
