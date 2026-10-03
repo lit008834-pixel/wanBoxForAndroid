@@ -27,9 +27,9 @@
 ---
 ## 📖 项目介绍 / Introduction
 
-**wanBoxForAndroid（OwnBox for Android）** 是基于 sing-box 官方 **v1.15.0-alpha.9 预览版内核**构建的 Android 通用网络代理客户端。集合全协议栈支持、自定义桌面图标切换（9 款精选图标，支持系统深浅色主题自适应）、TCP Ping 真连测试、常用应用分流一键预设、单节点独立测速、并发拨号、双网络加速、WebDAV 云备份同步、控制中心快捷磁贴与桌面小组件等功能，兼具快速连接、低耗电量与简洁界面。
+**wanBoxForAndroid 是 OwnBoxForAndroid 的非官方 Root 分支。上游项目：[OwnBoxForAndroid](https://github.com/Own716/OwnBoxForAndroid)。**
 
-**wanBoxForAndroid (OwnBox for Android)** is an Android universal proxy client built with the official **sing-box v1.15.0-alpha.9 preview core**. Features include full protocol support, customizable home-screen icons with light/dark theme adaptation, real-connection TCP Ping, one-tap per-app routing presets, per-node latency tests, concurrent dialing, dual-network acceleration, WebDAV backup and sync, a Quick Settings tile, and home-screen widgets.
+**wanBoxForAndroid is the unofficial Root branch of OwnBoxForAndroid. Upstream project: [OwnBoxForAndroid](https://github.com/Own716/OwnBoxForAndroid).**
 
 ---
 
