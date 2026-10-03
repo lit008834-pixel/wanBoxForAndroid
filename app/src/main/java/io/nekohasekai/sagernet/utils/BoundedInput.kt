@@ -58,12 +58,13 @@ object BoundedInput {
     fun text(input: InputStream, limit: Int = JSON_BYTES): String = read(input, limit).toString(Charsets.UTF_8)
 
     /** Drain every entry under a shared budget; directory entries also count. */
-    fun zip(input: InputStream, consume: (String, ByteArray) -> Unit) {
+    fun zip(input: InputStream, validateName: (String) -> Unit = {}, consume: (String, ByteArray) -> Unit) {
         ZipInputStream(counting(input, SOURCE_BYTES)).use { zip ->
             var entries = 0
             var total = 0
             while (true) {
                 val entry = zip.nextEntry ?: break
+                validateName(entry.name)
                 if (++entries > ZIP_ENTRIES) throw IOException("压缩包文件数量超过安全限制")
                 val bytes = read(zip, minOf(ZIP_ENTRY_BYTES, ZIP_TOTAL_BYTES - total))
                 total += bytes.size
@@ -75,11 +76,17 @@ object BoundedInput {
 
     fun backupZip(input: InputStream): String {
         var result: String? = null
-        zip(input) { name, bytes ->
+        zip(input, validateName = { name ->
+            if (name.startsWith('/') || '\\' in name || ':' in name || name.split('/').any { it == ".." })
+                throw IOException("备份压缩包含无效路径")
+        }) { name, bytes ->
+            // @author 雾晚: mobile backup archives contain one root JSON, not arbitrary files/paths.
+            if ('/' in name || '\\' in name || name == ".." || ':' in name || !name.endsWith(".json", ignoreCase = true))
+                throw IOException("备份压缩包含不支持的路径或文件")
             if (name.endsWith(".json", ignoreCase = true)) {
                 if (result != null) throw IOException("备份包含多个 JSON 文件")
                 if (bytes.size > JSON_BYTES) throw LimitExceeded(JSON_BYTES)
-                result = bytes.toString(Charsets.UTF_8)
+                result = Charsets.UTF_8.newDecoder().decode(java.nio.ByteBuffer.wrap(bytes)).toString()
             }
         }
         return result ?: throw IOException("备份缺少 JSON 文件")

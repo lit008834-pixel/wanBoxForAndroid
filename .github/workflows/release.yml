@@ -176,13 +176,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p previous
-          gh release download v3.0.4-preview.4 \
+          gh release download v3.0.5-preview.2 \
             -R lit008834-pixel/wanBoxForAndroid \
-            -p wanBoxForAndroid-3.0.4-preview.4-x86_64-release.apk -D previous
+            -p wanBoxForAndroid-3.0.5-preview.2-x86_64-release.apk -D previous
           gh release download v2.9.1-preview \
             -R Own716/OwnBoxForAndroid \
             -p OwnBox-2.9.1-x86_64-release.apk -D previous
-          echo '627ade62e3c56c4027228877e4df93802c1473439b316ac2823ab3b7dd829340  previous/wanBoxForAndroid-3.0.4-preview.4-x86_64-release.apk' | sha256sum --check
+          echo '8dba440911f90b60d94574d62c28ce20dbab80dded19a580142ddaf0413fc863  previous/wanBoxForAndroid-3.0.5-preview.2-x86_64-release.apk' | sha256sum --check
           # @author 雾晚: 上游测试 APK 附件可变，验证包名和 APK 签名后用于模拟器。
           OWNBOX=previous/OwnBox-2.9.1-x86_64-release.apk
           AAPT=$(find "${ANDROID_HOME}/build-tools" -name aapt | sort -V | tail -n 1)
@@ -231,6 +231,8 @@ jobs:
       - name: Publish to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
+          # @author 雾晚: publish the tested dispatch commit, not the default branch.
+          target_commitish: ${{ github.sha }}
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           name: wanBox ${{ github.event.inputs.tag || github.ref_name }}
           body_path: RELEASE_NOTES.md

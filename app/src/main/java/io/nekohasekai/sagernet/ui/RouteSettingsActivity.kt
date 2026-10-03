@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.ui
 
 import android.app.Activity
@@ -40,6 +41,9 @@ import io.nekohasekai.sagernet.widget.ListListener
 import io.nekohasekai.sagernet.widget.OutboundPreference
 import kotlinx.parcelize.Parcelize
 import moe.matsuri.nb4a.ui.EditConfigPreference
+import io.nekohasekai.sagernet.route.RouteRuleEditor
+import io.nekohasekai.sagernet.ui.route.RouteRulePreferences
+import java.util.concurrent.atomic.AtomicBoolean
 
 @Suppress("UNCHECKED_CAST")
 class RouteSettingsActivity(
@@ -102,6 +106,8 @@ class RouteSettingsActivity(
     }
 
     private lateinit var editConfigPreference: EditConfigPreference
+    private var rulePreferences: RouteRulePreferences? = null
+    private val saving = AtomicBoolean(false)
 
     fun needSave(): Boolean {
         return DataStore.dirty
@@ -114,6 +120,7 @@ class RouteSettingsActivity(
         addPreferencesFromResource(R.xml.route_preferences)
 
         editConfigPreference = findPreference(Key.SERVER_CONFIG)!!
+        rulePreferences = RouteRulePreferences(this).also { it.bind() }
     }
 
     override fun onResume() {
@@ -121,6 +128,7 @@ class RouteSettingsActivity(
 
         if (::editConfigPreference.isInitialized) {
             editConfigPreference.notifyChanged()
+            rulePreferences?.refresh()
         }
     }
 
@@ -260,10 +268,16 @@ class RouteSettingsActivity(
 
 
         }
+        else {
+            // @author 雾晚: restored Preference edits must still participate in unsaved-change protection.
+            DataStore.profileCacheStore.registerChangeListener(this)
+        }
 
     }
 
-    suspend fun saveAndExit() {
+    suspend fun saveAndExit(allowCatchAll: Boolean = false) {
+        if (!saving.compareAndSet(false, true)) return
+        try {
 
         if (!needSave()) {
             onMainDispatcher {
@@ -275,25 +289,83 @@ class RouteSettingsActivity(
             return
         }
 
+        // @author 雾晚: validate a copy; a rejected edit must never mutate the stored rule.
         val editingId = DataStore.editingId
+        val candidate = (if (editingId == 0L) RuleEntity() else SagerDatabase.rulesDao.getById(editingId)?.copy())
+            ?: return
+        candidate.serialize()
+        if (candidate.packages.isNotEmpty() && DataStore.serviceMode !in setOf(Key.MODE_VPN, Key.MODE_ROOT)) {
+            onMainDispatcher { MaterialAlertDialogBuilder(this@RouteSettingsActivity).setTitle(R.string.rr_invalid)
+                .setMessage(R.string.rr_apps_modes).setPositiveButton(android.R.string.ok, null).show() }
+            return
+        }
+        val problems = RouteRuleEditor.problems(candidate)
+        val errors = problems.filterNot { it.error == RouteRuleEditor.Error.EMPTY }
+        if (errors.isNotEmpty()) {
+            onMainDispatcher {
+                val messages = errors.joinToString("\n") { problem ->
+                    val reason = when (problem.error) {
+                        RouteRuleEditor.Error.JSON -> R.string.rr_json_error
+                        RouteRuleEditor.Error.UNSUPPORTED -> R.string.rr_unsupported_error
+                        RouteRuleEditor.Error.ACTION_OPTIONS -> R.string.rr_action_error
+                        else -> R.string.rr_value_error
+                    }
+                    getString(R.string.rr_problem, problem.field, getString(reason))
+                }
+                MaterialAlertDialogBuilder(this@RouteSettingsActivity).setTitle(R.string.rr_invalid)
+                    .setMessage(messages).setPositiveButton(android.R.string.ok, null).show()
+            }
+            return
+        }
+        if (!allowCatchAll && problems.any { it.error == RouteRuleEditor.Error.EMPTY }) {
+            onMainDispatcher {
+                MaterialAlertDialogBuilder(this@RouteSettingsActivity).setTitle(R.string.rr_invalid)
+                    .setMessage(R.string.rr_empty).setNegativeButton(android.R.string.cancel, null)
+                    .setPositiveButton(R.string.yes) { _, _ -> runOnDefaultDispatcher { saveAndExit(true) } }.show()
+            }
+            return
+        }
+        if (candidate.outbound > 0 && RouteRuleEditor.needsOutbound(candidate.config, candidate.outbound) &&
+            ProfileManager.getProfile(candidate.outbound) == null) {
+            onMainDispatcher { MaterialAlertDialogBuilder(this@RouteSettingsActivity).setTitle(R.string.rr_invalid)
+                .setMessage(R.string.rr_value_error).setPositiveButton(android.R.string.ok, null).show() }
+            return
+        }
+        try {
+            // Constructor + close only: actual pinned core schema/Go RE2 validation, no Start(),
+            // TUN creation, DNS downloads or change to the running proxy instance.
+            libcore.Libcore.newTestSingBoxInstance(RouteRuleEditor.validationConfig(candidate), null).close()
+        } catch (e: Exception) {
+            onMainDispatcher { MaterialAlertDialogBuilder(this@RouteSettingsActivity).setTitle(R.string.rr_invalid)
+                .setMessage(getString(R.string.rr_core_error, e.message.orEmpty()))
+                .setPositiveButton(android.R.string.ok, null).show() }
+            return
+        }
         if (editingId == 0L) {
             if (intent.hasExtra(EXTRA_PACKAGE_NAME)) {
                 setResult(RESULT_OK, Intent())
             }
 
-            ProfileManager.createRule(RuleEntity().apply { serialize() })
+            ProfileManager.createRule(candidate)
         } else {
             val entity = SagerDatabase.rulesDao.getById(DataStore.editingId)
             if (entity == null) {
                 finish()
                 return
             }
-            ProfileManager.updateRule(entity.apply { serialize() })
+            ProfileManager.updateRule(candidate)
         }
         if (DataStore.serviceState.started) {
-            runCatching { SagerNet.reloadService() }
+            runCatching { SagerNet.reloadService() }.onFailure {
+                onMainDispatcher { Toast.makeText(this@RouteSettingsActivity, R.string.rr_reload_error, Toast.LENGTH_LONG).show() }
+            }
         }
-        finish()
+        onMainDispatcher { finish() }
+        } catch (e: Exception) {
+            Logs.w(e)
+            onMainDispatcher { MaterialAlertDialogBuilder(this@RouteSettingsActivity).setTitle(R.string.rr_invalid)
+                .setMessage(R.string.rr_save_error).setPositiveButton(android.R.string.ok, null).show() }
+        } finally { saving.set(false) }
 
     }
 
@@ -304,7 +376,11 @@ class RouteSettingsActivity(
         return true
     }
 
-    override fun onOptionsItemSelected(item: MenuItem) = child.onOptionsItemSelected(item)
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (item.itemId == android.R.id.home) { onBackPressed(); return true }
+        return (supportFragmentManager.findFragmentById(R.id.settings) as? MyPreferenceFragmentCompat)
+            ?.onOptionsItemSelected(item) ?: super.onOptionsItemSelected(item)
+    }
 
     override fun onBackPressed() {
         if (needSave()) {
@@ -313,7 +389,7 @@ class RouteSettingsActivity(
     }
 
     override fun onSupportNavigateUp(): Boolean {
-        if (!super.onSupportNavigateUp()) finish()
+        onBackPressed()
         return true
     }
 

@@ -50,6 +50,8 @@ import moe.matsuri.nb4a.utils.JavaUtil.gson
 import moe.matsuri.nb4a.utils.Util
 import moe.matsuri.nb4a.utils.listByLineOrComma
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+// @author 雾晚
+import io.nekohasekai.sagernet.route.RouteRuleEditor
 
 const val TAG_MIXED = "mixed-in"
 
@@ -1399,7 +1401,16 @@ fun buildConfig(
                         rule.network.isBlank() &&
                         rule.source.isBlank() &&
                         rule.protocol.isBlank()
-                val shouldAddDnsRule = hasDomainCriteria || isAppOnlyDns
+                // @author 雾晚: auxiliary route actions do not select a DNS outbound.
+                val routingAction = RouteRuleEditor.action(rule.config, rule.outbound)
+                // DNS queries cannot represent destination-IP/port or inverted mixed predicates.
+                // Such extended rules use the existing DNS policy instead of a broader derived rule.
+                val extendedMatch = RouteRuleEditor.json(rule.config)
+                val scopedMatch = setOf("domain", "domain_suffix", "domain_keyword", "domain_regex", "inbound",
+                    "ip_version", "ip_is_private", "source_ip_is_private", "invert", "port", "port_range",
+                    "source_ip_cidr", "source_port", "source_port_range")
+                val usesDnsOutbound = routingAction in setOf("route", "reject") && scopedMatch.none { extendedMatch.has(it) }
+                val shouldAddDnsRule = usesDnsOutbound && (hasDomainCriteria || isAppOnlyDns)
 
                 fun makeDnsRuleObj(): DNSRule_DefaultOptions {
                     return DNSRule_DefaultOptions().apply {
@@ -1409,12 +1420,12 @@ fun buildConfig(
                     }
                 }
 
-                when (rule.outbound) {
+                when (if (routingAction == "reject") -2L else rule.outbound) {
                     -1L -> {
                         if (shouldAddDnsRule) {
                             userDNSRuleList += makeDnsRuleObj().apply { server = "dns-direct" }
                         }
-                        for ((tag, isIP) in rulesetTags) {
+                        for ((tag, isIP) in rulesetTags.filter { usesDnsOutbound }) {
                             if (!isIP) {
                                 userDNSRuleList += DNSRule_DefaultOptions().apply {
                                     rule_set = mutableListOf(tag)
@@ -1428,7 +1439,7 @@ fun buildConfig(
                         if (shouldAddDnsRule) {
                             userDNSRuleList += makeDnsRuleObj().apply { action = "reject" }
                         }
-                        for ((tag, isIP) in rulesetTags) {
+                        for ((tag, isIP) in rulesetTags.filter { usesDnsOutbound }) {
                             if (!isIP) {
                                 userDNSRuleList += DNSRule_DefaultOptions().apply {
                                     rule_set = mutableListOf(tag)
@@ -1450,7 +1461,7 @@ fun buildConfig(
                                 userDNSRuleList += makeDnsRuleObj().apply { server = "dns-remote" }
                             }
                         }
-                        for ((tag, isIP) in rulesetTags) {
+                        for ((tag, isIP) in rulesetTags.filter { usesDnsOutbound }) {
                             if (!isIP) {
                                 if (useFakeDns) {
                                     userDNSRuleList += DNSRule_DefaultOptions().apply {
@@ -1507,7 +1518,8 @@ fun buildConfig(
                         }
                     }
                     if (rule.network.isNotBlank()) {
-                        ruleObj.network = listOf(rule.network)
+                        // @author 雾晚: the multiline editor stores one network per line.
+                        ruleObj.network = rule.network.listByLineOrComma()
                     }
                     if (rule.source.isNotBlank()) {
                         ruleObj.source_ip_cidr = rule.source.listByLineOrComma()
@@ -1521,7 +1533,8 @@ fun buildConfig(
                     } else {
                         ruleObj.outbound = targetOutbound
                     }
-                    ruleObj._hack_custom_config = rule.config
+                    // @author 雾晚: non-routing actions must not inherit an outbound.
+                    RouteRuleEditor.applyAction(ruleObj, rule.config)
                 }
 
                 val generatedSubRules = mutableListOf<Rule_DefaultOptions>()
@@ -1573,8 +1586,15 @@ fun buildConfig(
                     if (!singleRule.checkEmpty()) generatedSubRules.add(singleRule)
                 }
 
+                // @author 雾晚: NOT(domain OR IP) must not become NOT(domain) OR NOT(IP).
+                val invertedGroup = RouteRuleEditor.invertedGroup(generatedSubRules)
+                if (invertedGroup != null) {
+                    route.rules.add(invertedGroup)
+                    route.rule_set.addAll(ruleSets)
+                    continue
+                }
                 for (subRule in generatedSubRules) {
-                    if (subRule.action != "reject" && subRule.outbound.isNullOrBlank()) {
+                    if (subRule.action !in setOf("reject", "sniff", "resolve", "hijack-dns", "route-options") && subRule.outbound.isNullOrBlank()) {
                         Toast.makeText(
                             SagerNet.application,
                             "Warning: " + rule.displayName() + ": A non-existent outbound was specified.",

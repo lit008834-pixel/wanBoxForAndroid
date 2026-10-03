@@ -18,9 +18,9 @@ object BackupRestore {
     private fun <T> decode(content: JSONObject, key: String, create: (Parcel) -> T): List<T>? {
         if (!content.has(key)) return null
         val array = content.getJSONArray(key)
-        require(array.length() <= 100000) { "备份记录数量超过限制" }
+        require(array.length() <= PortableBackup.RECORDS) { "备份记录数量超过限制" }
         return (0 until array.length()).map { index ->
-            val bytes = Util.b64Decode(array.getString(index))
+            val bytes = PortableBackup.strictBase64(array.getString(index))
             require(bytes.size >= 4 && bytes.size % 4 == 0) { "备份记录长度无效" }
             val parcel = Parcel.obtain()
             try {
@@ -35,8 +35,11 @@ object BackupRestore {
 
     /** Decode all sections before any destructive statement, including unselected sections. */
     fun parse(content: JSONObject): Plan {
-        require(content.getInt("version") == 1) { "不支持的备份版本" }
-        val profiles = decode(content, "profiles") { parcel ->
+        if (content.has("schemaVersion") || content.has("format")) return PortableBackup.parse(content)
+        // @author 雾晚: confirmed historical manual v1 and automatic proxies-without-version exports.
+        require(!content.has("version") && content.has("proxies") || content.optInt("version", -1) == 1) { "不支持的备份版本" }
+        require(!(content.has("profiles") && content.has("proxies"))) { "备份同时包含冲突的节点字段" }
+        val profiles = decode(content, if (content.has("proxies")) "proxies" else "profiles") { parcel ->
             io.nekohasekai.sagernet.fmt.KryoConverters.deserializeStrict(ProxyEntity(), parcel.createByteArray())
         }
         val groups = decode(content, "groups") { parcel ->
@@ -44,6 +47,14 @@ object BackupRestore {
         }
         val rules = decode(content, "rules", ParcelizeBridge::createRule)
         val settings = decode(content, "settings", KeyValuePair.CREATOR::createFromParcel)
+        return Plan(profiles, groups, rules, settings).also(::validate)
+    }
+
+    // @author 雾晚: shared pre-write validation for both portable and historical formats.
+    fun validate(plan: Plan) {
+        val (profiles, groups, rules, settings) = plan
+        require(listOf(profiles, groups, rules, settings).any { it != null }) { "备份没有可恢复的数据" }
+        require(listOf(profiles, groups, rules, settings).filterNotNull().all { it.size <= PortableBackup.RECORDS }) { "备份记录数量超过限制" }
         require((profiles == null) == (groups == null)) { "备份缺少节点或分组" }
         groups?.let { require(it.map { g -> g.id }.distinct().size == it.size) { "分组 ID 重复" } }
         profiles?.let { list ->
@@ -51,18 +62,30 @@ object BackupRestore {
             val groupIds = groups!!.map { it.id }.toSet()
             require(list.all { it.groupId in groupIds }) { "节点引用了不存在的分组" }
             list.forEach { it.requireBean() }
+            require(groups!!.all { it.id > 0 } && list.all { it.id > 0 }) { "备份 ID 无效" }
+            val ids = list.map { it.id }.toSet()
+            fun proxyRef(id: Long) = id <= 0 || id in ids
+            require(groups.all { proxyRef(it.frontProxy) && proxyRef(it.landingProxy) }) { "备份分组引用了不存在的节点" }
+            list.forEach { p ->
+                p.chainBean?.let { require(it.proxies.all { id -> id in ids }) { "备份代理链引用无效" } }
+                p.balancerBean?.let { b ->
+                    require(b.proxies.all { it in ids } && proxyRef(b.frontProxy) && proxyRef(b.landingProxy)) { "备份负载均衡引用无效" }
+                    require((b.targetGroupId <= 0 || b.targetGroupId in groupIds) && b.targetGroupIds.all { it in groupIds }) { "备份负载均衡分组引用无效" }
+                }
+            }
+            rules?.let { require(it.all { r -> proxyRef(r.outbound) }) { "备份路由出站引用无效" } }
         }
         rules?.let { require(it.map { r -> r.id }.distinct().size == it.size) { "规则 ID 重复" } }
         settings?.let { list ->
             require(list.map { it.key }.distinct().size == list.size) { "设置键重复" }
             list.forEach {
                 require(it.key.isNotBlank() && it.valueType in 0..6) { "无效设置" }
+                require(it.value.size <= 1024 * 1024) { "备份设置过大" }
                 val expected = when (it.valueType) { 1 -> 1; 2, 3 -> 4; 4 -> 8; else -> null }
                 require(expected == null || it.value.size == expected) { "设置长度无效" }
                 if (it.valueType == 6) it.stringSet // Validate length prefixes now, before writes.
             }
         }
-        return Plan(profiles, groups, rules, settings)
     }
 
     /**
@@ -71,8 +94,14 @@ object BackupRestore {
      */
     @Synchronized
     fun apply(plan: Plan, profile: Boolean, rule: Boolean, setting: Boolean, checkActive: () -> Unit = {}) {
+        validate(plan)
         checkActive()
         val room = SagerDatabase.instance
+        if (rule && plan.rules != null) {
+            val ids = if (profile && plan.profiles != null) plan.profiles.map { it.id }.toSet()
+                else room.proxyDao().getAll().map { it.id }.toSet()
+            require(plan.rules.all { it.outbound <= 0 || it.outbound in ids }) { "备份路由引用的节点不在目标设备，请同时恢复配置" }
+        }
         val sql = room.openHelper.writableDatabase
         val settings = plan.settings?.takeIf { setting }
         if (settings != null) {
