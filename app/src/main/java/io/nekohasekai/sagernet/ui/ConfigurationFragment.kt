@@ -75,6 +75,7 @@ import io.nekohasekai.sagernet.bg.BaseService
 import io.nekohasekai.sagernet.bg.proto.AndroidSpeedTestSession
 import io.nekohasekai.sagernet.bg.proto.SpeedTestQueueRunner
 import io.nekohasekai.sagernet.bg.proto.SpeedTestSnapshot
+import io.nekohasekai.sagernet.bg.proto.NodeTestRunner
 import io.nekohasekai.sagernet.bg.proto.UrlTest
 import io.nekohasekai.sagernet.bg.proto.completedSpeedTestCount
 import io.nekohasekai.sagernet.database.DataStore
@@ -2115,15 +2116,17 @@ class ConfigurationFragment @JvmOverloads constructor(
         val targetUrl = DataStore.groupUrlTestUrl(profile.groupId).takeIf { it.isNotBlank() } ?: DataStore.connectionTestURL
         runOnDefaultDispatcher {
             profile.status = 0
+            profile.ping = 0
+            profile.error = null
             ProfileManager.postUpdate(profile, false)
             try {
                 val urlTest = UrlTest(targetUrl)
-                val result = kotlinx.coroutines.withTimeoutOrNull(DataStore.connectionTestTimeout * 2 + 2500L) {
-                    urlTest.doTest(profile)
-                } ?: throw java.util.concurrent.TimeoutException("URL test timeout")
+                val result = urlTest.doTest(profile)
                 profile.status = 1
                 profile.ping = result
                 profile.error = null
+            } catch (cancel: kotlinx.coroutines.CancellationException) {
+                throw cancel
             } catch (e: PluginManager.PluginNotFoundException) {
                 profile.status = 2
                 profile.error = e.readableMessage
@@ -2149,10 +2152,11 @@ class ConfigurationFragment @JvmOverloads constructor(
         val isAll = isCurrentAllGroups()
         val group = DataStore.currentGroup()
         val displayName = if (isAll) getString(R.string.group_tab_all) else group.displayName()
-        val targetUrl = if (isAll) DataStore.connectionTestURL else DataStore.groupUrlTestUrl(group.id)
+        // @author 雾晚: requested batch endpoint; connected service probes remain unchanged.
+        val targetUrl = NodeTestRunner.DEFAULT_URL
         Logs.d(
             "URLTestTrace batch=start isAll=$isAll groupId=${group.id} group=${group.name} " +
-                    "concurrent=${DataStore.connectionTestConcurrent} timeout=${DataStore.connectionTestTimeout}ms " +
+                    "concurrent=${DataStore.connectionTestConcurrent} timeout=${NodeTestRunner.NETWORK_TIMEOUT_MS}ms " +
                     "link=$targetUrl serviceState=${DataStore.serviceState} " +
                     "currentProfile=${DataStore.currentProfile} network=${SagerNet.underlyingNetwork}"
         )
@@ -2166,25 +2170,27 @@ class ConfigurationFragment @JvmOverloads constructor(
             test.proxyN = profilesList.size
             val profiles = ConcurrentLinkedQueue(profilesList)
             Logs.d("URLTestTrace batch=loaded profiles=${profilesList.size}")
-            repeat(DataStore.connectionTestConcurrent) { workerId ->
+            repeat(DataStore.connectionTestConcurrent.coerceIn(1, NodeTestRunner.CONCURRENCY)) { workerId ->
                 testJobs.add(launch(Dispatchers.IO) {
                     val urlTest = UrlTest(targetUrl) // note: this is NOT in bg process
                     while (isActive) {
                         val profile = profiles.poll() ?: break
                         profile.status = 0
+                        profile.ping = 0
+                        profile.error = null
                         Logs.d(
                             "URLTestTrace batch=dispatch worker=$workerId profileId=${profile.id} " +
                                     "profile=${profile.displayName()} isCurrent=${profile.id == DataStore.currentProfile}"
                         )
 
                         try {
-                            val result = kotlinx.coroutines.withTimeoutOrNull(DataStore.connectionTestTimeout * 2 + 2500L) {
-                                urlTest.doTest(profile)
-                            } ?: throw java.util.concurrent.TimeoutException("URL test timeout")
+                            val result = urlTest.doTest(profile)
                             profile.status = 1
                             profile.ping = result
                             profile.error = null
                             Logs.d("URLTest ${profile.displayName()}: done, ping=${result}ms")
+                        } catch (cancel: kotlinx.coroutines.CancellationException) {
+                            throw cancel
                         } catch (e: PluginManager.PluginNotFoundException) {
                             profile.status = 2
                             profile.error = e.readableMessage

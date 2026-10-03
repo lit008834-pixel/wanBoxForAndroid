@@ -1,12 +1,11 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.bg.proto
 
 import io.nekohasekai.sagernet.database.DataStore
 import io.nekohasekai.sagernet.database.ProxyEntity
-import io.nekohasekai.sagernet.ktx.Logs
 
+/** Node-core probes, bounded and retried by NodeTestRunner. @author 雾晚 */
 class UrlTest(private val overrideLink: String? = null) {
-
-    private val timeout = DataStore.connectionTestTimeout
 
     fun resolveLink(profile: ProxyEntity): String {
         if (!overrideLink.isNullOrBlank()) return overrideLink
@@ -17,8 +16,12 @@ class UrlTest(private val overrideLink: String? = null) {
 
     suspend fun doTest(profile: ProxyEntity): Int {
         val link = resolveLink(profile)
-        Logs.d("URLTest ${profile.displayName()}: start, link=$link, timeout=${timeout}ms")
-        return TestInstance(profile, link, timeout).doTest()
+        return NodeTestRunner.measure(link, retryable = {
+            it !is io.nekohasekai.sagernet.plugin.PluginManager.PluginNotFoundException && it !is IllegalArgumentException
+        }) { target, timeout ->
+            // Each retry owns a fresh core; TestInstance closes it before the next attempt.
+            TestInstance(profile, target, timeout).doTest()
+        }
     }
 
 }
