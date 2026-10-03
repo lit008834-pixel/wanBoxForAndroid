@@ -116,7 +116,7 @@ class AuditDatabaseTest {
             try {
                 BackupRestore.apply(BackupRestore.Plan(emptyList(), listOf(ProxyGroup(id=800,name="new")), emptyList(), duplicate), true, true, true)
                 fail("duplicate settings accepted")
-            } catch (_: android.database.sqlite.SQLiteConstraintException) {}
+            } catch (_: IllegalArgumentException) {} // @author 雾晚: now rejected before database writes.
             assertEquals(listOf(700L), SagerDatabase.groupDao.allGroups().map { it.id })
             assertEquals("before", PublicDatabase.kvPairDao["audit"]?.string)
             assertEquals(listOf(701L), SagerDatabase.proxyDao.getAll().map { it.id })

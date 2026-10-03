@@ -1180,4 +1180,9 @@
     <string name="rr_core_error">Core validation failed: %1$s</string>
     <string name="rr_save_error">The rule could not be saved. Your edits remain available.</string>
     <string name="rr_reload_error">Rule saved, but the running service could not reload. Reconnect the service.</string>
+    <!-- @author 雾晚 -->
+    <string name="backup_saved_target">Backup saved: %1$s</string>
+    <string name="backup_access_error">File access was denied. Select the backup again and grant read access.</string>
+    <string name="backup_choose_json">This is a log file. Select OwnBox_backup_*.json or a supported backup ZIP. Do not rename a log to JSON.</string>
+    <string name="backup_invalid_or_unreadable">Cannot read this backup. Select an exported backup JSON/ZIP, check file access, or re-export with the original app version.</string>
 </resources>

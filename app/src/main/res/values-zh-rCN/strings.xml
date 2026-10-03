@@ -1095,4 +1095,9 @@
     <string name="rr_core_error">内核校验失败：%1$s</string>
     <string name="rr_save_error">规则保存失败，编辑内容仍保留。</string>
     <string name="rr_reload_error">规则已保存，但运行中的服务重载失败，请重新连接。</string>
+    <!-- @author 雾晚 -->
+    <string name="backup_saved_target">备份已保存：%1$s</string>
+    <string name="backup_access_error">文件访问被拒绝，请重新选择备份并授权读取。</string>
+    <string name="backup_choose_json">选择的是日志文件。请选择 OwnBox_backup_*.json 或备份 ZIP；不要把日志改名为 JSON。</string>
+    <string name="backup_invalid_or_unreadable">无法读取此备份。请选择实际导出的 JSON/ZIP，检查文件权限，或用原版本重新导出。</string>
 </resources>
