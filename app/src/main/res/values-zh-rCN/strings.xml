@@ -1041,4 +1041,11 @@
     <plurals name="ui_subscription_node_count">
         <item quantity="other">节点数：%d</item>
     </plurals>
+    <!-- @author 雾晚 -->
+    <string name="dashboard_connect_service">请先连接代理服务，再重新加载仪表盘。</string>
+    <string name="dashboard_enable_api">请在“高级设置”开启 Clash API，重新连接服务后再加载仪表盘。</string>
+    <string name="dashboard_auth_failed">本地 Clash API 认证失败。请重新连接服务以同步密钥，再重新加载仪表盘。</string>
+    <string name="dashboard_api_unavailable">本地 Clash API 不可用或响应无效。请检查服务连接和“高级设置”的 Clash API 开关，再重新加载。</string>
+    <string name="dashboard_html_unavailable">API 已可用，但内置 YACD 页面加载失败。请重新连接服务，再重新加载。</string>
+    <string name="dashboard_storage_unavailable">无法保存 YACD 设置。请重新加载，并检查 WebView 存储是否可用。</string>
 </resources>

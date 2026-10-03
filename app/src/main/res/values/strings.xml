@@ -1126,4 +1126,11 @@
         <item quantity="one">Node: %d</item>
         <item quantity="other">Nodes: %d</item>
     </plurals>
+    <!-- @author 雾晚 -->
+    <string name="dashboard_connect_service">Connect the proxy service first, then reload the dashboard.</string>
+    <string name="dashboard_enable_api">Enable Clash API in Advanced Settings, reconnect the service, then reload.</string>
+    <string name="dashboard_auth_failed">Local Clash API authentication failed. Reconnect the service to synchronize its secret, then reload.</string>
+    <string name="dashboard_api_unavailable">Local Clash API is unavailable or returned an invalid response. Check the service connection and Clash API in Advanced Settings, then reload.</string>
+    <string name="dashboard_html_unavailable">The API is available, but the bundled YACD page could not load. Reconnect the service and reload.</string>
+    <string name="dashboard_storage_unavailable">YACD settings could not be saved. Reload the dashboard and check WebView storage availability.</string>
 </resources>
