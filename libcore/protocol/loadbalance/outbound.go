@@ -61,10 +61,15 @@ type nodeStats struct {
 	latencyEmaMs     atomic.Int64
 }
 
-func (s *nodeStats) recordSuccess(latencyMs int64) {
+// @author 雾晚: keep application dial time out of health-probe latency.
+func (s *nodeStats) recordDialSuccess() {
 	s.consecutiveFails.Store(0)
 	s.totalDials.Add(1)
 	s.successDials.Add(1)
+}
+
+func (s *nodeStats) recordSuccess(latencyMs int64) {
+	s.recordDialSuccess()
 	if latencyMs > 0 {
 		old := s.latencyEmaMs.Load()
 		if old <= 0 {
@@ -733,7 +738,6 @@ func (s *LoadBalance) DialContext(ctx context.Context, network string, destinati
 			conn net.Conn
 			err  error
 		)
-		start := time.Now()
 		if i < n-1 {
 			timeout := 5 * time.Second
 			if s.isLeastPing() {
@@ -761,9 +765,8 @@ func (s *LoadBalance) DialContext(ctx context.Context, network string, destinati
 			conn, err = candidate.DialContext(ctx, network, destination)
 		}
 		if err == nil {
-			elapsed := time.Since(start).Milliseconds()
 			if idx < len(s.stats) && s.stats[idx] != nil {
-				s.stats[idx].recordSuccess(elapsed)
+				s.stats[idx].recordDialSuccess()
 			}
 			if (s.strategy == "leastLoad" || s.strategy == "least_load") && idx < len(s.activeConns) && s.activeConns[idx] != nil {
 				s.activeConns[idx].Add(1)
@@ -813,7 +816,6 @@ func (s *LoadBalance) ListenPacket(ctx context.Context, destination M.Socksaddr)
 			conn net.PacketConn
 			err  error
 		)
-		start := time.Now()
 		if i < n-1 {
 			timeout := 5 * time.Second
 			if s.isLeastPing() {
@@ -841,9 +843,8 @@ func (s *LoadBalance) ListenPacket(ctx context.Context, destination M.Socksaddr)
 			conn, err = candidate.ListenPacket(ctx, destination)
 		}
 		if err == nil {
-			elapsed := time.Since(start).Milliseconds()
 			if idx < len(s.stats) && s.stats[idx] != nil {
-				s.stats[idx].recordSuccess(elapsed)
+				s.stats[idx].recordDialSuccess()
 			}
 			if (s.strategy == "leastLoad" || s.strategy == "least_load") && idx < len(s.activeConns) && s.activeConns[idx] != nil {
 				s.activeConns[idx].Add(1)

@@ -5,7 +5,6 @@ import android.annotation.SuppressLint
 import io.nekohasekai.sagernet.utils.SecureNetwork
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Request
-import org.json.JSONObject
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.MenuItem
@@ -30,7 +29,8 @@ import moe.matsuri.nb4a.utils.WebViewUtil
 
 class WebviewFragment : ToolbarFragment(R.layout.layout_webview), Toolbar.OnMenuItemClickListener {
 
-    private val dashboardClient = SecureNetwork.webDAVClient()
+    private val dashboardClient = SecureNetwork.webDAVClient().newBuilder()
+        .proxy(java.net.Proxy.NO_PROXY).callTimeout(5, java.util.concurrent.TimeUnit.SECONDS).build()
     lateinit var mWebView: WebView
 
     companion object {
@@ -85,26 +85,33 @@ class WebviewFragment : ToolbarFragment(R.layout.layout_webview), Toolbar.OnMenu
 
             override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
                 val url = request?.url?.toString()?.toHttpUrlOrNull() ?: return null
-                if (url.host != "127.0.0.1" || url.port != 9090 || url.scheme != "http" ||
-                    url.encodedPath !in setOf("/ui", "/ui/", "/ui/index.html") || request.method != "GET") return null
+                if (!request.isForMainFrame || request.method != "GET" ||
+                    !LocalYacdDashboard.isLocalDocument(url.toString())) return null
+                val readiness = LocalYacdDashboard.readiness(DataStore.serviceState.connected,
+                    DataStore.enableClashAPI || DataStore.allowAccess)
+                if (readiness != null) return dashboardError(readiness)
+                val secret = DataStore.clashApiSecret
+                val apiFailure = LocalYacdDashboard.checkApi(dashboardClient, secret)
+                if (apiFailure != null) return dashboardError(apiFailure)
                 return try {
-                    dashboardClient.newCall(Request.Builder().url(url).build()).execute().use { response ->
-                        if (!response.isSuccessful) return null
+                    // /ui redirects to /ui/ in the bundled controller. Fetch the canonical path
+                    // directly rather than relaxing the client's redirect policy.
+                    val documentUrl = if (url.encodedPath == "/ui")
+                        url.newBuilder().encodedPath("/ui/").build() else url
+                    dashboardClient.newCall(Request.Builder().url(documentUrl).build()).execute().use { response ->
+                        if (!response.isSuccessful) return dashboardError(LocalYacdDashboard.Failure.HTML)
                         val html = SecureNetwork.text(response.body)
-                        // Seed the bundled YACD before its JS starts. Secret stays on this local origin;
-                        // it is never sent to a remote dashboard or an application log.
-                        val secret = JSONObject.quote(DataStore.clashApiSecret)
-                        val bootstrap = """
-                            <script>(function(){var k="yacd.metacubex.one",s={};
-                            try{s=JSON.parse(localStorage.getItem(k)||"{}")}catch(e){}
-                            s.clashAPIConfigs=[{baseURL:"http://127.0.0.1:9090",secret:$secret,addedAt:0}];
-                            s.selectedClashAPIConfigIndex=0;localStorage.setItem(k,JSON.stringify(s));})();</script>
-                        """.trimIndent()
-                        val document = html.replaceFirst("<head>", "<head>" + bootstrap)
-                        WebResourceResponse("text/html", "UTF-8", document.byteInputStream())
+                        if (!html.contains("<head>")) return dashboardError(LocalYacdDashboard.Failure.HTML)
+                        val script = mWebView.context.assets.open("yacd-bootstrap.js")
+                            .bufferedReader().use { it.readText() }
+                        val bootstrap = LocalYacdDashboard.bootstrap(script, secret,
+                            mWebView.context.getString(R.string.dashboard_storage_unavailable))
+                        val document = html.replaceFirst("<head>", "<head><base href=\"/ui/\">$bootstrap")
+                        WebResourceResponse("text/html", "UTF-8", 200, "OK",
+                            mapOf("Cache-Control" to "no-store"), document.byteInputStream())
                     }
-                } catch (e: Exception) {
-                    null
+                } catch (_: Exception) {
+                    dashboardError(LocalYacdDashboard.Failure.HTML)
                 }
             }
 
@@ -125,9 +132,23 @@ class WebviewFragment : ToolbarFragment(R.layout.layout_webview), Toolbar.OnMenu
 
         loadDashboard(DataStore.yacdURL)
 
-        if (!DataStore.serviceState.connected) {
-            Snackbar.make(view, "提示：请先连接代理服务以获取实时仪表盘数据", Snackbar.LENGTH_LONG).show()
+        if (!DataStore.serviceState.connected && LocalYacdDashboard.isLocalDocument(DataStore.yacdURL)) {
+            Snackbar.make(view, R.string.dashboard_connect_service, Snackbar.LENGTH_LONG).show()
         }
+    }
+
+    private fun dashboardError(failure: LocalYacdDashboard.Failure): WebResourceResponse {
+        val message = when (failure) {
+            LocalYacdDashboard.Failure.DISCONNECTED -> R.string.dashboard_connect_service
+            LocalYacdDashboard.Failure.DISABLED -> R.string.dashboard_enable_api
+            LocalYacdDashboard.Failure.AUTHENTICATION -> R.string.dashboard_auth_failed
+            LocalYacdDashboard.Failure.API -> R.string.dashboard_api_unavailable
+            LocalYacdDashboard.Failure.HTML -> R.string.dashboard_html_unavailable
+        }
+        val context = mWebView.context
+        val html = LocalYacdDashboard.errorHtml(context.getString(message), context.getString(R.string.action_refresh))
+        return WebResourceResponse("text/html", "UTF-8", 503, "Service Unavailable",
+            mapOf("Cache-Control" to "no-store"), html.byteInputStream())
     }
 
     private fun injectZashboardAutoConnect(view: WebView?) {
