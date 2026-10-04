@@ -1,3 +1,4 @@
+// @author 雾晚
 package libcore
 
 import (
@@ -5,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"libcore/internal/appowner"
 	"libcore/procfs"
 	"log"
 	"net/netip"
@@ -37,11 +39,12 @@ import (
 // UpdateInterfaces() 刷错 NetworkManager，落选 box 的接口缓存永远为空，
 // 其所有拨号秒报 "no available network interface"。
 type boxPlatformInterfaceWrapper struct {
-	networkManager adapter.NetworkManager
-	myTunName      string
-	diagnosticID   uint64
-	diagnosticTag  string
-	isURLTest      bool
+	networkManager    adapter.NetworkManager
+	myTunName         string
+	diagnosticID      uint64
+	diagnosticTag     string
+	isURLTest         bool
+	ownerDiagnosticAt atomic.Int64
 }
 
 func (w *boxPlatformInterfaceWrapper) urlTestTrace(stage string, format string, args ...any) {
@@ -251,10 +254,18 @@ func (w *boxPlatformInterfaceWrapper) FindConnectionOwner(request *adapter.FindC
 			return nil, err
 		}
 	}
-	packageName, _ := intfBox.PackageNameByUid(uid)
-	var packageNames []string
-	if packageName != "" {
-		packageNames = []string{packageName}
+	if uid < 0 {
+		return nil, E.New("application route lookup failed: unknown socket UID")
+	}
+	packageName, packageErr := intfBox.PackageNameByUid(uid)
+	packageNames := appowner.Names(packageName)
+	if packageErr != nil || len(packageNames) == 0 {
+		// No addresses, credentials or package names in failure diagnostics.
+		now := time.Now().UnixNano()
+		previous := w.ownerDiagnosticAt.Load()
+		if now-previous >= int64(30*time.Second) && w.ownerDiagnosticAt.CompareAndSwap(previous, now) {
+			log.Printf("ApplicationRouteLookup mode=android-platform uid=%d packages=unknown", uid)
+		}
 	}
 	return &adapter.ConnectionOwner{UserId: uid, PackageNames: packageNames}, nil
 }

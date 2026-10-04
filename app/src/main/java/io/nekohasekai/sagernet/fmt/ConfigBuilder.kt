@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.fmt
 
 import android.widget.Toast
@@ -38,6 +39,7 @@ import io.nekohasekai.sagernet.ktx.unwrapIPV6Host
 import io.nekohasekai.sagernet.ktx.mkPort
 import io.nekohasekai.sagernet.ktx.runOnMainDispatcher
 import io.nekohasekai.sagernet.utils.PackageCache
+import io.nekohasekai.sagernet.route.AppRouteIdentity
 import moe.matsuri.nb4a.*
 import moe.matsuri.nb4a.SingBoxOptions.*
 import moe.matsuri.nb4a.plugin.Plugins
@@ -1488,6 +1490,13 @@ fun buildConfig(
                     else -> if (outId == proxy.id) mainProxyTag else tagMap[outId] ?: ""
                 }
 
+                if (rule.packages.isNotEmpty()) {
+                    // @author 雾晚: identifiers/counts only; never log package names or endpoints.
+                    Logs.d("ApplicationRouteConfig mode=${if (isRootTun) "root" else "vpn"} " +
+                        "ruleId=${rule.id} packages=${rule.packages.size} uids=${uidList.size} " +
+                        "outboundId=${rule.outbound} identity=package-or-uid")
+                }
+
                 fun applyCommonFilters(ruleObj: Rule_DefaultOptions) {
                     if (uidList.isNotEmpty()) {
                         ruleObj.user_id = uidList
@@ -1718,7 +1727,7 @@ fun buildConfig(
                     it.server = null
                     it.action = "reject"
                 }
-                if (!it.checkEmpty()) dns.rules.add(it)
+                if (!it.checkEmpty()) dns.rules.add(AppRouteIdentity.dns(it))
             }
         }
 
@@ -1966,6 +1975,8 @@ fun buildConfig(
                 }
             }
         }
+        // @author 雾晚: transform only after existing outbound validation/fallback.
+        route.rules = route.rules.map { AppRouteIdentity.route(it) }.toMutableList()
         if (!route.final_.isNullOrBlank() && route.final_ !in availableOutboundTags) {
             route.final_ = mainProxyTag
         }

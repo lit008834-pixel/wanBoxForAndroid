@@ -1,0 +1,17 @@
+{
+  "type": "logical",
+  "mode": "or",
+  "rules": [
+    {
+      "package_name": [
+        "example.chat"
+      ]
+    },
+    {
+      "user_id": [
+        10123
+      ]
+    }
+  ],
+  "outbound": "fixture-node"
+}
