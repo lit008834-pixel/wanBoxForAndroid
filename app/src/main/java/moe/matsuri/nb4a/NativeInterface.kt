@@ -1,3 +1,4 @@
+// @author 雾晚
 package moe.matsuri.nb4a
 
 import android.content.Context
@@ -304,7 +305,7 @@ class NativeInterface : BoxPlatformInterface, NB4AInterface {
                 data.proxy?.apply {
                     looper?.selectMain(id)
                     displayProfileName = ServiceNotification.genTitle(ent)
-                    data.notification?.postNotificationTitle(displayProfileName)
+                    data.notification?.postNotificationProfile(ent)
                 }
                 // post binder
                 data.binder.broadcast { b ->

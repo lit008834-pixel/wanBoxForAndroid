@@ -1,3 +1,4 @@
+// @author 雾晚
 // libbox/dns.go
 
 package libcore
@@ -46,7 +47,8 @@ func newPlatformTransport(iif LocalDNSTransport, tag string, options option.Loca
 	}
 }
 
-func (p *platformLocalDNSTransport) Start(stage adapter.StartStage) error {
+// @author 雾晚: alpha.10 lifecycle carries a scope; local resolver owns no resources.
+func (p *platformLocalDNSTransport) Start(stage adapter.StartStage, scope *adapter.Scope) error {
 	return nil
 }
 

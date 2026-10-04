@@ -256,5 +256,7 @@ object Action {
     // const val SWITCH_WAKE_LOCK = "io.nekohasekai.sagernet.SWITCH_WAKELOCK"
     val RESET_UPSTREAM_CONNECTIONS = "${BuildConfig.APPLICATION_ID}.RESET_UPSTREAM_CONNECTIONS"
     val SWITCH_PERFORMANCE_MODE = "${BuildConfig.APPLICATION_ID}.SWITCH_PERFORMANCE_MODE"
+    // @author 雾晚: package-scoped preferences refresh, not a service restart.
+    val REFRESH_NOTIFICATION = "${BuildConfig.APPLICATION_ID}.REFRESH_NOTIFICATION"
     val SERVICE_MODE_CHANGED = "${BuildConfig.APPLICATION_ID}.SERVICE_MODE_CHANGED"
 }

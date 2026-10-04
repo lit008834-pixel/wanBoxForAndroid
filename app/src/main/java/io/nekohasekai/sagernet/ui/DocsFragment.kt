@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.ui
 
 import android.os.Bundle
@@ -94,13 +95,8 @@ class DocsFragment : ToolbarFragment(R.layout.layout_docs) {
                         hasItemUnderHeader = false
                     }
                     is DocListItem.Item -> {
-                        if (item.title.contains(query, ignoreCase = true) ||
-                            item.desc.contains(query, ignoreCase = true) ||
-                            item.prosCons.contains(query, ignoreCase = true) ||
-                            item.recommendation.contains(query, ignoreCase = true) ||
-                            item.category.contains(query, ignoreCase = true) ||
-                            item.keywords.contains(query, ignoreCase = true)
-                        ) {
+                        if (DocSearch.matches(query, item.title, item.desc, item.prosCons,
+                            item.recommendation, item.category, item.keywords)) {
                             if (!hasItemUnderHeader && currentHeader != null) {
                                 displayItems.add(currentHeader)
                                 hasItemUnderHeader = true
@@ -210,12 +206,12 @@ class DocsFragment : ToolbarFragment(R.layout.layout_docs) {
         allItems.add(
             DocListItem.Item(
                 category = "用户界面设置",
-                title = "桌面应用图标定制 (customIcon)",
+                title = "磁贴图标定制 (customIcon)",
                 badge = "推荐: 按个人偏好",
-                desc = "支持切换 APP 在手机启动器桌面上的应用图标外观（经典、极简纯白、纯黑深色、跟随 Android 12+ Material You 莫奈动态取色及自定义图标包）。",
-                prosCons = "【利】满足个性化桌面搭配审美需求，莫奈图标与壁纸浑然一体，桌面更加美观且具备隐蔽性；【弊】修改后部分国产系统桌面需 1~2 秒重新加载缓存。",
+                desc = "此页面只自定义快捷设置磁贴的 tile.png，支持导入、预览、应用与恢复默认；不会更改应用包图标。",
+                prosCons = "磁贴按 Alpha 显示单色图形；旧双文件 ZIP 中的 icon.png 不参与磁贴应用。部分系统可能延迟刷新磁贴。",
                 recommendation = "【最稳推荐：自由选用】对网络代理与核心性能零影响，按个人视觉喜好随心定制。",
-                keywords = "图标 桌面 图标包 莫奈 换图标 自定义 icon pack",
+                keywords = "磁贴 tile.png 图标包 自定义",
             )
         )
         allItems.add(
@@ -594,7 +590,7 @@ class DocsFragment : ToolbarFragment(R.layout.layout_docs) {
                 title = "负载均衡策略与自动优选 (balancerStrategy)",
                 badge = "推荐: 最低延迟优先",
                 desc = "在负载均衡器中聚合多个节点，并配置“最低延迟优先 (round-robin + probe)”、“轮询 (round-robin)”或“随机 (random)”调度策略，支持自定义测试 URL 与观测间隔 (s)。",
-                prosCons = "【利】“最低延迟优先”能在后台全自动监测节点健康度并无缝漂移到最快可用节点，实现 100% 高可用断线自愈；【弊】高频探活在大量节点场景下会轻量消耗测试流量。",
+                prosCons = "【利】“最低延迟优先”能在后台全自动监测节点健康度并无缝漂移到最快可用节点，帮助发现可用节点，但不保证断线自愈；【弊】高频探活在大量节点场景下会轻量消耗测试流量。",
                 recommendation = "【最稳推荐：推荐使用“最低延迟优先”，观测间隔保持 300s】兼顾断线毫秒级自愈与节约套餐流量。",
                 keywords = "负载均衡 策略组 最低延迟 轮询 随机 balancer strategy 自动切换 间隔",
             )
@@ -768,10 +764,38 @@ class DocsFragment : ToolbarFragment(R.layout.layout_docs) {
                 badge = "推荐: 隐私安全体检",
                 desc = "一键检测本地海外域名是否成功被内核 Fake-IP 虚拟地址池接管，同时通过公共安全探针检测公网出口 IP 与真实 DNS 链路是否存在旁路泄漏。",
                 prosCons = "【利】即时验证“严格路由”与“FakeDNS”是否正常运转，确保真实地理位置与运营商 DNS 绝对不泄漏；【弊】检测时会发起一次对安全检测接口的请求。",
-                recommendation = "【最稳推荐：开启 VPN 后建议执行一次检测】确认 Fake-IP 生效且无 DNS 泄漏后即可安心上网。",
+                recommendation = "【最稳推荐：开启 VPN 后建议执行一次检测】检查当前路径的 Fake-IP 与 DNS 行为；一次检测不保证所有应用无泄漏。",
                 keywords = "dns 泄漏 fakeip 假ip 隐私 安全 探针 dnsLeakTest",
             )
         )
+        // @author 雾晚: selected compatible topics, not an upstream UI replacement.
+        val category = getString(R.string.docs_followup_category)
+        allItems.add(DocListItem.Header(category, getString(R.string.docs_followup_intro)))
+        allItems.add(DocListItem.Item(category, getString(R.string.docs_route_order_title),
+            getString(R.string.docs_followup_badge), getString(R.string.docs_route_order_body),
+            "", "", getString(R.string.docs_route_order_keywords)))
+        allItems.add(DocListItem.Item(category, getString(R.string.docs_route_regex_title),
+            getString(R.string.docs_followup_badge), getString(R.string.docs_route_regex_body),
+            "", "", getString(R.string.docs_route_regex_keywords)))
+        allItems.add(DocListItem.Item(category, getString(R.string.docs_route_actions_title),
+            getString(R.string.docs_followup_badge), getString(R.string.docs_route_actions_body),
+            "", "", getString(R.string.docs_route_actions_keywords)))
+        allItems.add(DocListItem.Item(category, getString(R.string.docs_android_apps_title),
+            getString(R.string.docs_followup_badge), getString(R.string.docs_android_apps_body),
+            "", "", getString(R.string.docs_android_apps_keywords)))
+        allItems.add(DocListItem.Item(category, getString(R.string.docs_dashboard_local_title),
+            getString(R.string.docs_followup_badge), getString(R.string.docs_dashboard_local_body),
+            "", "", getString(R.string.docs_dashboard_local_keywords)))
+        allItems.add(DocListItem.Item(category, getString(R.string.docs_balance_actual_title),
+            getString(R.string.docs_followup_badge), getString(R.string.docs_balance_actual_body),
+            "", "", getString(R.string.docs_balance_actual_keywords)))
+        allItems.add(DocListItem.Item(category, getString(R.string.docs_fakeip_check_title),
+            getString(R.string.docs_followup_badge), getString(R.string.docs_fakeip_check_body),
+            "", "", getString(R.string.docs_fakeip_check_keywords)))
+        allItems.add(DocListItem.Item(category, getString(R.string.docs_backup_portable_title),
+            getString(R.string.docs_followup_badge), getString(R.string.docs_backup_portable_body),
+            "", "", getString(R.string.docs_backup_portable_keywords)))
+
     }
 
     inner class DocsAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {

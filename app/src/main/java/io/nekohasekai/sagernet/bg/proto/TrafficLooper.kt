@@ -56,6 +56,7 @@ class TrafficLooper
     suspend fun stop() {
         job?.cancelAndJoin()
         job = null
+        lastSpeedSnapshot = null
         // finally traffic post
         if (!DataStore.profileTrafficStatistics) return
         withStateLock {
@@ -180,7 +181,6 @@ class TrafficLooper
 
     private suspend fun loop() {
         val baseDelayMs = DataStore.speedInterval.toLong()
-        val showDirectSpeed = DataStore.showDirectSpeed
         val profileTrafficStatistics = DataStore.profileTrafficStatistics
         if (baseDelayMs == 0L) return
 
@@ -305,8 +305,8 @@ class TrafficLooper
                     speed = SpeedDisplayData(
                         mainTxRate,
                         mainRxRate,
-                        if (showDirectSpeed) itemBypass.txRate else 0L,
-                        if (showDirectSpeed) itemBypass.rxRate else 0L,
+                        itemBypass.txRate,
+                        itemBypass.rxRate,
                         mainTx,
                         mainRx
                     ),
@@ -321,7 +321,9 @@ class TrafficLooper
                         if (data.binder.callbackIdMap[callback] ==
                             SagerConnection.CONNECTION_ID_MAIN_ACTIVITY_FOREGROUND
                         ) {
-                            callback.cbSpeedUpdate(snapshot.speed)
+                            callback.cbSpeedUpdate(if (DataStore.showDirectSpeed) snapshot.speed else SpeedDisplayData(
+                                snapshot.speed.txRateProxy, snapshot.speed.rxRateProxy, 0, 0,
+                                snapshot.speed.txTotal, snapshot.speed.rxTotal))
                             if (snapshot.trafficUpdates.isNotEmpty()) {
                                 snapshot.trafficUpdates.chunked(TRAFFIC_BATCH_SIZE).forEach {
                                     callback.cbTrafficUpdate(TrafficDataBatch(ArrayList(it)))
@@ -334,6 +336,7 @@ class TrafficLooper
             }
             currentCoroutineContext().ensureActive()
 
+            data.notification?.postActiveOutbound(proxy.box.currentOutboundTag())
             lastSpeedSnapshot = snapshot.speed
 
             // ServiceNotification: Only post if screen is interactive (saves CPU wakeups while screen is off)

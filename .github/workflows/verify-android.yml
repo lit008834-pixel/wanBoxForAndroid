@@ -35,6 +35,7 @@ jobs:
         run: ./run lib core
       - name: Test bounded URL probes and configuration templates
         run: |
+          (cd libcore && go test -tags=with_clash_api,with_gvisor,with_quic,with_wireguard,with_utls .)
           (cd libcore && go test ./internal/... ./protocol/urltest ./protocol/loadbalance)
           (cd libcore && go test -race ./protocol/loadbalance)
           python3 -m unittest discover -s tools -p test_clean_subscription.py
@@ -107,6 +108,7 @@ jobs:
           WANBOX_KEYSTORE_PASSWORD: ${{ secrets.WANBOX_KEYSTORE_PASSWORD }}
         run: |
           ./gradlew app:testOssDebugUnitTest app:assembleOssDebugAndroidTest app:assembleOssRelease
+          ./gradlew app:testPreviewDebugUnitTest app:assemblePreviewDebug
           python3 tools/check_android_security.py
           bash tools/diagnostics/build_security_probe.sh
       - name: Measure same variant and ABI APK payload

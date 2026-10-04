@@ -278,20 +278,22 @@ func (s *URLTest) NewPacketConnection(ctx context.Context, conn N.PacketConn, me
 }
 
 type URLTestGroup struct {
-	ctx                          context.Context
-	outbound                     adapter.OutboundManager
-	logger                       log.Logger
-	outbounds                    []adapter.Outbound
-	link                         string
-	interval                     time.Duration
-	tolerance                    uint16
-	idleTimeout                  time.Duration
-	history                      *urltest.HistoryStorage
-	checking                     atomic.Bool
-	pause                        pause.Manager
-	pauseCallback                *list.Element[pause.Callback]
-	interruptGroup               *interrupt.Group
-	selectedOutboundTCP          adapter.Outbound
+	ctx                 context.Context
+	outbound            adapter.OutboundManager
+	logger              log.Logger
+	outbounds           []adapter.Outbound
+	link                string
+	interval            time.Duration
+	tolerance           uint16
+	idleTimeout         time.Duration
+	history             *urltest.HistoryStorage
+	checking            atomic.Bool
+	pause               pause.Manager
+	pauseCallback       *list.Element[pause.Callback]
+	interruptGroup      *interrupt.Group
+	selectedOutboundTCP adapter.Outbound
+	// @author 雾晚: race-free observation; never advances selection.
+	observedTag                  atomic.Pointer[string]
 	selectedOutboundUDP          adapter.Outbound
 	interruptExternalConnections bool
 	access                       sync.Mutex
@@ -582,6 +584,8 @@ func (g *URLTestGroup) performUpdateCheck() {
 			updated = true
 		}
 		g.selectedOutboundTCP = outbound
+		tag := outbound.Tag()
+		g.observedTag.Store(&tag)
 		selected = true
 	}
 	if outbound, exists := g.Select(N.NetworkUDP); outbound != nil && (g.selectedOutboundUDP == nil || (exists && outbound != g.selectedOutboundUDP)) {
@@ -597,4 +601,16 @@ func (g *URLTestGroup) performUpdateCheck() {
 	if selected {
 		g.history.NotifyUpdated()
 	}
+}
+
+// @author 雾晚
+func (s *URLTest) LastSelectedTag() string {
+	if s.group == nil {
+		return ""
+	}
+	tag := s.group.observedTag.Load()
+	if tag == nil {
+		return ""
+	}
+	return *tag
 }

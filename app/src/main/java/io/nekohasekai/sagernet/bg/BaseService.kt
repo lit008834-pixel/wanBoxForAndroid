@@ -57,6 +57,7 @@ class BaseService {
             when (intent.action) {
                 Intent.ACTION_SHUTDOWN -> service.persistStats()
                 Action.RELOAD -> service.reload()
+                Action.REFRESH_NOTIFICATION -> runOnIoDispatcher { notification?.refreshPreferences() }
                 Action.RESTART -> {
                     Logs.i("BaseService: received Action.RESTART, forcing full stopRunner(restart = true)")
                     service.stopRunner(restart = true)
@@ -646,6 +647,7 @@ class BaseService {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                         addAction(PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED)
                     }
+                    addAction(Action.REFRESH_NOTIFICATION)
                     addAction(Action.RESET_UPSTREAM_CONNECTIONS)
                     addAction(Action.SWITCH_PERFORMANCE_MODE)
                     addAction(Intent.ACTION_SCREEN_ON)

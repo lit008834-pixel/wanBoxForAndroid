@@ -118,7 +118,22 @@ class RootTunService : Service(), BaseService.Interface {
         rootOutputReader = runOnIoDispatcher {
             try {
                 process.inputStream.bufferedReader().use { reader ->
-                    reader.forEachLine { line ->
+                    while (isActive) {
+                        val line = reader.readLine() ?: break
+                        if (line.startsWith(RootNotificationSample.PREFIX)) {
+                            val sample = RootNotificationSample.parse(line)
+                            if (sample != null && rootProcess === process && data.proxy === proxy &&
+                                data.state.connected && readyFile.isFile) {
+                                data.notification?.apply {
+                                    postActiveOutbound(sample.tag)
+                                    if (listenPostSpeed && SagerNet.power.isInteractive) {
+                                        postNotificationSpeedUpdate(io.nekohasekai.sagernet.aidl.SpeedDisplayData(
+                                            sample.tx, sample.rx, sample.directTx, sample.directRx, 0, 0))
+                                    }
+                                }
+                            }
+                            continue
+                        }
                         if (rootProcess === process) {
                             lastRootOutput = line.takeLast(512)
                             Logs.i("Root TUN: $line")
