@@ -1185,4 +1185,36 @@
     <string name="backup_access_error">File access was denied. Select the backup again and grant read access.</string>
     <string name="backup_choose_json">This is a log file. Select OwnBox_backup_*.json or a supported backup ZIP. Do not rename a log to JSON.</string>
     <string name="backup_invalid_or_unreadable">Cannot read this backup. Select an exported backup JSON/ZIP, check file access, or re-export with the original app version.</string>
+    <!-- @author 雾晚 -->
+    <string name="notification_member_pending">Waiting for active node</string>
+    <string name="notification_direct_speed">Direct ↑%1$s ↓%2$s</string>
+
+    <!-- @author 雾晚 -->
+    <string name="docs_followup_category">Routing and connection guide</string>
+    <string name="docs_followup_intro">For the current wanBox implementation; verify configuration and logs.</string>
+    <string name="docs_followup_badge">Guide</string>
+    <string name="docs_route_order_title">Routing order and conditions</string>
+    <string name="docs_route_order_body">Rules are ordered. Different match fields usually combine with AND; values within a field usually combine with OR. Put specific rules before broad ones and review catch-all rules.</string>
+    <string name="docs_route_order_keywords">route order AND OR 顺序 全匹配</string>
+    <string name="docs_route_regex_title">Multiline rules and RE2 regex</string>
+    <string name="docs_route_regex_body">Use field-specific domain, CIDR, port-range and rule-set values. Go RE2 does not support backreferences or lookaround. Fix validation errors rather than removing all conditions.</string>
+    <string name="docs_route_regex_keywords">RE2 regex CIDR 端口 正则 规则集</string>
+    <string name="docs_route_actions_title">Rule actions and outbounds</string>
+    <string name="docs_route_actions_body">Use actions supported by the current editor: selected outbound, direct or reject. Custom JSON must match the pinned core schema. Desktop process fields are not Android app rules. Review imported targets and order.</string>
+    <string name="docs_route_actions_keywords">route action outbound reject rule_set 动作 出站</string>
+    <string name="docs_android_apps_title">Android per-app routing</string>
+    <string name="docs_android_apps_body">The VPN app list controls entry into the tunnel; package rules are a separate layer. Play, GMS and Download Manager may issue separate requests; inspect each explicitly. Root UID routing is not automatically equivalent to the VPN app list.</string>
+    <string name="docs_android_apps_keywords">Android package Play GMS DownloadManager 应用 包名</string>
+    <string name="docs_dashboard_local_title">Local Clash API and dashboards</string>
+    <string name="docs_dashboard_local_body">Connect and enable the Clash API first. Built-in YACD uses 127.0.0.1:9090/ui with local-only credentials. An unauthorized root response is not an API health check. Remote HTTPS panels receive no local secret and may be blocked from accessing localhost HTTP. Do not weaken WebView security.</string>
+    <string name="docs_dashboard_local_keywords">YACD Zashboard Clash API 9090 Secret 仪表盘</string>
+    <string name="docs_balance_actual_title">Balancing and actual active nodes</string>
+    <string name="docs_balance_actual_body">Balancing strategies optimize different objectives and do not guarantee one member or lower latency. Notifications show the observed selection; concurrent balancing shows the most recently successful member, not the only active connection. Unknown members are not guessed.</string>
+    <string name="docs_balance_actual_keywords">leastPing leastLoad roundRobin failover consistentHash 通知 活动 节点</string>
+    <string name="docs_fakeip_check_title">Fake-IP, connectivity and IPv6 checks</string>
+    <string name="docs_fakeip_check_body">Fake-IP needs coordinated DNS interception and routing. Local proxy, VPN and Root TUN have different entry paths. HTTP handshake latency is not ICMP ping. Diagnose network changes, push, IPv6 and port conflicts with logs and consistent probes; one leak test is not a universal guarantee.</string>
+    <string name="docs_fakeip_check_keywords">FakeIP DNS IPv6 MTU push port VPN Root 握手 推送 端口</string>
+    <string name="docs_backup_portable_title">Portable backups and WebDAV</string>
+    <string name="docs_backup_portable_body">Tools → Backup exports versioned JSON for the selected profiles, groups, rules and settings. Choose the actual backup JSON or supported ZIP, not an OWN log. Legacy formats are migrated when possible; damaged Parcel data needs re-export from the old version. Protect credentials and use trusted HTTPS WebDAV storage.</string>
+    <string name="docs_backup_portable_keywords">backup schemaVersion profiles proxies WebDAV JSON ZIP 备份 跨手机</string>
 </resources>

@@ -68,6 +68,10 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(), OnPreferenceDataS
     }
 
     override fun onPreferenceDataStoreChanged(store: PreferenceDataStore, key: String) {
+        if (key == Key.SHOW_DIRECT_SPEED || key == "showGroupInNotification") {
+            requireContext().sendBroadcast(Intent(io.nekohasekai.sagernet.Action.REFRESH_NOTIFICATION)
+                .setPackage(requireContext().packageName))
+        }
         if (key == Key.MTU && DataStore.serviceState.started) {
             // The value has been persisted. Rebuild the VPN tunnel without recreating MainActivity.
             SagerNet.restartService()
@@ -332,7 +336,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(), OnPreferenceDataS
         httpProxyBypass.onPreferenceChangeListener = reloadListener
         dnsHosts.onPreferenceChangeListener = reloadListener
         strictRoute.onPreferenceChangeListener = reloadListener
-        showDirectSpeed.onPreferenceChangeListener = reloadListener
+        // @author 雾晚: notification-only preferences refresh after persistence.
         trafficSniffing.onPreferenceChangeListener = reloadListener
         bypassLan.onPreferenceChangeListener = reloadListener
         bypassLanInCore.onPreferenceChangeListener = reloadListener

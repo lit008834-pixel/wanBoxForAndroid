@@ -154,6 +154,14 @@ jobs:
           gh release download v3.0.4-preview.1 \
             -R lit008834-pixel/wanBoxForAndroid \
             -p wanBoxForAndroid-3.0.4-preview.1-x86_64-release.apk -D previous
+          gh release download v3.0.5 \
+            -R lit008834-pixel/wanBoxForAndroid \
+            -p wanBoxForAndroid-3.0.5-x86_64.apk -D previous
+          gh release download v3.0.5-preview.2 \
+            -R lit008834-pixel/wanBoxForAndroid \
+            -p wanBoxForAndroid-3.0.5-preview.2-x86_64-release.apk -D previous
+          echo '05abf838efc0be8781e52c0cf6e0393b023fd66ca80c4b88c6a71002d2274ed8  previous/wanBoxForAndroid-3.0.5-x86_64.apk' | sha256sum --check
+          echo '8dba440911f90b60d94574d62c28ce20dbab80dded19a580142ddaf0413fc863  previous/wanBoxForAndroid-3.0.5-preview.2-x86_64-release.apk' | sha256sum --check
           gh release download v2.9.1-preview \
             -R Own716/OwnBoxForAndroid \
             -p OwnBox-2.9.1-x86_64-release.apk -D previous

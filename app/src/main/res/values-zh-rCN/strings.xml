@@ -1100,4 +1100,36 @@
     <string name="backup_access_error">文件访问被拒绝，请重新选择备份并授权读取。</string>
     <string name="backup_choose_json">选择的是日志文件。请选择 OwnBox_backup_*.json 或备份 ZIP；不要把日志改名为 JSON。</string>
     <string name="backup_invalid_or_unreadable">无法读取此备份。请选择实际导出的 JSON/ZIP，检查文件权限，或用原版本重新导出。</string>
+    <!-- @author 雾晚 -->
+    <string name="notification_member_pending">等待活动节点</string>
+    <string name="notification_direct_speed">直连 ↑%1$s ↓%2$s</string>
+
+    <!-- @author 雾晚 -->
+    <string name="docs_followup_category">路由与连接实用指南</string>
+    <string name="docs_followup_intro">按 wanBox 当前实现说明；以实际配置和日志为准。</string>
+    <string name="docs_followup_badge">使用指南</string>
+    <string name="docs_route_order_title">路由顺序与条件</string>
+    <string name="docs_route_order_body">规则按顺序匹配；不同匹配字段通常同时满足，同字段列表通常择一满足。先放具体规则，再放宽泛规则。全匹配规则可能遮住后续规则，保存前检查生成配置。</string>
+    <string name="docs_route_order_keywords">route order AND OR 顺序 全匹配</string>
+    <string name="docs_route_regex_title">多行规则与 RE2 正则</string>
+    <string name="docs_route_regex_body">规则编辑页支持多行值；域名、CIDR、端口范围和规则集应按字段格式填写。sing-box 使用 Go RE2，不支持回溯引用和前后查找；保存失败时修正提示字段，不要用空匹配规避校验。</string>
+    <string name="docs_route_regex_keywords">RE2 regex CIDR 端口 正则 规则集</string>
+    <string name="docs_route_actions_title">规则动作与出站</string>
+    <string name="docs_route_actions_body">以当前规则编辑器提供的动作为准：路由到选定出站、直连或阻断。高级自定义 JSON 应符合当前核心 schema；不要复制桌面专用进程字段。导入规则后检查出站目标和排序。</string>
+    <string name="docs_route_actions_keywords">route action outbound reject rule_set 动作 出站</string>
+    <string name="docs_android_apps_title">Android 应用分流排查</string>
+    <string name="docs_android_apps_body">VPN 的应用分流列表决定哪些应用进入隧道；规则中的包名匹配是另一层。Play、GMS 和下载管理器可能分别发起请求，需要按实际应用手动检查，没有自动联动。Root TUN 按核心与系统可观测的 UID 工作，不能假设 VPN 列表自动等效。</string>
+    <string name="docs_android_apps_keywords">Android package Play GMS DownloadManager 应用 包名</string>
+    <string name="docs_dashboard_local_title">本地 Clash API 与仪表盘</string>
+    <string name="docs_dashboard_local_body">先连接服务，再启用高级设置的 Clash API。内置 YACD 使用 127.0.0.1:9090/ui，并仅对本地控制器预置密钥；Unauthorized 根路径不代表 API 故障。Zashboard 和自定义 HTTPS 面板不会注入本地密钥。浏览器安全策略可能阻止远程 HTTPS 面板访问本地 HTTP；不要关闭安全保护。</string>
+    <string name="docs_dashboard_local_keywords">YACD Zashboard Clash API 9090 Secret 仪表盘</string>
+    <string name="docs_balance_actual_title">负载均衡与实际活动节点</string>
+    <string name="docs_balance_actual_body">最低延迟、最低负载、轮询、随机、故障转移和一致性哈希有不同选路目标；不保证全部请求走同一节点或一定更快。通知展示核心实际选中成员；并行负载均衡显示最近一次成功使用的成员，不代表唯一活动连接。未知成员显示等待，不猜第一个节点。</string>
+    <string name="docs_balance_actual_keywords">leastPing leastLoad roundRobin failover consistentHash 通知 活动 节点</string>
+    <string name="docs_fakeip_check_title">Fake-IP、连接与 IPv6 排查</string>
+    <string name="docs_fakeip_check_body">Fake-IP 需要 DNS 劫持与路由配合；本地代理、VPN 与 Root TUN 的入口不同。握手延迟不是 ICMP ping，首次 DNS 与 TLS 建立可能更慢。切网、推送、IPv6 或端口冲突应结合日志和相同 URL 的真实测试排查；一次泄漏检测不能保证全部应用无泄漏。</string>
+    <string name="docs_fakeip_check_keywords">FakeIP DNS IPv6 MTU push port VPN Root 握手 推送 端口</string>
+    <string name="docs_backup_portable_title">跨手机备份与 WebDAV</string>
+    <string name="docs_backup_portable_body">工具 → 备份生成带 schemaVersion 的 JSON，包含所选配置、分组、规则和设置。选择实际导出的 JSON 或受支持 ZIP，不要选择 OWN 日志。历史备份按其格式迁移；旧 Parcel 损坏需在旧版本重新导出。备份含凭据，请使用可信存储，WebDAV 保持 HTTPS。</string>
+    <string name="docs_backup_portable_keywords">backup schemaVersion profiles proxies WebDAV JSON ZIP 备份 跨手机</string>
 </resources>

@@ -3,10 +3,12 @@ package libcore
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -36,7 +38,13 @@ func RunRootBox(configPath, assetsPath, pidPath, readyPath, stopPath string, par
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer cancel()
+	// @author 雾晚: reuse the existing watchdog; no new polling thread or API port.
+	var telemetry atomic.Pointer[BoxInstance]
+	watchdogDone := make(chan struct{})
+	defer func() { cancel(); <-watchdogDone }()
 	go func() {
+		defer close(watchdogDone)
+		lastSample := time.Now()
 		ticker := time.NewTicker(time.Second)
 		defer ticker.Stop()
 		for {
@@ -47,6 +55,25 @@ func RunRootBox(configPath, assetsPath, pidPath, readyPath, stopPath string, par
 				if _, err := os.Stat(stopPath); err == nil {
 					cancel()
 					return
+				}
+				if core := telemetry.Load(); core != nil {
+					elapsed := time.Since(lastSample).Seconds()
+					lastSample = time.Now()
+					if elapsed > 0 {
+						payload, _ := json.Marshal(struct {
+							Tag      string `json:"tag"`
+							Tx       int64  `json:"tx"`
+							Rx       int64  `json:"rx"`
+							DirectTx int64  `json:"directTx"`
+							DirectRx int64  `json:"directRx"`
+						}{
+							core.CurrentOutboundTag(), int64(float64(core.QueryStats("proxy", "uplink")) / elapsed), int64(float64(core.QueryStats("proxy", "downlink")) / elapsed), int64(float64(core.QueryStats("bypass", "uplink")) / elapsed), int64(float64(core.QueryStats("bypass", "downlink")) / elapsed),
+						})
+						fmt.Println("WANBOX_STATS:" + string(payload))
+					}
+				}
+				if telemetry.Load() == nil {
+					lastSample = time.Now()
 				}
 				if syscall.Kill(parentPID, 0) == syscall.ESRCH {
 					cancel()
@@ -81,7 +108,10 @@ func RunRootBox(configPath, assetsPath, pidPath, readyPath, stopPath string, par
 	if err != nil {
 		return err
 	}
-	defer instance.Close()
+	// @author 雾晚: join the reader before closing stats/router resources.
+	defer func() { cancel(); <-watchdogDone; instance.Close() }()
+	stats := &BoxInstance{Box: instance}
+	stats.SetV2rayStats("proxy\nbypass")
 	if err = instance.Start(); err != nil {
 		return err
 	}
@@ -89,6 +119,7 @@ func RunRootBox(configPath, assetsPath, pidPath, readyPath, stopPath string, par
 		return err
 	}
 	defer os.Remove(readyPath)
+	telemetry.Store(stats)
 	<-ctx.Done()
 	return nil
 }

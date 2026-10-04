@@ -1,4 +1,5 @@
 // @author 雾晚
+// @author 雾晚
 package loadbalance
 
 import (
@@ -207,7 +208,9 @@ type LoadBalance struct {
 	started                      bool
 	lastActive                   common.TypedValue[time.Time]
 	checking                     atomic.Bool
-	access                       sync.Mutex
+	// @author 雾晚: observe success without advancing the balancing algorithm.
+	lastSelected atomic.Int64
+	access       sync.Mutex
 }
 
 func NewLoadBalance(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options LoadBalanceOptions) (adapter.Outbound, error) {
@@ -765,6 +768,7 @@ func (s *LoadBalance) DialContext(ctx context.Context, network string, destinati
 			conn, err = candidate.DialContext(ctx, network, destination)
 		}
 		if err == nil {
+			s.lastSelected.Store(int64(idx + 1))
 			if idx < len(s.stats) && s.stats[idx] != nil {
 				s.stats[idx].recordDialSuccess()
 			}
@@ -843,6 +847,7 @@ func (s *LoadBalance) ListenPacket(ctx context.Context, destination M.Socksaddr)
 			conn, err = candidate.ListenPacket(ctx, destination)
 		}
 		if err == nil {
+			s.lastSelected.Store(int64(idx + 1))
 			if idx < len(s.stats) && s.stats[idx] != nil {
 				s.stats[idx].recordDialSuccess()
 			}
@@ -873,4 +878,14 @@ func (s *LoadBalance) NewConnection(ctx context.Context, conn net.Conn, metadata
 func (s *LoadBalance) NewPacketConnection(ctx context.Context, conn N.PacketConn, metadata adapter.InboundContext, onClose N.CloseHandlerFunc) {
 	ctx = interrupt.ContextWithIsExternalConnection(ctx)
 	s.connection.NewPacketConnection(ctx, s, conn, metadata, onClose)
+}
+
+// LastSelectedTag reports the last successfully used member, not a prediction.
+// @author 雾晚
+func (s *LoadBalance) LastSelectedTag() string {
+	i := int(s.lastSelected.Load()) - 1
+	if i < 0 || i >= len(s.tags) {
+		return ""
+	}
+	return s.tags[i]
 }

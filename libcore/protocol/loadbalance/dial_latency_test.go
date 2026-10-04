@@ -51,6 +51,9 @@ func TestApplicationDialsPreserveProbeLatency(t *testing.T) {
 				stats: []*nodeStats{stats}, outbounds: []adapter.Outbound{dialFixture{}},
 				interruptGroup: interrupt.NewGroup(),
 			}
+			if lb.LastSelectedTag() != "" {
+				t.Fatal("guessed unobserved member")
+			}
 			for i := 0; i < 20; i++ {
 				if udp {
 					conn, err := lb.ListenPacket(context.Background(), M.Socksaddr{})
@@ -65,6 +68,15 @@ func TestApplicationDialsPreserveProbeLatency(t *testing.T) {
 					}
 					conn.Close()
 				}
+			}
+			if lb.LastSelectedTag() != "node" {
+				t.Fatal("missing successful member observation")
+			}
+			for i := 0; i < 20; i++ {
+				lb.LastSelectedTag()
+			}
+			if lb.counter != 0 {
+				t.Fatal("observation advanced algorithm")
 			}
 			if stats.latencyEmaMs.Load() != 250 {
 				t.Fatalf("application dials polluted probe EMA: %d", stats.latencyEmaMs.Load())
