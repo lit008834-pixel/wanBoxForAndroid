@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.group
 
 import io.nekohasekai.sagernet.*
@@ -21,7 +22,6 @@ import java.net.InetAddress
 import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
 
-@Suppress("EXPERIMENTAL_API_USAGE")
 abstract class GroupUpdater {
 
     abstract suspend fun doUpdate(
@@ -41,53 +41,39 @@ abstract class GroupUpdater {
         profiles: List<AbstractBean>, groupId: Long?
     ) {
         val ipv6Mode = DataStore.ipv6Mode
-        val lookupPool = newFixedThreadPoolContext(5, "DNS Lookup")
-        val lookupJobs = mutableListOf<Job>()
-        val progress = Progress(profiles.size)
+        val candidates = profiles.filter { it !is NaiveBean && !it.serverAddress.isIpAddress() }
+        val progress = Progress(candidates.size)
         if (groupId != null) {
             GroupUpdater.progress[groupId] = progress
             GroupManager.postReload(groupId)
         }
         val ipv6First = ipv6Mode >= IPv6Mode.PREFER
-
-        for (profile in profiles) {
-            when (profile) {
-                // SNI rewrite unsupported
-                is NaiveBean -> continue
+        SubscriptionResolutionRunner.run(candidates, resolve = { profile ->
+            val underlyingNetwork = SagerNet.underlyingNetwork
+            val results = if (
+                underlyingNetwork != null &&
+                DataStore.enableFakeDns &&
+                DataStore.serviceState.started &&
+                DataStore.serviceMode == Key.MODE_VPN
+            ) {
+                // Preserve the VPN FakeDNS bypass; Root and ordinary DNS keep their existing path.
+                underlyingNetwork.getAllByName(profile.serverAddress).filterNotNull()
+            } else {
+                InetAddress.getAllByName(profile.serverAddress).filterNotNull()
             }
-
-            if (profile.serverAddress.isIpAddress()) continue
-
-            lookupJobs.add(GlobalScope.launch(lookupPool) {
-                try {
-                    val results = if (
-                        SagerNet.underlyingNetwork != null &&
-                        DataStore.enableFakeDns &&
-                        DataStore.serviceState.started &&
-                        DataStore.serviceMode == Key.MODE_VPN
-                    ) {
-                        // FakeDNS
-                        SagerNet.underlyingNetwork!!
-                            .getAllByName(profile.serverAddress)
-                            .filterNotNull()
-                    } else {
-                        // System DNS is enough (when VPN connected, it uses v2ray-core)
-                        InetAddress.getAllByName(profile.serverAddress).filterNotNull()
-                    }
-                    if (results.isEmpty()) error("empty response")
-                    rewriteAddress(profile, results, ipv6First)
-                } catch (e: Exception) {
-                    Logs.d("Lookup ${profile.serverAddress} failed: ${e.readableMessage}", e)
-                }
-                if (groupId != null) {
-                    progress.progress++
-                    GroupManager.postReload(groupId)
-                }
-            })
-        }
-
-        lookupJobs.joinAll()
-        lookupPool.close()
+            if (results.isEmpty()) error("empty response")
+            results
+        }, onResolved = { profile, results ->
+            rewriteAddress(profile, results, ipv6First)
+        }, onFailure = { error ->
+            // Report only the category, not a node address or resolver message containing it.
+            Logs.d("Subscription DNS lookup failed: ${error.javaClass.simpleName}")
+        }, onFinished = {
+            if (groupId != null) {
+                progress.progress++
+                GroupManager.postReload(groupId)
+            }
+        })
     }
 
     protected fun rewriteAddress(

@@ -9,6 +9,20 @@ import java.io.File
 class NetworkLifecyclePreservationTest {
     private fun source(path: String) = File("src/main/java/io/nekohasekai/sagernet/$path").readText()
 
+    @Test fun productionWiresIsolationAndKeepsTheExistingDnsModeBoundary() {
+        val network = source("utils/DefaultNetworkListener.kt")
+        assertTrue(network.split("NetworkObserverDispatcher.dispatch(").size - 1 == 3)
+        val updater = source("group/GroupUpdater.kt")
+        assertTrue(updater.contains("SubscriptionResolutionRunner.run(candidates"))
+        assertTrue(updater.contains("val underlyingNetwork = SagerNet.underlyingNetwork"))
+        assertTrue(updater.contains("DataStore.enableFakeDns"))
+        assertTrue(updater.contains("DataStore.serviceState.started"))
+        assertTrue(updater.contains("DataStore.serviceMode == Key.MODE_VPN"))
+        assertTrue(updater.contains("underlyingNetwork.getAllByName(profile.serverAddress)"))
+        assertTrue(updater.contains("InetAddress.getAllByName(profile.serverAddress)"))
+        assertTrue(updater.contains("it !is NaiveBean && !it.serverAddress.isIpAddress()"))
+    }
+
     @Test fun firstNetworkAndOldLostProtectionRemain() {
         val network = source("utils/DefaultNetworkListener.kt")
         assertTrue(network.contains("message.processed.await()"))

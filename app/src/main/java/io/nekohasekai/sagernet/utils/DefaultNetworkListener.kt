@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.utils
 
 import android.annotation.TargetApi
@@ -71,23 +72,19 @@ object DefaultNetworkListener {
                 network = message.network
                 pendingRequests.forEach { it.response.complete(message.network) }
                 pendingRequests.clear()
-                listeners.values.forEach { it(network) }
+                NetworkObserverDispatcher.dispatch(listeners.values, network) { Logs.w(it) }
                 Logs.i("DefaultNetworkListener Put network=${message.network} listeners=${listeners.size} elapsed=${SystemClock.elapsedRealtime() - start}ms thread=${Thread.currentThread().name}")
             }
             is NetworkMessage.Update -> if (network == message.network) {
                 // 切网/信号抖动时此事件会风暴（onCapabilitiesChanged），降为 debug
                 val start = SystemClock.elapsedRealtime()
-                listeners.values.forEach {
-                    it(
-                        network
-                    )
-                }
+                NetworkObserverDispatcher.dispatch(listeners.values, network) { Logs.w(it) }
                 Logs.d("DefaultNetworkListener Update network=${message.network} listeners=${listeners.size} elapsed=${SystemClock.elapsedRealtime() - start}ms thread=${Thread.currentThread().name}")
             }
             is NetworkMessage.Lost -> if (network == message.network) {
                 val start = SystemClock.elapsedRealtime()
                 network = null
-                listeners.values.forEach { it(null) }
+                NetworkObserverDispatcher.dispatch(listeners.values, null) { Logs.w(it) }
                 Logs.i("DefaultNetworkListener Lost network=${message.network} listeners=${listeners.size} elapsed=${SystemClock.elapsedRealtime() - start}ms thread=${Thread.currentThread().name}")
             }
         }
