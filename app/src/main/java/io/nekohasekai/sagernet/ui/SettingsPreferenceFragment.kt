@@ -69,8 +69,8 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(), OnPreferenceDataS
 
     override fun onPreferenceDataStoreChanged(store: PreferenceDataStore, key: String) {
         if (key == Key.SHOW_DIRECT_SPEED || key == "showGroupInNotification") {
-            requireContext().sendBroadcast(Intent(io.nekohasekai.sagernet.Action.REFRESH_NOTIFICATION)
-                .setPackage(requireContext().packageName))
+            SagerNet.application.sendBroadcast(Intent(io.nekohasekai.sagernet.Action.REFRESH_NOTIFICATION)
+                .setPackage(SagerNet.application.packageName))
         }
         if (key == Key.MTU && DataStore.serviceState.started) {
             // The value has been persisted. Rebuild the VPN tunnel without recreating MainActivity.

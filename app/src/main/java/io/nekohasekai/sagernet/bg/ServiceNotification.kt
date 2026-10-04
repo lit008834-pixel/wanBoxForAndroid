@@ -29,6 +29,7 @@ import io.nekohasekai.sagernet.bg.proto.ProxyInstance
 import io.nekohasekai.sagernet.ktx.runOnIoDispatcher
 
 /**
+ * @author 雾晚
  * User can customize visibility of notification since Android 8.
  * The default visibility:
  *
@@ -109,22 +110,15 @@ class ServiceNotification(
         val groupName = if (DataStore.showGroupInNotification) {
             if (profile?.type == ProxyEntity.TYPE_BALANCER) profile.displayName() else group?.displayName()
         } else null
-        val currentTitle = groupName?.let { if (strategy) it else "[$it] $node" } ?: node
         val speed = lastSpeed
         fun rate(bytes: Long) = context.getString(R.string.speed, Formatter.formatFileSize(context, bytes))
         val proxySpeed = context.getString(R.string.traffic, rate(speed?.txRateProxy ?: 0), rate(speed?.rxRateProxy ?: 0))
-        val compact = if (strategy) "$node · $proxySpeed" else proxySpeed
-        val expanded = buildList {
-            if (strategy && groupName != null) add(groupName)
-            add(node)
-            add(proxySpeed)
-            if (DataStore.showDirectSpeed) add(context.getString(R.string.notification_direct_speed,
-                rate(speed?.txRateDirect ?: 0), rate(speed?.rxRateDirect ?: 0)))
-        }.joinToString("\n")
-        val content = NotificationContentCache.Content(currentTitle, compact, expanded)
+        val directSpeed = if (DataStore.showDirectSpeed) context.getString(R.string.notification_direct_speed,
+            rate(speed?.txRateDirect ?: 0), rate(speed?.rxRateDirect ?: 0)) else null
+        val content = NotificationPresentation.content(node, groupName, strategy, proxySpeed, directSpeed)
         if (!contentCache.changed(content)) return
-        builder.setContentTitle(currentTitle).setContentText(compact).setSubText(null)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(expanded))
+        builder.setContentTitle(content.title).setContentText(content.text).setSubText(null)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(content.expanded))
         NotificationManagerCompat.from(service as Service).notify(notificationId, builder.build())
         contentCache.committed(content)
     }

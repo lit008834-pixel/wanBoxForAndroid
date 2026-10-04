@@ -8,6 +8,24 @@ class ActiveOutboundTracker(private val names: Map<String, String>) {
     fun resolve(tag: String): String? = names[tag]?.takeIf { it.isNotBlank() }
 }
 
+/** Shared presentation for VPN and Root samples; no cumulative traffic input.
+ * @author 雾晚
+ */
+object NotificationPresentation {
+    fun content(node: String, group: String?, strategy: Boolean, proxySpeed: String,
+        directSpeed: String?): NotificationContentCache.Content {
+        val title = group?.let { if (strategy) it else "[$it] $node" } ?: node
+        val compact = if (strategy) "$node · $proxySpeed" else proxySpeed
+        val expanded = buildList {
+            if (strategy && group != null) add(group)
+            add(node)
+            add(proxySpeed)
+            if (directSpeed != null) add(directSpeed)
+        }.joinToString("\n")
+        return NotificationContentCache.Content(title, compact, expanded)
+    }
+}
+
 /** Equality includes preferences through the rendered content; commit only after publish.
  * Callers serialize access with the notification builder lock.
  * @author 雾晚
