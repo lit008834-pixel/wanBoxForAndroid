@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.utils
 
 import android.Manifest
@@ -20,7 +21,9 @@ object PackageCache {
     lateinit var installedPluginPackages: Map<String, PackageInfo>
     lateinit var installedApps: Map<String, ApplicationInfo>
     lateinit var packageMap: Map<String, Int>
-    val uidMap = HashMap<Int, HashSet<String>>()
+    @Volatile
+    var uidMap: Map<Int, Set<String>> = emptyMap()
+        private set
     val loaded = Mutex(true)
     var registerd = AtomicBoolean(false)
 
@@ -64,14 +67,11 @@ object PackageCache {
         }
         installedApps = installed.associateBy { it.packageName }
         packageMap = installed.associate { it.packageName to it.uid }
-        uidMap.clear()
-        for (info in installed) {
-            val uid = info.uid
-            uidMap.getOrPut(uid) { HashSet() }.add(info.packageName)
-        }
+        // Publish a complete snapshot; live core lookups never see a cleared/partial map.
+        uidMap = AppUidPackages.snapshot(installed.map { it.packageName to it.uid })
     }
 
-    operator fun get(uid: Int) = uidMap[uid]
+    operator fun get(uid: Int) = AppUidPackages.names(uidMap, uid)
     operator fun get(packageName: String) = packageMap[packageName]
 
     fun awaitLoadSync() {

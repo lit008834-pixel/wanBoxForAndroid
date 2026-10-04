@@ -81,14 +81,13 @@ class NativeInterface : BoxPlatformInterface, NB4AInterface {
     override fun packageNameByUid(uid: Int): String {
         PackageCache.awaitLoadSync()
 
-        if (uid <= 1000L) {
+        if (uid in 0..1000) {
             return "android"
         }
 
-        val packageNames = PackageCache.uidMap[uid]
-        if (!packageNames.isNullOrEmpty()) for (packageName in packageNames) {
-            return packageName
-        }
+        val packageNames = PackageCache[uid]
+        // The bridge keeps its String ABI; newline carries every shared-UID package.
+        if (packageNames.isNotEmpty()) return packageNames.sorted().joinToString("\n")
 
         error("unknown uid $uid")
     }

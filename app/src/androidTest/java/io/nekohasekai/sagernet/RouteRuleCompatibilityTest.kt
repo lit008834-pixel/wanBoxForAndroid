@@ -72,7 +72,8 @@ class RouteRuleCompatibilityTest {
             initializeDefaultValues(); serverAddress = "192.0.2.1"; serverPort = 1080
         }
         val proxy = ProxyEntity(id = 99001, groupId = 99002).putBean(bean)
-        val rules = listOf(
+        var selectedTargetId = 0L
+        var rules = listOf(
             RuleEntity(id = 901, userOrder = 1, enabled = true, domains = "full:first.route.invalid", outbound = -1),
             RuleEntity(id = 902, userOrder = 2, enabled = true, domains = "full:second.route.invalid", config = "{\"action\":\"sniff\",\"sniffer\":[\"tls\"]}"),
             RuleEntity(id = 903, userOrder = 3, enabled = true, ip = "192.0.2.0/24", config = "{\"action\":\"reject\",\"method\":\"reply\"}"),
@@ -81,9 +82,16 @@ class RouteRuleCompatibilityTest {
             RuleEntity(id = 906, userOrder = 6, enabled = true, domains = "full:disabled.route.invalid", outbound = -1).apply { enabled = false },
         )
         try {
+            val targetBean = io.nekohasekai.sagernet.fmt.socks.SOCKSBean().apply {
+                initializeDefaultValues(); serverAddress = "192.0.2.2"; serverPort = 1081
+            }
+            selectedTargetId = SagerDatabase.proxyDao.addProxy(ProxyEntity(groupId = 99002).putBean(targetBean))
+            rules = rules + RuleEntity(id = 907, userOrder = 7, enabled = true,
+                packages = setOf(InstrumentationRegistry.getInstrumentation().context.packageName), outbound = selectedTargetId)
             BackupRestore.apply(BackupRestore.Plan(null, null, rules, null), false, true, false)
             DataStore.globalMode = false
-            for (mode in listOf(Key.MODE_VPN, Key.MODE_ROOT)) {
+            for (mode in listOf(Key.MODE_VPN, Key.MODE_ROOT)) for (fakeDns in listOf(false, true)) {
+                DataStore.enableFakeDns = fakeDns
                 DataStore.serviceMode = mode
                 val root = JSONObject(io.nekohasekai.sagernet.fmt.buildConfig(proxy).config)
                 val generated = root.getJSONObject("route").getJSONArray("rules")
@@ -95,7 +103,24 @@ class RouteRuleCompatibilityTest {
                 assertEquals("sniff", list[second].getString("action")); assertFalse(list[second].has("outbound"))
                 val rejected = list.first { it.optString("method") == "reply" }
                 assertEquals("reject", rejected.getString("action")); assertFalse(rejected.has("outbound"))
-                assertTrue(list.any { it.optJSONArray("package_name")?.toString()?.contains(context.packageName) == true })
+                val appRule = list.first { it.optString("type") == "logical" && it.toString().contains(context.packageName) }
+                assertEquals("or", appRule.getString("mode"))
+                assertEquals("bypass", appRule.getString("outbound"))
+                assertTrue(appRule.getJSONArray("rules").getJSONObject(0).has("package_name"))
+                assertTrue(appRule.getJSONArray("rules").getJSONObject(1).has("user_id"))
+                val selectedRule = list.first { it.optString("type") == "logical" &&
+                    it.getJSONArray("rules").getJSONObject(0).optJSONArray("package_name")?.toString()?.contains(InstrumentationRegistry.getInstrumentation().context.packageName) == true }
+                val chosenTag = selectedRule.getString("outbound")
+                val generatedOutbounds = root.getJSONArray("outbounds")
+                val chosen = (0 until generatedOutbounds.length()).map { generatedOutbounds.getJSONObject(it) }
+                    .first { it.optString("tag") == chosenTag }
+                assertEquals("192.0.2.2", chosen.getString("server"))
+                assertEquals(1081, chosen.getInt("server_port"))
+                val dnsRules = root.getJSONObject("dns").getJSONArray("rules")
+                val selectedDns = (0 until dnsRules.length()).map { dnsRules.getJSONObject(it) }
+                    .first { it.optString("type") == "logical" &&
+                        it.getJSONArray("rules").getJSONObject(0).optJSONArray("package_name")?.toString()?.contains(InstrumentationRegistry.getInstrumentation().context.packageName) == true }
+                assertEquals(if (fakeDns) "dns-fake" else "dns-remote", selectedDns.getString("server"))
                 assertTrue(list.none { it.toString().contains("disabled.route.invalid") })
                 // @author 雾晚: compare decoded URL values; Android JSONObject escapes slashes.
                 val generatedSets = root.getJSONObject("route").getJSONArray("rule_set")
@@ -109,6 +134,7 @@ class RouteRuleCompatibilityTest {
             val global = io.nekohasekai.sagernet.fmt.buildConfig(proxy).config
             assertFalse(global.contains("first.route.invalid")); assertFalse(global.contains("second.route.invalid"))
         } finally {
+            if (selectedTargetId > 0) SagerDatabase.proxyDao.deleteById(selectedTargetId)
             DataStore.serviceMode = previousMode; DataStore.globalMode = previousGlobal
             BackupRestore.apply(BackupRestore.Plan(null, null, previousRules, previousSettings), false, true, true)
         }
