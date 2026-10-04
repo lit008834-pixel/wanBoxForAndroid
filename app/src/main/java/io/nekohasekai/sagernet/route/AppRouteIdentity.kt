@@ -51,16 +51,24 @@ object AppRouteIdentity {
         if ((result.optJSONArray("package_name")?.length() ?: 0) == 0 ||
             (result.optJSONArray("user_id")?.length() ?: 0) == 0) return result
 
+        // Direct uses dialer options. network_type is an existing match predicate and stays scoped.
+        val actionFields = if (result.optString("action") == "direct") actions + setOf(
+            "bind_interface", "inet4_bind_address", "inet6_bind_address", "bind_address_no_port",
+            "protect_path", "routing_mark", "reuse_addr", "netns", "connect_timeout",
+            "tcp_fast_open", "tcp_multi_path", "disable_tcp_keep_alive", "tcp_keep_alive",
+            "tcp_keep_alive_interval", "udp_fragment", "domain_resolver", "fallback_network_type",
+            "domain_strategy"
+        ) else actions
         val byPackage = JSONObject(result.toString())
         val byUid = JSONObject(result.toString())
         byPackage.remove("user_id")
         byUid.remove("package_name")
         // Other predicates stay in BOTH branches. Inversion applies to the entire OR once.
-        (actions + "invert" + "type").forEach { byPackage.remove(it); byUid.remove(it) }
+        (actionFields + "invert" + "type").forEach { byPackage.remove(it); byUid.remove(it) }
         return JSONObject().apply {
             put("type", "logical"); put("mode", "or")
             put("rules", JSONArray().put(byPackage).put(byUid))
-            (actions + "invert").forEach { if (result.has(it)) put(it, result.get(it)) }
+            (actionFields + "invert").forEach { if (result.has(it)) put(it, result.get(it)) }
         }
     }
 }

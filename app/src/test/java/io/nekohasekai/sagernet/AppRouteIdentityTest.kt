@@ -45,6 +45,15 @@ class AppRouteIdentityTest {
         for (i in 0..1) assertFalse(fixed.getJSONArray("rules").getJSONObject(i).has("udp_timeout"))
     }
 
+    @Test fun directOptionsAndUnchangedRuleTypesStayIntact() {
+        val raw = JSONObject("""{"package_name":["example.chat"],"user_id":[10123],"action":"direct","tcp_fast_open":true,"connect_timeout":"5s"}""")
+        val fixed = AppRouteIdentity.transform(raw)
+        assertTrue(fixed.getBoolean("tcp_fast_open")); assertEquals("5s", fixed.getString("connect_timeout"))
+        assertFalse(fixed.getJSONArray("rules").getJSONObject(0).has("tcp_fast_open"))
+        val unrelated = SingBoxOptions.Rule_DefaultOptions().apply { domain_suffix = listOf("example.invalid"); outbound = "fixture-node" }
+        assertSame(unrelated, AppRouteIdentity.route(unrelated))
+    }
+
     @Test fun dnsKeepsFakeIpScopeAndServer() {
         val rule = SingBoxOptions.DNSRule_DefaultOptions().apply {
             package_name = listOf("example.chat"); user_id = listOf(10123)

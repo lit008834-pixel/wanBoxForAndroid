@@ -45,7 +45,7 @@
 
 本地已执行：
 
-- `gradlew.bat --offline app:testPreviewDebugUnitTest app:assemblePreviewDebug app:assemblePreviewDebugAndroidTest`：成功，171 个 JVM 测试，0 失败；最新仪器测试再次编译成功。本地 AAR 为上一已发布版本，最终 CI 必须重新构建 Go/AAR/Root 可执行文件。
+- `gradlew.bat --offline app:testPreviewDebugUnitTest app:assemblePreviewDebug app:assemblePreviewDebugAndroidTest`：成功，172 个 JVM 测试，0 失败；最新仪器测试再次编译成功。本地 AAR 为上一已发布版本，最终 CI 必须重新构建 Go/AAR/Root 可执行文件。
 - `go test -modfile=../.fixture/alpha10.mod ./internal/... ./protocol/urltest ./protocol/loadbalance`（libcore 目录）：五包成功。Windows 不运行 Linux 专属测试，由 Linux CI 执行。
 - `git diff --check`：成功。
 - 当前 `adb devices` 无在线设备；没有声称手机上 ChatGPT/菲律宾出口或 Root 切网已经验证。
