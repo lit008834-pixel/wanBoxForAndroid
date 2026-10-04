@@ -42,6 +42,7 @@ func RegisterURLTest(registry *outbound.Registry) {
 }
 
 var (
+	_ adapter.Lifecycle               = (*URLTest)(nil)
 	_ adapter.OutboundGroup           = (*URLTest)(nil)
 	_ adapter.InterfaceUpdateListener = (*URLTest)(nil)
 	_ adapter.Referrer                = (*URLTest)(nil)
@@ -58,6 +59,7 @@ type URLTest struct {
 	interval                     time.Duration
 	tolerance                    uint16
 	idleTimeout                  time.Duration
+	closed                       atomic.Bool
 	group                        *URLTestGroup
 	checkAccess                  sync.Mutex
 	lastInterfaceCheck           atomic.Int64
@@ -96,7 +98,20 @@ func NewURLTest(ctx context.Context, router adapter.Router, logger log.ContextLo
 	return outbound, nil
 }
 
-func (s *URLTest) Start() error {
+// @author 雾晚: participate in the core's staged lifecycle and scoped rollback.
+func (s *URLTest) Start(stage adapter.StartStage, scope *adapter.Scope) error {
+	switch stage {
+	case adapter.StartStateStart:
+		s.ctx = scope.Context()
+		scope.Add(s.Close)
+		return s.initialize()
+	case adapter.StartStateStarted:
+		return s.PostStart()
+	}
+	return nil
+}
+
+func (s *URLTest) initialize() error {
 	outbounds := make([]adapter.Outbound, 0, len(s.tags))
 	for i, tag := range s.tags {
 		detour, loaded := s.outbound.Outbound(tag)
@@ -114,11 +129,15 @@ func (s *URLTest) Start() error {
 }
 
 func (s *URLTest) PostStart() error {
+	if s.group == nil || s.closed.Load() {
+		return E.New("URL test group not started or closed")
+	}
 	s.group.PostStart()
 	return nil
 }
 
 func (s *URLTest) Close() error {
+	s.closed.Store(true)
 	return common.Close(
 		common.PtrOrNil(s.group),
 	)
@@ -159,6 +178,10 @@ func (s *URLTest) Selected(network string) adapter.Outbound {
 }
 
 func (s *URLTest) AttachConnection(closer io.Closer) func() {
+	if s.group == nil || s.closed.Load() {
+		_ = closer.Close()
+		return func() {}
+	}
 	s.group.Touch()
 	return s.group.interruptGroup.Add(closer, true)
 }
@@ -168,20 +191,29 @@ func (s *URLTest) References() []string {
 }
 
 func (s *URLTest) URLTest(ctx context.Context) (map[string]uint16, error) {
+	if s.group == nil || s.closed.Load() {
+		return nil, E.New("URL test group not started or closed")
+	}
 	return s.group.URLTest(ctx)
 }
 
 func (s *URLTest) CheckOutbounds() {
+	if s.group == nil || s.closed.Load() {
+		return
+	}
 	s.group.CheckOutbounds(s.ctx, true)
 }
 
 func (s *URLTest) PerformUpdateCheck() {
+	if s.group == nil || s.closed.Load() {
+		return
+	}
 	s.group.performUpdateCheck()
 }
 
 func (s *URLTest) InterfaceUpdated(ctx context.Context) {
 	grp := s.group
-	if grp == nil {
+	if grp == nil || s.closed.Load() {
 		return
 	}
 	if grp.pause.IsDevicePaused() || grp.pause.IsNetworkPaused() {
@@ -204,6 +236,9 @@ func (s *URLTest) InterfaceUpdated(ctx context.Context) {
 }
 
 func (s *URLTest) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
+	if s.group == nil || s.closed.Load() {
+		return nil, E.New("URL test group not started or closed")
+	}
 	s.group.Touch()
 	var detour adapter.Outbound
 	switch N.NetworkName(network) {
@@ -240,6 +275,9 @@ func (s *URLTest) DialContext(ctx context.Context, network string, destination M
 }
 
 func (s *URLTest) ListenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
+	if s.group == nil || s.closed.Load() {
+		return nil, E.New("URL test group not started or closed")
+	}
 	s.group.Touch()
 	detour := s.group.selectedOutboundUDP
 	if detour == nil {
@@ -344,11 +382,11 @@ func (g *URLTestGroup) PostStart() {
 }
 
 func (g *URLTestGroup) Touch() {
-	if !g.started {
-		return
-	}
 	g.access.Lock()
 	defer g.access.Unlock()
+	if !g.started || g.ctx.Err() != nil {
+		return
+	}
 	if g.ticker != nil {
 		g.lastActive.Store(time.Now())
 		return
@@ -359,17 +397,25 @@ func (g *URLTestGroup) Touch() {
 	go g.loopCheck(ticker, g.close)
 }
 
+// @author 雾晚: close even an idle group; never recreate a ticker after shutdown.
 func (g *URLTestGroup) Close() error {
 	g.access.Lock()
-	defer g.access.Unlock()
-	if g.ticker == nil {
-		return nil
+	g.started = false
+	if g.ticker != nil {
+		g.ticker.Stop()
+		g.ticker = nil
 	}
-	g.ticker.Stop()
-	g.ticker = nil
-	g.pause.UnregisterCallback(g.pauseCallback)
-	g.pauseCallback = nil
-	close(g.close)
+	if g.pauseCallback != nil {
+		g.pause.UnregisterCallback(g.pauseCallback)
+		g.pauseCallback = nil
+	}
+	select {
+	case <-g.close:
+	default:
+		close(g.close)
+	}
+	g.access.Unlock()
+	g.interruptGroup.Interrupt(true)
 	return nil
 }
 

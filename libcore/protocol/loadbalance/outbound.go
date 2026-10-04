@@ -48,6 +48,7 @@ func RegisterLoadBalance(registry *outbound.Registry) {
 }
 
 var (
+	_ adapter.Lifecycle               = (*LoadBalance)(nil)
 	_ adapter.Outbound                = (*LoadBalance)(nil)
 	_ adapter.ConnectionHandler       = (*LoadBalance)(nil)
 	_ adapter.PacketConnectionHandler = (*LoadBalance)(nil)
@@ -205,6 +206,7 @@ type LoadBalance struct {
 	ring                         *consistentHashRing
 	ticker                       *time.Ticker
 	close                        chan struct{}
+	closed                       atomic.Bool
 	started                      bool
 	lastActive                   common.TypedValue[time.Time]
 	checking                     atomic.Bool
@@ -275,6 +277,9 @@ func (s *LoadBalance) AttachConnection(closer io.Closer) func() {
 }
 
 func (s *LoadBalance) URLTest(ctx context.Context) (map[string]uint16, error) {
+	if s.closed.Load() || len(s.outbounds) != len(s.tags) {
+		return nil, E.New("load balance group not started or closed")
+	}
 	if s.checking.Swap(true) {
 		return make(map[string]uint16), nil
 	}
@@ -309,11 +314,11 @@ func (s *LoadBalance) PerformUpdateCheck() {
 }
 
 func (s *LoadBalance) Touch() {
-	if !s.started || !s.isLeastPing() {
-		return
-	}
 	s.access.Lock()
 	defer s.access.Unlock()
+	if !s.started || s.closed.Load() || !s.isLeastPing() {
+		return
+	}
 	if s.ticker != nil {
 		s.lastActive.Store(time.Now())
 		return
@@ -353,7 +358,20 @@ func (s *LoadBalance) loopCheck(ticker *time.Ticker, closeChan <-chan struct{}) 
 	}
 }
 
-func (s *LoadBalance) Start() error {
+// @author 雾晚: participate in the core's staged lifecycle and scoped rollback.
+func (s *LoadBalance) Start(stage adapter.StartStage, scope *adapter.Scope) error {
+	switch stage {
+	case adapter.StartStateStart:
+		s.ctx = scope.Context()
+		scope.Add(s.Close)
+		return s.initialize()
+	case adapter.StartStateStarted:
+		return s.PostStart()
+	}
+	return nil
+}
+
+func (s *LoadBalance) initialize() error {
 	s.outbounds = make([]adapter.Outbound, 0, len(s.tags))
 	s.activeConns = make([]*atomic.Int64, len(s.tags))
 	s.stats = make([]*nodeStats, len(s.tags))
@@ -382,7 +400,9 @@ func (s *LoadBalance) PostStart() error {
 }
 
 func (s *LoadBalance) Close() error {
+	s.closed.Store(true)
 	s.access.Lock()
+	s.started = false
 	if s.ticker != nil {
 		s.ticker.Stop()
 		s.ticker = nil
@@ -728,6 +748,9 @@ func (c *trackedConn) Close() error {
 }
 
 func (s *LoadBalance) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
+	if s.closed.Load() || len(s.outbounds) != len(s.tags) {
+		return nil, E.New("load balance group not started or closed")
+	}
 	s.Touch()
 	indices := s.candidateIndices(ctx, destination)
 	n := len(indices)
@@ -807,6 +830,9 @@ func (c *trackedPacketConn) Close() error {
 }
 
 func (s *LoadBalance) ListenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
+	if s.closed.Load() || len(s.outbounds) != len(s.tags) {
+		return nil, E.New("load balance group not started or closed")
+	}
 	s.Touch()
 	indices := s.candidateIndices(ctx, destination)
 	n := len(indices)
