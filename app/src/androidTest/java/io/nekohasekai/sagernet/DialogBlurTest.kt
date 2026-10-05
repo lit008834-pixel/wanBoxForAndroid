@@ -31,6 +31,7 @@ class DialogBlurTest {
         }
         var activity: Activity? = null
         var dialog: AlertDialog? = null
+        var clicks = 0
         try {
             // The CI emulator disables animations. Exercise the listener path rather
             // than testing only the reduced-effects branch, then restore its setting.
@@ -39,7 +40,6 @@ class DialogBlurTest {
                 MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             instrumentation.runOnMainSync {
                 DataStore.dialogBlurStrength = 0
-                var clicks = 0
                 dialog = BlurredAlertDialogBuilder(activity!!).setTitle("Synthetic blur fixture")
                     .setMessage("Readable original Material content")
                     .setPositiveButton(android.R.string.ok) { _, _ -> clicks++ }.create()
@@ -52,10 +52,11 @@ class DialogBlurTest {
                 dialog!!.show()
                 assertSame(background, window.decorView.background)
                 dialog!!.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
-                assertEquals(1, clicks)
             }
             instrumentation.waitForIdleSync()
             instrumentation.runOnMainSync {
+                // AlertDialog delivers button callbacks through its main-thread Handler.
+                assertEquals(1, clicks)
                 if (Build.VERSION.SDK_INT >= 31) assertEquals(0, dialog!!.window!!.attributes.blurBehindRadius)
                 assertEquals(0, dialog!!.window!!.attributes.flags and WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
                 dialog!!.show()
