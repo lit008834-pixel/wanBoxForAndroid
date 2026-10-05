@@ -35,9 +35,11 @@ for quick in ui.QuickEnableShortcut ui.QuickDisableShortcut QuickToggleShortcut;
   adb logcat -d -s WanBoxAuditProbe:I | grep -q PROBE_SENT
   adb logcat -d -s WanBoxAuditProbe:I | grep -q PRIVATE_ACTIVITY_REJECTED
   for attempt in $(seq 1 10); do
-    adb shell uiautomator dump /sdcard/audit-window.xml
-    adb pull /sdcard/audit-window.xml probe/window.xml
-    if grep -q 'shortcut\|proxy connection\|代理连接' probe/window.xml; then break; fi
+    # @author 雾晚: wait for a real hierarchy after activity/window transitions.
+    # A transient null root must retry, not bypass the confirmation assertion.
+    if adb shell uiautomator dump /sdcard/audit-window.xml &&
+       adb pull /sdcard/audit-window.xml probe/window.xml &&
+       grep -q 'shortcut\|proxy connection\|代理连接' probe/window.xml; then break; fi
     sleep 1
   done
   grep -q 'shortcut\|proxy connection\|代理连接' probe/window.xml

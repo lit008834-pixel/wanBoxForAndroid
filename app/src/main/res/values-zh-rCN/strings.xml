@@ -1140,4 +1140,8 @@
     <string name="performance_priority_mode_summary">调整内存整理与刷新频率，可能增加内存占用和耗电；默认关闭。</string>
     <!-- @author 雾晚 -->
     <string name="input_method_direct">当前输入法直连</string>
+    <!-- @author 雾晚 -->
+    <string name="dialog_blur">弹窗背景模糊</string>
+    <string name="dialog_blur_summary">Android 12 及以上可选的弹窗背景效果；不支持的设备、低电量模式、减少动态效果或无障碍场景沿用原有外观。修改后从下次打开弹窗生效。</string>
+    <string name="dialog_blur_strength">模糊强度（0–25）</string>
 </resources>
