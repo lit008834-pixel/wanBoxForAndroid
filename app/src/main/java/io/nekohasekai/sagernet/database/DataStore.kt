@@ -108,13 +108,14 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     var allowInsecureOnRequest by configurationStore.boolean(Key.ALLOW_INSECURE_ON_REQUEST)
     var networkChangeResetConnections by configurationStore.boolean(Key.NETWORK_CHANGE_RESET_CONNECTIONS) { false }
     var wakeResetConnections by configurationStore.boolean(Key.WAKE_RESET_CONNECTIONS)
-    // @author 雾晚: opt-in; existing installations retain their routing until enabled.
+    // @author 雾晚: legacy preview.3 preference, read only for migration into ordinary rules.
     var inputMethodDirect by configurationStore.boolean(Key.INPUT_METHOD_DIRECT) { false }
 
     //
 
     var isExpert by configurationStore.boolean(Key.APP_EXPERT)
     var appTheme by configurationStore.int(Key.APP_THEME) { Theme.LIGHT_GRAY }
+    var dialogBlurStrength by configurationStore.int(Key.DIALOG_BLUR_STRENGTH) { 12 }
     val useSystemTheme: Boolean get() = false
     var nightTheme by configurationStore.stringToInt(Key.NIGHT_THEME)
     var appLanguage by configurationStore.string(Key.APP_LANGUAGE) { "" }

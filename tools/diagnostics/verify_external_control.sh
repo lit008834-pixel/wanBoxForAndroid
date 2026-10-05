@@ -16,10 +16,13 @@ else
 fi
 adb shell pm list packages | tr -d '\r' | grep -Fx "package:$package"
 adb install -r probe/probe.apk
-# @author 雾晚: CI's Google launcher can show an unrelated ANR over the app.
-# Hide system error overlays only on this disposable emulator; the assertions
-# still require the actual target confirmation dialog and a stopped service.
-adb shell settings put global hide_error_dialogs 1
+# @author 雾晚: the disposable Google APIs image's setup wizard can hang and
+# cover the target with its ANR dialog. Disable only that unrelated package;
+# keep Android error dialogs enabled so target crashes remain visible.
+if adb shell pm list packages | tr -d '\r' | grep -Fxq 'package:com.google.android.googlesdksetup'; then
+  adb shell am force-stop com.google.android.googlesdksetup
+  adb shell pm disable-user --user 0 com.google.android.googlesdksetup
+fi
 adb shell wm size 720x1280
 adb shell wm density 320
 adb shell am force-stop com.google.android.apps.nexuslauncher || true
@@ -35,9 +38,11 @@ for quick in ui.QuickEnableShortcut ui.QuickDisableShortcut QuickToggleShortcut;
   adb logcat -d -s WanBoxAuditProbe:I | grep -q PROBE_SENT
   adb logcat -d -s WanBoxAuditProbe:I | grep -q PRIVATE_ACTIVITY_REJECTED
   for attempt in $(seq 1 10); do
-    adb shell uiautomator dump /sdcard/audit-window.xml
-    adb pull /sdcard/audit-window.xml probe/window.xml
-    if grep -q 'shortcut\|proxy connection\|代理连接' probe/window.xml; then break; fi
+    # @author 雾晚: wait for a real hierarchy after activity/window transitions.
+    # A transient null root must retry, not bypass the confirmation assertion.
+    if adb shell uiautomator dump /sdcard/audit-window.xml &&
+       adb pull /sdcard/audit-window.xml probe/window.xml &&
+       grep -q 'shortcut\|proxy connection\|代理连接' probe/window.xml; then break; fi
     sleep 1
   done
   grep -q 'shortcut\|proxy connection\|代理连接' probe/window.xml

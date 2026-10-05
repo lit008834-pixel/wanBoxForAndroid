@@ -96,6 +96,15 @@
         app:key="categoryUI"
         app:title="@string/ui_settings">
 
+        <androidx.preference.SeekBarPreference
+            app:key="dialogBlurStrength"
+            app:defaultValue="12"
+            app:min="0"
+            android:max="25"
+            app:showSeekBarValue="true"
+            app:title="@string/dialog_blur_strength"
+            app:summary="@string/dialog_blur_summary" />
+
         <moe.matsuri.nb4a.ui.SimpleMenuPreference
             app:defaultValue="0"
             app:entries="@array/card_style_entries"
@@ -222,14 +231,6 @@
             app:key="proxyApps"
             app:summary="@string/proxied_apps_summary"
             app:title="@string/proxied_apps" />
-
-        <!-- @author 雾晚: explicit opt-in, applies only to the active keyboard identity. -->
-        <SwitchPreference
-            app:defaultValue="false"
-            app:icon="@drawable/ic_navigation_apps"
-            app:key="inputMethodDirect"
-            app:title="@string/input_method_direct"
-            app:summary="@string/input_method_direct_unavailable" />
 
         <SwitchPreference
             app:icon="@drawable/ic_baseline_legend_toggle_24"

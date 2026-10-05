@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.ui
 
 import android.content.Intent
@@ -73,7 +74,8 @@ class RouteFragment : ToolbarFragment(R.layout.layout_route), Toolbar.OnMenuItem
         if (DataStore.serviceState.started) {
             runOnDefaultDispatcher {
                 try {
-                    SagerNet.reloadService()
+                    // @author 雾晚: a selector-only reload does not apply changed routing rules.
+                    SagerNet.restartService()
                 } catch (e: Exception) {
                     Logs.w(e)
                 }

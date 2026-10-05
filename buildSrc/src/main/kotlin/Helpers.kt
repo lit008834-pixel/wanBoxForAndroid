@@ -46,7 +46,8 @@ fun Project.setupCommon() {
         buildToolsVersion = "35.0.1"
         compileSdk = 35
         defaultConfig {
-            minSdk = 21
+            // @author 雾晚: product support starts at Android 12 system window blur.
+            minSdk = 31
             targetSdk = 35
         }
         buildTypes {

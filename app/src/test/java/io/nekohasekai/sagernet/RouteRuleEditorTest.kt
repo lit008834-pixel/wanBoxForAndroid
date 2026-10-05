@@ -75,7 +75,7 @@ class RouteRuleEditorTest {
         val source = File("src/main/java/io/nekohasekai/sagernet/ui/RouteSettingsActivity.kt").readText()
         assertTrue(source.contains("?.copy()")); assertTrue(source.contains("newTestSingBoxInstance")); assertFalse(source.contains(".start()"))
         assertTrue(source.indexOf("RouteRuleEditor.problems(candidate)") < source.indexOf("ProfileManager.createRule(candidate)"))
-        assertTrue(source.contains("saveAndExit(true)")); assertTrue(source.contains("SagerNet.reloadService()")); assertTrue(source.contains("registerChangeListener(this)"))
+        assertTrue(source.contains("saveAndExit(true)")); assertTrue(source.contains("SagerNet.restartService()")); assertTrue(source.contains("registerChangeListener(this)"))
         val db = File("src/main/java/io/nekohasekai/sagernet/database/SagerDatabase.kt").readText()
         assertTrue(db.contains("version = 10")); assertFalse(db.contains("fallbackToDestructiveMigration"))
         val entity = File("src/main/java/io/nekohasekai/sagernet/database/RuleEntity.kt").readText()

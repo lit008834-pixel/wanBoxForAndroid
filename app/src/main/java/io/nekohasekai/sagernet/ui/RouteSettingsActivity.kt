@@ -22,7 +22,7 @@ import androidx.preference.PreferenceDataStore
 import androidx.preference.PreferenceFragmentCompat
 import com.github.shadowsocks.plugin.Empty
 import com.github.shadowsocks.plugin.fragment.AlertDialogFragment
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import io.nekohasekai.sagernet.ui.BlurredAlertDialogBuilder as MaterialAlertDialogBuilder
 import io.nekohasekai.sagernet.Key
 import io.nekohasekai.sagernet.R
 import io.nekohasekai.sagernet.SagerNet
@@ -216,7 +216,7 @@ class RouteSettingsActivity(
                 runOnDefaultDispatcher {
                     ProfileManager.deleteRule(arg.ruleId)
                     if (DataStore.serviceState.started) {
-                        runCatching { SagerNet.reloadService() }
+                        runCatching { SagerNet.restartService() }
                     }
                 }
                 requireActivity().finish()
@@ -356,7 +356,8 @@ class RouteSettingsActivity(
             ProfileManager.updateRule(candidate)
         }
         if (DataStore.serviceState.started) {
-            runCatching { SagerNet.reloadService() }.onFailure {
+            // @author 雾晚: rebuild routing/DNS, including when the selected group is a selector.
+            runCatching { SagerNet.restartService() }.onFailure {
                 onMainDispatcher { Toast.makeText(this@RouteSettingsActivity, R.string.rr_reload_error, Toast.LENGTH_LONG).show() }
             }
         }
