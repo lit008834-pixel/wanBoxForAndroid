@@ -223,6 +223,14 @@
             app:summary="@string/proxied_apps_summary"
             app:title="@string/proxied_apps" />
 
+        <!-- @author 雾晚: explicit opt-in, applies only to the active keyboard identity. -->
+        <SwitchPreference
+            app:defaultValue="false"
+            app:icon="@drawable/ic_navigation_apps"
+            app:key="inputMethodDirect"
+            app:title="@string/input_method_direct"
+            app:summary="@string/input_method_direct_unavailable" />
+
         <SwitchPreference
             app:icon="@drawable/ic_baseline_legend_toggle_24"
             app:key="bypassLan"

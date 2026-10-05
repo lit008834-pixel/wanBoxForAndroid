@@ -69,6 +69,8 @@ object Key {
 
     const val NETWORK_CHANGE_RESET_CONNECTIONS = "networkChangeResetConnections"
     const val WAKE_RESET_CONNECTIONS = "wakeResetConnections"
+    // @author 雾晚: explicit keyboard-network compatibility, independent of app allow/bypass lists.
+    const val INPUT_METHOD_DIRECT = "inputMethodDirect"
     const val RULES_PROVIDER = "rulesProvider"
     const val LOG_LEVEL = "logLevel"
     const val LOG_BUF_SIZE = "logBufSize"
