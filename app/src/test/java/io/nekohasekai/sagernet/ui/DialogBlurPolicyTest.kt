@@ -43,6 +43,8 @@ class DialogBlurPolicyTest {
         assertEquals("0", strength.getAttributeNS(ns, "min"))
         assertEquals("25", strength.getAttributeNS("http://schemas.android.com/apk/res/android", "max"))
         val code = File("src/main/java/io/nekohasekai/sagernet/ui/DialogBlur.kt").readText()
+        assertFalse(code.contains("SDK_INT < 31")) // Android 12 is the install boundary.
+        assertFalse(code.contains("@RequiresApi(31)"))
         assertTrue(code.contains("removeCrossWindowBlurEnabledListener(callback)"))
         assertTrue(code.contains("onViewDetachedFromWindow"))
         assertFalse(code.contains("setRenderEffect"))
