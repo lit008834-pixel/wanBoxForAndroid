@@ -1,10 +1,8 @@
 // @author 雾晚
 package io.nekohasekai.sagernet.bg
 
-import android.annotation.SuppressLint
 import android.app.Service
 import android.content.Intent
-import android.os.PowerManager
 import io.nekohasekai.sagernet.SagerNet
 
 class ProxyService : Service(), BaseService.Interface {
@@ -13,13 +11,13 @@ class ProxyService : Service(), BaseService.Interface {
     override fun createNotification(profileName: String): ServiceNotification =
         ServiceNotification(this, profileName, "service-proxy", true)
 
-    override var wakeLock: PowerManager.WakeLock? = null
+    override val powerLocks = ServicePowerLocks()
     override var upstreamInterfaceName: String? = null
 
-    @SuppressLint("WakelockTimeout")
     override fun acquireWakeLock() {
-        wakeLock = SagerNet.power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "sagernet:proxy")
-            .apply { acquire() }
+        powerLocks.acquire("cpu") {
+            AndroidPowerLockLease(SagerNet.power, "sagernet:proxy")
+        }
     }
 
     override fun onDestroy() {

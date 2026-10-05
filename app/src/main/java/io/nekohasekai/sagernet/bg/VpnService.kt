@@ -2,7 +2,6 @@
 package io.nekohasekai.sagernet.bg
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -10,7 +9,6 @@ import android.content.pm.PackageManager
 import android.net.ProxyInfo
 import android.os.Build
 import android.os.ParcelFileDescriptor
-import android.os.PowerManager
 import io.nekohasekai.sagernet.*
 import io.nekohasekai.sagernet.database.DataStore
 import io.nekohasekai.sagernet.fmt.LOCALHOST
@@ -44,44 +42,27 @@ class VpnService : BaseVpnService(),
         super.startProcesses() // launch proxy instance
     }
 
-    override var wakeLock: PowerManager.WakeLock? = null
-    private var wifiLock: android.net.wifi.WifiManager.WifiLock? = null
+    override val powerLocks = ServicePowerLocks()
 
-    @SuppressLint("WakelockTimeout")
     override fun acquireWakeLock() {
-        if (wakeLock == null) {
-            wakeLock = SagerNet.power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "sagernet:vpn")
-                .apply { acquire() }
+        powerLocks.acquire("cpu") {
+            AndroidPowerLockLease(SagerNet.power, "sagernet:vpn")
         }
-        if (wifiLock == null) {
-            try {
-                val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as? android.net.wifi.WifiManager
-                @Suppress("DEPRECATION")
-                wifiLock = wifiManager?.createWifiLock(
-                    android.net.wifi.WifiManager.WIFI_MODE_FULL_HIGH_PERF,
-                    "sagernet:vpn_wifi"
-                )?.apply {
-                    setReferenceCounted(false)
-                    acquire()
-                }
-            } catch (_: Throwable) {
+        try {
+            val manager = applicationContext.getSystemService(Context.WIFI_SERVICE) as? android.net.wifi.WifiManager
+            if (manager != null) powerLocks.acquire("wifi") {
+                AndroidWifiLockLease(manager)
             }
+        } catch (error: Exception) {
+            // Optional Wi-Fi lock failure must not discard the CPU lock or its cleanup.
+            Logs.w("ServicePowerLocks optional-wifi-acquire failed type=${error.javaClass.simpleName}")
         }
     }
 
     @Suppress("EXPERIMENTAL_API_USAGE")
     override suspend fun killProcesses(): Throwable? {
-        try {
-            wifiLock?.let {
-                if (it.isHeld) it.release()
-            }
-        } catch (_: Throwable) {
-        } finally {
-            wifiLock = null
-        }
-
         val currentConnection = conn
-        var cleanupError: Throwable? = null
+        var cleanupError: Throwable? = powerLocks.release("wifi")
         Logs.i(
             "VpnLifecycleTrace stage=tun-close begin " +
                 "hasConnection=${currentConnection != null}"
@@ -94,7 +75,8 @@ class VpnService : BaseVpnService(),
                 "VpnLifecycleTrace stage=tun-close failed " +
                     "type=${error.javaClass.name} message=${error.message}"
             )
-            cleanupError = error
+            if (cleanupError == null) cleanupError = error
+            else if (cleanupError !== error) cleanupError?.addSuppressed(error)
         } finally {
             conn = null
         }

@@ -388,13 +388,7 @@ class BaseService {
                 recordCleanupFailure("proxy-close", error)
             }
 
-            try {
-                wakeLock?.release()
-            } catch (error: Throwable) {
-                recordCleanupFailure("wake-lock-release", error)
-            } finally {
-                wakeLock = null
-            }
+            powerLocks.releaseAll()?.let { error -> recordCleanupFailure("wake-lock-release", error) }
 
             try {
                 DefaultNetworkListener.stop(this)
@@ -595,14 +589,11 @@ class BaseService {
             }
         }
 
-        var wakeLock: PowerManager.WakeLock?
+        val powerLocks: ServicePowerLocks
         fun acquireWakeLock()
 
         suspend fun lateInit() {
-            wakeLock?.apply {
-                release()
-                wakeLock = null
-            }
+            powerLocks.releaseAll()?.let { throw it }
 
             if (DataStore.acquireWakeLock) {
                 acquireWakeLock()
