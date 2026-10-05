@@ -131,7 +131,8 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_7_pro
-          script: ./gradlew app:connectedOssDebugAndroidTest && bash tools/diagnostics/verify_external_control.sh
+          # @author 雾晚: preserve synthetic native XML material comparisons from the emulator.
+          script: ./gradlew app:connectedOssDebugAndroidTest && test "$(find app/build/outputs/connected_android_test_additional_output -name '*.png' | wc -l)" -eq 72 && bash tools/diagnostics/verify_external_control.sh
       - name: Preserve complete test reports
         if: always()
         uses: actions/upload-artifact@v5
@@ -145,3 +146,4 @@ jobs:
             probe/external-control-logcat.txt
             audit-baseline/payload.json
             app/build/outputs/mapping
+            app/build/outputs/connected_android_test_additional_output

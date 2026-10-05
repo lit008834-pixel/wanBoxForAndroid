@@ -37,6 +37,7 @@ import io.nekohasekai.sagernet.database.DataStore
 import io.nekohasekai.sagernet.ktx.dp2px
 import io.nekohasekai.sagernet.ktx.getColorAttr
 import io.nekohasekai.sagernet.utils.Theme
+import io.nekohasekai.sagernet.ui.UiChrome
 
 class ColorPickerPreference @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyle: Int = TypedArrayUtils.getAttr(
@@ -201,6 +202,7 @@ class ColorPickerPreference @JvmOverloads constructor(
             addView(input)
         }
         val customDialog = MaterialAlertDialogBuilder(context)
+            .setBackground(UiChrome.background(context, context.resources.getDimension(R.dimen.dialog_corner_radius), informationSurface = true))
             .setTitle(R.string.custom_color_title)
             .setView(content)
             .setNegativeButton(android.R.string.cancel, null)
@@ -301,6 +303,7 @@ class ColorPickerPreference @JvmOverloads constructor(
         })
 
         dialog = MaterialAlertDialogBuilder(context)
+            .setBackground(UiChrome.background(context, context.resources.getDimension(R.dimen.dialog_corner_radius), informationSurface = true))
             .setTitle(R.string.theme)
             .setView(scroll)
             .setNegativeButton(android.R.string.cancel, null)

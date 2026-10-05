@@ -2544,7 +2544,9 @@ class ConfigurationFragment @JvmOverloads constructor(
             container: ViewGroup?,
             savedInstanceState: Bundle?,
         ): View {
-            return LayoutProfileListBinding.inflate(inflater).root
+            return LayoutProfileListBinding.inflate(inflater).also {
+                UiChrome.applyInformationCard(it.subscriptionGlassSurface)
+            }.root
         }
 
         private var undoManagerValue: UndoSnackbarManager<ProxyEntity>? = null
