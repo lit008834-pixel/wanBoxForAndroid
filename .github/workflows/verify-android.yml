@@ -38,6 +38,9 @@ jobs:
           (cd libcore && go test -tags=with_clash_api,with_gvisor,with_quic,with_wireguard,with_utls .)
           (cd libcore && go test ./internal/... ./protocol/urltest ./protocol/loadbalance)
           (cd libcore && go test -race ./protocol/loadbalance)
+          # @author 雾晚: exercise the Android/Linux append writer under concurrent rotation.
+          (cd libcore && go test -race log.go log_test.go)
+          (cd libcore && go test -race tun_source.go tun_source_test.go)
           python3 -m unittest discover -s tools -p test_clean_subscription.py
           go -C ../sing-box run ./cmd/sing-box check -c "$GITHUB_WORKSPACE/docs/config/local-proxy.json"
           go -C ../sing-box run ./cmd/sing-box check -c "$GITHUB_WORKSPACE/docs/config/tun-fakeip.json"

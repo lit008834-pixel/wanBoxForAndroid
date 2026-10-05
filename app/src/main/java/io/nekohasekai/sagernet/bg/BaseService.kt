@@ -65,13 +65,8 @@ class BaseService {
                 // Action.SWITCH_WAKE_LOCK -> runOnDefaultDispatcher { service.switchWakeLock() }
                 PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED -> {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        if (SagerNet.power.isDeviceIdleMode) {
-                            // Doze mode: do NOT call proxy?.box?.sleep() / pauseManager.DevicePause().
-                            // Pausing TUN inbound during Doze blocks background push notifications & sync,
-                            // causing disconnects and socket timeouts when phone is idle for hours.
-                            // Instead, only run a memory trim while keeping TUN/network completely alive.
-                            Libcore.forceGc()
-                        } else {
+                        // @author 雾晚: Doze keeps the core alive without explicit GC or data-path pausing.
+                        if (!SagerNet.power.isDeviceIdleMode) {
                             runCatching { proxy?.box }.getOrNull()?.wake()
                             if (DataStore.wakeResetConnections) {
                                 Libcore.resetAllConnections(true)
@@ -104,22 +99,10 @@ class BaseService {
                 Action.SWITCH_PERFORMANCE_MODE -> {
                     val enabled = DataStore.performancePriorityMode
                     Logs.i("BaseService: SWITCH_PERFORMANCE_MODE received, enabled=$enabled")
-                    if (!enabled) {
-                        Libcore.forceGc()
-                        System.gc()
-                    }
                 }
 
-                Intent.ACTION_SCREEN_OFF -> {
-                    // Do NOT call proxy?.box?.sleep() / pauseManager.DevicePause().
-                    // Pausing the core on screen off kills idle TCP keepalives and marks connections as dead,
-                    // causing Telegram/WeChat to get stuck in "Connecting..." when switching apps or unlocking.
-                    // Instead, only run a memory trim while keeping TUN/network completely alive.
-                    if (!DataStore.performancePriorityMode) {
-                        Libcore.forceGc()
-                        System.gc()
-                    }
-                }
+                // @author 雾晚: handle explicitly so screen-off never falls through to stopRunner().
+                Intent.ACTION_SCREEN_OFF -> Unit
 
                 Intent.ACTION_SCREEN_ON,
                 Intent.ACTION_USER_PRESENT -> {

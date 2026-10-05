@@ -1,3 +1,4 @@
+// @author 雾晚
 package libcore
 
 import (
@@ -18,7 +19,6 @@ import (
 	"sync/atomic"
 	"time"
 
-
 	"github.com/sagernet/sing-box/adapter"
 	"github.com/sagernet/sing-box/experimental/v2rayapi"
 	"github.com/sagernet/sing-box/protocol/group"
@@ -35,7 +35,6 @@ import (
 
 var mainInstance *BoxInstance
 var boxInstanceSequence atomic.Uint64
-var lastUrlTestGc atomic.Int64
 
 type boxLifecycleState uint8
 
@@ -359,16 +358,7 @@ func (b *BoxInstance) Close() (err error) {
 	} else if b.Box != nil {
 		err = b.Box.Close()
 	}
-	if b.isURLTest {
-		now := time.Now().UnixMilli()
-		if now-lastUrlTestGc.Load() > 2000 {
-			lastUrlTestGc.Store(now)
-			go func() {
-				runtime.GC()
-				debug.FreeOSMemory()
-			}()
-		}
-	}
+	// @author 雾晚: closing test resources is sufficient; leave GC scheduling to Go.
 	return err
 }
 

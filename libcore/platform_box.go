@@ -41,6 +41,7 @@ import (
 type boxPlatformInterfaceWrapper struct {
 	networkManager    adapter.NetworkManager
 	myTunName         string
+	myTunAddress      []netip.Addr
 	diagnosticID      uint64
 	diagnosticTag     string
 	isURLTest         bool
@@ -129,6 +130,8 @@ func (w *boxPlatformInterfaceWrapper) OpenInterface(options *tun.Options, platfo
 	//
 	options.FileDescriptor = int(tunFd)
 	w.myTunName = options.Name
+	// @author 雾晚: align the platform source identity with official libbox and OwnBox f1ac989.
+	w.myTunAddress = tunInterfaceAddresses(options.Inet4Address, options.Inet6Address)
 	return tun.New(*options)
 }
 
@@ -287,7 +290,7 @@ func (w *boxPlatformInterfaceWrapper) CancelNotification(identifier string, type
 }
 
 func (w *boxPlatformInterfaceWrapper) MyInterfaceAddress() []netip.Addr {
-	return nil
+	return w.myTunAddress
 }
 
 func (w *boxPlatformInterfaceWrapper) UsePlatformNeighborResolver() bool {
