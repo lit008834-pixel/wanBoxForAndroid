@@ -36,7 +36,12 @@ class GlassUiTest {
         animatorScale(1f)
         try { instrumentation.runOnMainSync {
             val base = instrumentation.targetContext
-            val output = File(base.getExternalFilesDir(null), "liquid-glass").apply { mkdirs() }
+            // AGP collects this output before uninstalling Debug/test APKs; do not assume a release package path.
+            val collectedOutput = InstrumentationRegistry.getArguments().getString("additionalTestOutputDir")
+            val outputRoot = collectedOutput?.let { File(it) } ?: if (Build.VERSION.SDK_INT >= 29)
+                base.externalMediaDirs.firstOrNull()?.resolve("additional_test_output") else base.getExternalFilesDir(null)
+            val output = File(checkNotNull(outputRoot),
+                "liquid-glass").apply { check(mkdirs() || isDirectory) }
             for ((theme, style) in listOf("light" to R.style.Theme_SagerNet,
                 "night" to R.style.Theme_SagerNet, "black" to R.style.Theme_SagerNet_Black)) {
                 for (scale in listOf(1f, 1.3f, 2f)) for (widthDp in listOf(320, 412)) for (density in listOf(160, 320)) {
