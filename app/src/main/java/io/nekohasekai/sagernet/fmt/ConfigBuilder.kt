@@ -40,6 +40,8 @@ import io.nekohasekai.sagernet.ktx.mkPort
 import io.nekohasekai.sagernet.ktx.runOnMainDispatcher
 import io.nekohasekai.sagernet.utils.PackageCache
 import io.nekohasekai.sagernet.route.AppRouteIdentity
+import io.nekohasekai.sagernet.route.InputMethodDirectPolicy
+import io.nekohasekai.sagernet.utils.CurrentInputMethod
 import moe.matsuri.nb4a.*
 import moe.matsuri.nb4a.SingBoxOptions.*
 import moe.matsuri.nb4a.plugin.Plugins
@@ -329,6 +331,16 @@ private fun serverHostOf(bean: AbstractBean): String? {
 
 fun buildConfig(
     proxy: ProxyEntity, forTest: Boolean = false, forExport: Boolean = false
+): ConfigBuildResult = buildConfig(proxy, forTest, forExport,
+    if (!forTest && !forExport && DataStore.inputMethodDirect &&
+        DataStore.serviceMode in listOf(Key.MODE_VPN, Key.MODE_ROOT)) {
+        CurrentInputMethod.identity(SagerNet.application)
+    } else null)
+
+// @author 雾晚: injectable identity for generator tests, without changing the system input method.
+internal fun buildConfig(
+    proxy: ProxyEntity, forTest: Boolean, forExport: Boolean,
+    inputMethod: InputMethodDirectPolicy.Identity?
 ): ConfigBuildResult {
 
     if (proxy.type == TYPE_CONFIG) {
@@ -414,6 +426,7 @@ fun buildConfig(
     val groupCache = HashMap<Long, ProxyGroup?>()
     val isRootTun = DataStore.serviceMode == Key.MODE_ROOT
     val isVPN = DataStore.serviceMode == Key.MODE_VPN || isRootTun
+    val directInputMethod = inputMethod.takeIf { !forTest && !forExport && isVPN && DataStore.inputMethodDirect }
     val bind = if (!forTest && DataStore.allowAccess) "0.0.0.0" else LOCALHOST
     val remoteDns = DataStore.remoteDns.split("\n")
         .mapNotNull { dns -> dns.trim().takeIf { it.isNotBlank() && !it.startsWith("#") } }
@@ -1771,7 +1784,7 @@ fun buildConfig(
             val remoteDomains = rawRemoteDomains
 
             // 构建最优先前置路由规则（须位于所有用户规则之前）
-            val topRouteRules = mutableListOf<Rule_DefaultOptions>()
+            val topRouteRules = mutableListOf<Rule>()
 
             // @author 雾晚: match Root's configured probe before sniff/resolve and user routes.
             // This keeps local CONNECT measurements on the same selected proxy as core tests.
@@ -1825,6 +1838,10 @@ fun buildConfig(
             }
 
             // 5. 直连 DNS 硬隔离规则（锁定 direct，绝不走代理）
+            // @author 雾晚: after DNS hijacking and IP-family guards, before global/user routes.
+            // Keep the keyboard inside TUN: excluded UIDs could receive netd's cached FakeIP
+            // but have no route back to that virtual address, especially with Root auto_redirect.
+            directInputMethod?.let { topRouteRules.add(InputMethodDirectPolicy.route(it)) }
             if (directDomains.isNotEmpty()) {
                 topRouteRules.add(Rule_DefaultOptions().apply {
                     domain = directDomains.toList()
@@ -1945,6 +1962,9 @@ fun buildConfig(
                 })
             }
         }
+
+        // @author 雾晚: keep Fake-IP inside TUN; use the existing direct resolver for identified IME DNS.
+        directInputMethod?.let { dns.rules.add(0, InputMethodDirectPolicy.dns(it)) }
 
         if (!forTest && ipv6Mode == IPv6Mode.DISABLE) {
             dns.rules.add(0, DNSRule_DefaultOptions().apply {

@@ -94,6 +94,14 @@ class RouteRuleCompatibilityTest {
                 DataStore.enableFakeDns = fakeDns
                 DataStore.serviceMode = mode
                 val root = JSONObject(io.nekohasekai.sagernet.fmt.buildConfig(proxy).config)
+                // @author 雾晚: inspect real generator output in both TUN modes, never a hand-built template.
+                val inbounds = root.getJSONArray("inbounds")
+                val tun = (0 until inbounds.length()).map { inbounds.getJSONObject(it) }
+                    .single { it.optString("type") == "tun" }
+                assertFalse("Deprecated GSO generated in $mode", tun.has("gso"))
+                assertEquals(DataStore.mtu, tun.getInt("mtu"))
+                assertTrue(tun.getJSONArray("address").length() > 0)
+                assertEquals("tun-in", tun.getString("tag"))
                 val generated = root.getJSONObject("route").getJSONArray("rules")
                 val list = (0 until generated.length()).map { generated.getJSONObject(it) }
                 val first = list.indexOfFirst { it.optJSONArray("domain")?.toString()?.contains("first.route.invalid") == true }

@@ -14,7 +14,6 @@ import io.nekohasekai.sagernet.fmt.TAG_PROXY
 import io.nekohasekai.sagernet.ktx.Logs
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
-import libcore.Libcore
 
 class TrafficLooper
     (
@@ -38,6 +37,7 @@ class TrafficLooper
     private val tagMap = mutableMapOf<String, TrafficUpdater.TrafficLooperData>() // tag to 1 data
     private val stateMutex = Mutex()
     private var trafficUpdater: TrafficUpdater? = null
+    private var balancerMemberIds: Set<Long> = emptySet()
 
     private data class LoopSnapshot(
         val speed: SpeedDisplayData,
@@ -182,12 +182,10 @@ class TrafficLooper
     private suspend fun loop() {
         val baseDelayMs = DataStore.speedInterval.toLong()
         val profileTrafficStatistics = DataStore.profileTrafficStatistics
-        if (baseDelayMs == 0L) return
+        if (baseDelayMs <= 0L) return
 
         // for display
         val itemBypass = TrafficUpdater.TrafficLooperData(tag = TAG_BYPASS)
-        var idleSeconds = 0
-        var lastDelayMs = 3000L
 
         while (currentCoroutineContext().isActive) {
             val isForegroundUI = data.binder.callbackIdMap.containsValue(
@@ -196,14 +194,15 @@ class TrafficLooper
             val isInteractive = SagerNet.power.isInteractive
 
             val proxy = data.proxy
-            if (proxy == null) {
-                delay(if (isForegroundUI) baseDelayMs else 3000L)
-                continue
-            }
-            if (!proxy.isInitialized()) continue
+            if (!TrafficPollPolicy.ready(proxy?.isInitialized() == true, isForegroundUI, baseDelayMs)) continue
+            if (proxy == null) continue
 
             val snapshot = withStateLock {
                 if (trafficUpdater == null) {
+                    // Configuration membership is immutable for this ProxyInstance; reuse it across samples.
+                    balancerMemberIds = proxy.config.balancerMemberMap.entries.asSequence().flatMap { (id, members) ->
+                        members.asSequence().filter { it != id }
+                    }.toSet()
                     idMap.clear()
                     tagMap.clear()
                     idMap[-1] = itemBypass
@@ -279,9 +278,6 @@ class TrafficLooper
                 var mainRxRate = 0L
                 var mainTx = 0L
                 var mainRx = 0L
-                val balancerMemberIds = proxy.config.balancerMemberMap.entries.flatMap { (bId, mIds) ->
-                    mIds.filter { it != bId }
-                }.toSet()
                 idMap.forEach { (id, it) ->
                     if (id > 0L && id !in balancerMemberIds) {
                         if (!it.ignore) {
@@ -346,32 +342,9 @@ class TrafficLooper
                 }
             }
 
-            // Memory profile & background power optimization
-            if (!DataStore.performancePriorityMode) {
-                // In low-power / standard mode: aggressively reclaim memory when idle in background
-                if (!isForegroundUI && snapshot.speed.txRateProxy == 0L && snapshot.speed.rxRateProxy == 0L) {
-                    idleSeconds += (lastDelayMs / 1000).toInt().coerceAtLeast(1)
-                    if (idleSeconds >= 30) {
-                        idleSeconds = 0
-                        Libcore.forceGc()
-                        System.gc()
-                    }
-                } else {
-                    idleSeconds = 0
-                }
-            } else {
-                // In performance priority mode: keep memory buffers hot, do not force GC
-                idleSeconds = 0
-            }
-
-            val nextDelay = when {
-                isForegroundUI -> baseDelayMs
-                !isInteractive -> if (DataStore.performancePriorityMode) 10000L else 30000L
-                data.notification?.listenPostSpeed == true -> if (DataStore.performancePriorityMode) 3000L else 6000L
-                else -> if (DataStore.performancePriorityMode) 5000L else 15000L
-            }
-            lastDelayMs = nextDelay
-            delay(nextDelay)
+            // Retain existing foreground/user and background sampling intervals; let runtimes manage GC.
+            delay(TrafficPollPolicy.intervalMs(isForegroundUI, isInteractive,
+                data.notification?.listenPostSpeed == true, DataStore.performancePriorityMode, baseDelayMs))
         }
     }
 }

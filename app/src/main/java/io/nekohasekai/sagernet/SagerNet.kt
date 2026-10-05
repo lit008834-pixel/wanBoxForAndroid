@@ -176,12 +176,6 @@ class SagerNet : Application(),
         if (databaseFailure != null) return
         if (level >= ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN && isMainProcess) {
             cleanWebview()
-            System.gc()
-        }
-        // In low-memory mode, aggressively free Go heap when OS asks us to trim.
-        // In high-performance mode, skip this to preserve warm connection pools.
-        if (!DataStore.performancePriorityMode) {
-            Libcore.forceGc()
         }
     }
 
@@ -289,10 +283,6 @@ class SagerNet : Application(),
             runCatching {
                 val file = File(application.noBackupFilesDir, "perf_mode")
                 if (enabled) file.writeText("1") else file.delete()
-            }
-            if (!enabled) {
-                Libcore.forceGc()
-                System.gc()
             }
             application.sendBroadcast(
                 Intent(Action.SWITCH_PERFORMANCE_MODE).setPackage(application.packageName)

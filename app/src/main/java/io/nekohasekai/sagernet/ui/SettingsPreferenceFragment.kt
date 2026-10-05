@@ -23,6 +23,7 @@ import io.nekohasekai.sagernet.database.preference.OnPreferenceDataStoreChangeLi
 import io.nekohasekai.sagernet.ktx.*
 import io.nekohasekai.sagernet.utils.AppLocale
 import io.nekohasekai.sagernet.utils.Theme
+import io.nekohasekai.sagernet.utils.CurrentInputMethod
 import moe.matsuri.nb4a.ui.*
 import android.os.Handler
 import android.os.Looper
@@ -72,7 +73,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(), OnPreferenceDataS
             SagerNet.application.sendBroadcast(Intent(io.nekohasekai.sagernet.Action.REFRESH_NOTIFICATION)
                 .setPackage(SagerNet.application.packageName))
         }
-        if (key == Key.MTU && DataStore.serviceState.started) {
+        if ((key == Key.MTU || key == Key.INPUT_METHOD_DIRECT) && DataStore.serviceState.started) {
             // The value has been persisted. Rebuild the VPN tunnel without recreating MainActivity.
             SagerNet.restartService()
         }
@@ -92,6 +93,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(), OnPreferenceDataS
         preferenceManager.preferenceDataStore = DataStore.configurationStore
         DataStore.initGlobal()
         addPreferencesFromResource(R.xml.global_preferences)
+        updateInputMethodSummary()
 
         val iconColor = Theme.getPrimaryColor(requireContext())
         tintPreferenceIcons(preferenceScreen, iconColor)
@@ -441,6 +443,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(), OnPreferenceDataS
 
     override fun onResume() {
         super.onResume()
+        updateInputMethodSummary()
 
         if (::isProxyApps.isInitialized) {
             isProxyApps.isChecked = DataStore.proxyApps
@@ -470,6 +473,15 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(), OnPreferenceDataS
                 lanSharingPref.summary = getString(R.string.lan_sharing_disabled_sum)
             }
         }
+    }
+
+    /** Describe the actual keyboard, without guessing an OEM package. @author 雾晚 */
+    private fun updateInputMethodSummary() {
+        val ctx = context ?: return
+        val preference = findPreference<SwitchPreference>(Key.INPUT_METHOD_DIRECT) ?: return
+        val identity = CurrentInputMethod.identity(ctx)
+        preference.summary = if (identity == null) getString(R.string.input_method_direct_unavailable)
+        else getString(R.string.input_method_direct_summary, CurrentInputMethod.label(ctx, identity))
     }
 
     private fun clearAppCache() {

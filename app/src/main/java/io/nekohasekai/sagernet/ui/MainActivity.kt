@@ -772,10 +772,6 @@ class MainActivity : ThemedActivity(),
     override fun onStop() {
         if (SagerNet.databaseFailure == null) connection.updateConnectionId(SagerConnection.CONNECTION_ID_MAIN_ACTIVITY_BACKGROUND)
         super.onStop()
-        if (SagerNet.databaseFailure != null) return
-        if (!DataStore.performancePriorityMode) {
-            Libcore.forceGc()
-        }
     }
 
     override fun onDestroy() {

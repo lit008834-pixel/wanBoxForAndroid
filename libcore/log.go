@@ -1,3 +1,4 @@
+// @author 雾晚
 package libcore
 
 // neko_log（libneko）的自实现替代：
@@ -52,12 +53,31 @@ func (w *fileLogWriter) Write(p []byte) (n int, err error) {
 	if w.disabled || w.file == nil {
 		return len(p), nil
 	}
-	// 超过上限时截断文件（保留新内容，简单环形策略）
-	if info, statErr := w.file.Stat(); statErr == nil && info.Size()+int64(len(p)) > w.maxSize {
-		_ = w.file.Truncate(0)
-		_, _ = w.file.Seek(0, 0)
+	originalSize := len(p)
+	limit := w.maxSize
+	if limit <= 0 {
+		// @author 雾晚: zero is the existing settings UI's default 50 KiB, not an unbounded log.
+		limit = 50 * 1024
 	}
-	return w.file.Write(p)
+	if int64(len(p)) > limit {
+		// Keep the newest part of a single oversized message without retaining extra buffers.
+		p = p[len(p)-int(limit):]
+	}
+	// 超过上限时截断文件（保留新内容，简单环形策略）
+	info, err := w.file.Stat()
+	if err != nil {
+		return 0, err
+	}
+	if info.Size()+int64(len(p)) > limit {
+		if err = w.file.Truncate(0); err != nil {
+			return 0, err
+		}
+		if _, err = w.file.Seek(0, 0); err != nil {
+			return 0, err
+		}
+	}
+	n, err = w.file.Write(p)
+	return originalSize - len(p) + n, err
 }
 
 // Truncate 清空日志文件（对应原 neko_log.LogWriter.Truncate，供 NekoLogClear 调用）。
