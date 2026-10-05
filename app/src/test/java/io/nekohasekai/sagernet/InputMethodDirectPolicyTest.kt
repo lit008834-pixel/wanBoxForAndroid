@@ -2,11 +2,10 @@
 package io.nekohasekai.sagernet
 
 import io.nekohasekai.sagernet.route.InputMethodDirectPolicy
-import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test
 
-/** Tests the actual serialized identity rules, using fictional packages. @author 雾晚 */
+/** Tests ordinary rule identity and migration equivalence, using fictional packages. @author 雾晚 */
 class InputMethodDirectPolicyTest {
     @Test fun componentAndSecondaryUserUidArePreserved() {
         val identity = InputMethodDirectPolicy.identity("fixture.keyboard/.ImeService", 210123, 10101)!!
@@ -24,22 +23,17 @@ class InputMethodDirectPolicyTest {
         }
     }
 
-    @Test fun routeAndDnsMatchPackageOrFullUidWithoutBroadSystemExemption() {
+    @Test fun ordinaryRuleRetainsPackageAndUserEnabledState() {
         val identity = InputMethodDirectPolicy.identity("fixture.keyboard/.Ime", 210123, 10101)!!
-        val route = JSONObject(InputMethodDirectPolicy.route(identity).asMap())
-        val dns = JSONObject(InputMethodDirectPolicy.dns(identity).asMap())
-        for (rule in listOf(route, dns)) {
-            assertEquals("logical", rule.getString("type"))
-            assertEquals("or", rule.getString("mode"))
-            val branches = rule.getJSONArray("rules")
-            assertEquals(2, branches.length())
-            assertEquals("fixture.keyboard", branches.getJSONObject(0).getJSONArray("package_name").getString(0))
-            assertEquals(210123, branches.getJSONObject(1).getJSONArray("user_id").getInt(0))
-            assertEquals(1, branches.getJSONObject(1).getJSONArray("user_id").length())
-            assertFalse(rule.has("inbound")); assertFalse(rule.has("ip_version"))
+        for (enabled in listOf(false, true)) {
+            val rule = InputMethodDirectPolicy.rule(identity, "Fixture keyboard", enabled)
+            assertEquals(setOf(identity.packageName), rule.packages)
+            assertEquals(-1L, rule.outbound)
+            assertEquals(enabled, rule.enabled)
+            assertTrue(InputMethodDirectPolicy.equivalent(rule, identity))
+            assertFalse(InputMethodDirectPolicy.equivalent(rule.copy(outbound = 0), identity))
+            assertFalse(InputMethodDirectPolicy.equivalent(rule.copy(domains = "full:fixture.invalid"), identity))
+            assertFalse(InputMethodDirectPolicy.equivalent(rule.copy(packages = emptySet()), identity))
         }
-        assertEquals("direct", route.getString("outbound"))
-        assertEquals("dns-direct", dns.getString("server"))
-        assertTrue(dns.getBoolean("disable_cache"))
     }
 }

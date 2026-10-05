@@ -21,10 +21,8 @@ class SettingsHierarchyContractTest {
             val key = element.getAttributeNS("http://schemas.android.com/apk/res-auto", "key")
             if (key.isNotEmpty()) { assertNull("Duplicate key $key", actual.put(key, element)) }
         }
-        // @author 雾晚: only this explicitly approved opt-in may extend the legacy key set.
-        assertEquals(old.keySet() + Key.INPUT_METHOD_DIRECT, actual.keys)
-        assertEquals("false", actual.getValue(Key.INPUT_METHOD_DIRECT)
-            .getAttributeNS("http://schemas.android.com/apk/res-auto", "defaultValue"))
+        // @author 雾晚: input-method routing is an ordinary rule, not a separate preference.
+        assertEquals(old.keySet(), actual.keys)
         old.keys().forEach { key ->
             val before = old.getJSONObject(key); val node = actual.getValue(key)
             assertEquals(key, before.getString("type"), node.tagName)

@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.database
 
 import android.database.sqlite.SQLiteCantOpenDatabaseException
@@ -193,6 +194,8 @@ object ProfileManager {
     }
 
     suspend fun getRules(): List<RuleEntity> {
+        // @author 雾晚: show the converted preference in the existing editable route list.
+        io.nekohasekai.sagernet.route.InputMethodRouteMigration.migrate()
         var rules = SagerDatabase.rulesDao.allRules()
         if (rules.isEmpty() && !DataStore.rulesFirstCreate) {
             DataStore.rulesFirstCreate = true

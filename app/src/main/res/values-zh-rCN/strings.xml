@@ -1140,6 +1140,4 @@
     <string name="performance_priority_mode_summary">调整内存整理与刷新频率，可能增加内存占用和耗电；默认关闭。</string>
     <!-- @author 雾晚 -->
     <string name="input_method_direct">当前输入法直连</string>
-    <string name="input_method_direct_summary">%1$s 的联网请求走直连出站，优先于全局及用户规则；同 UID 应用一同生效。切换输入法后需重连，完整自定义配置需自行配置规则。</string>
-    <string name="input_method_direct_unavailable">无法识别当前输入法，暂不生成直连规则。完整自定义配置需自行配置规则。</string>
 </resources>

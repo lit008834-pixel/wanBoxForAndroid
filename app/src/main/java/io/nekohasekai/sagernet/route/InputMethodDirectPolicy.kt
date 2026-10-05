@@ -1,10 +1,9 @@
 // @author 雾晚
 package io.nekohasekai.sagernet.route
 
-import io.nekohasekai.sagernet.fmt.TAG_DIRECT
-import moe.matsuri.nb4a.SingBoxOptions
+import io.nekohasekai.sagernet.database.RuleEntity
 
-/** Opt-in compatibility for the active keyboard; never exempts every system application. @author 雾晚 */
+/** Builds an ordinary editable application route; never exempts all system applications. @author 雾晚 */
 object InputMethodDirectPolicy {
     /** Captured once for a generated configuration, including the Android user ID. @author 雾晚 */
     data class Identity(val packageName: String, val uid: Int)
@@ -25,20 +24,13 @@ object InputMethodDirectPolicy {
         return Identity(name, uid)
     }
 
-    fun route(identity: Identity): SingBoxOptions.Rule = AppRouteIdentity.route(
-        SingBoxOptions.Rule_DefaultOptions().apply {
-            package_name = listOf(identity.packageName)
-            user_id = listOf(identity.uid)
-            outbound = TAG_DIRECT
-        }
+    fun rule(identity: Identity, name: String, enabled: Boolean) = RuleEntity(
+        name = name, packages = setOf(identity.packageName), outbound = -1L, enabled = enabled
     )
 
-    fun dns(identity: Identity): SingBoxOptions.DNSRule = AppRouteIdentity.dns(
-        SingBoxOptions.DNSRule_DefaultOptions().apply {
-            package_name = listOf(identity.packageName)
-            user_id = listOf(identity.uid)
-            server = "dns-direct"
-            disable_cache = true
-        }
-    )
+    /** A disabled equivalent is intentional user state; migration must not enable it. @author 雾晚 */
+    fun equivalent(rule: RuleEntity, identity: Identity) = rule.outbound == -1L &&
+        rule.packages == setOf(identity.packageName) && rule.config.isBlank() &&
+        listOf(rule.domains, rule.ip, rule.port, rule.sourcePort, rule.network,
+            rule.source, rule.protocol, rule.ruleset).all { it.isBlank() }
 }

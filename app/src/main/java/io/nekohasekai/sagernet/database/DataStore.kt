@@ -108,7 +108,7 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     var allowInsecureOnRequest by configurationStore.boolean(Key.ALLOW_INSECURE_ON_REQUEST)
     var networkChangeResetConnections by configurationStore.boolean(Key.NETWORK_CHANGE_RESET_CONNECTIONS) { false }
     var wakeResetConnections by configurationStore.boolean(Key.WAKE_RESET_CONNECTIONS)
-    // @author 雾晚: opt-in; existing installations retain their routing until enabled.
+    // @author 雾晚: legacy preview.3 preference, read only for migration into ordinary rules.
     var inputMethodDirect by configurationStore.boolean(Key.INPUT_METHOD_DIRECT) { false }
 
     //

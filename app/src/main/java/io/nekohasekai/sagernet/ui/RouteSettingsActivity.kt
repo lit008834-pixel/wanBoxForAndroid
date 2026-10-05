@@ -216,7 +216,7 @@ class RouteSettingsActivity(
                 runOnDefaultDispatcher {
                     ProfileManager.deleteRule(arg.ruleId)
                     if (DataStore.serviceState.started) {
-                        runCatching { SagerNet.reloadService() }
+                        runCatching { SagerNet.restartService() }
                     }
                 }
                 requireActivity().finish()
@@ -356,7 +356,8 @@ class RouteSettingsActivity(
             ProfileManager.updateRule(candidate)
         }
         if (DataStore.serviceState.started) {
-            runCatching { SagerNet.reloadService() }.onFailure {
+            // @author 雾晚: rebuild routing/DNS, including when the selected group is a selector.
+            runCatching { SagerNet.restartService() }.onFailure {
                 onMainDispatcher { Toast.makeText(this@RouteSettingsActivity, R.string.rr_reload_error, Toast.LENGTH_LONG).show() }
             }
         }

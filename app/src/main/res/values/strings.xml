@@ -1224,6 +1224,4 @@
     <string name="reset_settings_warning">Requires confirmation. Resets settings; does not delete nodes or routing rules.</string>
     <!-- @author 雾晚 -->
     <string name="input_method_direct">Current keyboard direct connection</string>
-    <string name="input_method_direct_summary">%1$s uses the direct outbound before global and user rules. Apps sharing its UID also apply. Reconnect after changing keyboards. Full custom configurations need their own rule.</string>
-    <string name="input_method_direct_unavailable">Current keyboard cannot be identified; no direct rule will be generated. Full custom configurations need their own rule.</string>
 </resources>
