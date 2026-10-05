@@ -120,5 +120,5 @@ Android10–15 前台服务、VPN授权与通知类型维持已有 Manifest，�
 - 最终强度调节版：`app:testPreviewDebugUnitTest app:assemblePreviewDebug app:assembleOssDebugAndroidTest` 成功，197项单测0失败。
 - AAPT 检查 Debug APK：versionName=3.0.7-preview.4，versionCode=1725，minSdk=31，targetSdk=35。Debug ID 含原有 .debug 后缀；预览Release仍用独立正式应用ID。
 - `git diff --check` 与 `tools/check_android_security.py` 成功。
-- `app:lintPreviewDebug --offline` 实际失败，149项错误；首项为原有 AssetsActivity.onBackPressed MissingSuperCall。报告中没有 DialogBlur / DialogBlurPolicy 新增文件错误。未关闭 lint 规则或改变依赖来掩盖结果。
-- Android窗口仪器测试与正式签名/升级验证交由本次CI；最终结果以发布后验证记录为准。
+- 初次 `app:lintPreviewDebug --offline` 失败，149项错误。最低版本改为31后在2026-10-06重跑，移除模糊模块两处 ObsoleteSdkInt 分支后，最终全项目报告204项错误，首项为 ServiceNotification 的 MissingPermission；DialogBlur / DialogBlurPolicy 已无诊断。未关闭 lint 规则或改变依赖来掩盖结果。
+- CI run 37338290681 的OSS/Preview各197项单测、API35全部21项仪器测试与外部控制检查通过；模糊低版本分支移除后，本地再次执行Preview全部197项单测与Debug构建成功。正式签名/升级验证以本次最终发布流程记录为准。

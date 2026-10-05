@@ -7,7 +7,6 @@ import android.os.Build
 import android.view.View
 import android.view.Window
 import android.view.WindowManager
-import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import io.nekohasekai.sagernet.R
@@ -17,7 +16,6 @@ import java.util.function.Consumer
 /** Blurs behind a dialog window, never its text or a captured list bitmap. @author 雾晚 */
 internal object DialogBlur {
     fun install(dialog: Dialog) {
-        if (Build.VERSION.SDK_INT < 31) return
         val window = dialog.window ?: return
         val decor = window.decorView
         if (decor.getTag(R.id.dialog_blur_controller) != null) return
@@ -28,7 +26,6 @@ internal object DialogBlur {
     }
 
     /** Registration belongs to the attached dialog, and is removed on every detach. @author 雾晚 */
-    @RequiresApi(31)
     private class Controller(private val window: Window) : View.OnAttachStateChangeListener {
         private val manager = window.context.getSystemService(WindowManager::class.java)
         private var listener: Consumer<Boolean>? = null
