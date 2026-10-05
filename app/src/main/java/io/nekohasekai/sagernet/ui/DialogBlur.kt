@@ -43,7 +43,7 @@ internal object DialogBlur {
             val currentGeneration = ++generation
             originalFlags = window.attributes.flags
             originalRadius = window.attributes.blurBehindRadius
-            if (!DataStore.dialogBlurEnabled || DataStore.dialogBlurStrength <= 0 ||
+            if (DataStore.dialogBlurStrength <= 0 ||
                 UiChrome.reduceEffects(window.context)) return
             val callback = Consumer<Boolean> { available ->
                 if (attached && generation == currentGeneration) update(available)
@@ -61,7 +61,7 @@ internal object DialogBlur {
 
         private fun update(systemEnabled: Boolean) {
             val radius = DialogBlurPolicy.radiusPx(Build.VERSION.SDK_INT,
-                DataStore.dialogBlurEnabled, DataStore.dialogBlurStrength, systemEnabled,
+                DataStore.dialogBlurStrength, systemEnabled,
                 UiChrome.reduceEffects(window.context), window.context.resources.displayMetrics.density)
             val attributes = window.attributes
             attributes.blurBehindRadius = if (radius > 0) radius else originalRadius

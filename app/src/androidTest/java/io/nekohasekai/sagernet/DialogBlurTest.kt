@@ -20,7 +20,6 @@ class DialogBlurTest {
     @Test fun dialogKeepsMaterialControlsAndRestoresBlurOnDismissAndReshow() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val store = DataStore.configurationStore
-        val previousEnabled = store.getBoolean(Key.DIALOG_BLUR_ENABLED)
         val previousStrength = store.getInt(Key.DIALOG_BLUR_STRENGTH)
         var activity: Activity? = null
         var dialog: AlertDialog? = null
@@ -28,8 +27,7 @@ class DialogBlurTest {
             activity = instrumentation.startActivitySync(Intent(instrumentation.targetContext,
                 MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             instrumentation.runOnMainSync {
-                DataStore.dialogBlurEnabled = false
-                DataStore.dialogBlurStrength = 12
+                DataStore.dialogBlurStrength = 0
                 var clicks = 0
                 dialog = BlurredAlertDialogBuilder(activity!!).setTitle("Synthetic blur fixture")
                     .setMessage("Readable original Material content")
@@ -39,7 +37,7 @@ class DialogBlurTest {
                 assertEquals(0, window.attributes.flags and WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
                 val background = window.decorView.background
                 dialog!!.dismiss()
-                DataStore.dialogBlurEnabled = true
+                DataStore.dialogBlurStrength = 12
                 dialog!!.show()
                 assertSame(background, window.decorView.background)
                 dialog!!.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
@@ -55,7 +53,7 @@ class DialogBlurTest {
             instrumentation.runOnMainSync {
                 if (Build.VERSION.SDK_INT >= 31) {
                     val context = activity!!
-                    val expected = DialogBlurPolicy.radiusPx(Build.VERSION.SDK_INT, true, 12,
+                    val expected = DialogBlurPolicy.radiusPx(Build.VERSION.SDK_INT, 12,
                         context.getSystemService(WindowManager::class.java).isCrossWindowBlurEnabled,
                         UiChrome.reduceEffects(context), context.resources.displayMetrics.density)
                     assertEquals(expected, dialog!!.window!!.attributes.blurBehindRadius)
@@ -64,8 +62,6 @@ class DialogBlurTest {
             }
         } finally {
             instrumentation.runOnMainSync { dialog?.dismiss(); activity?.finish() }
-            if (previousEnabled == null) store.remove(Key.DIALOG_BLUR_ENABLED)
-            else store.putBoolean(Key.DIALOG_BLUR_ENABLED, previousEnabled)
             if (previousStrength == null) store.remove(Key.DIALOG_BLUR_STRENGTH)
             else store.putInt(Key.DIALOG_BLUR_STRENGTH, previousStrength)
         }

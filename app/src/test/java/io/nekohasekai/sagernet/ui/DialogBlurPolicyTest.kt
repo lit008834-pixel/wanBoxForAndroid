@@ -9,36 +9,36 @@ import org.w3c.dom.Element
 
 /** Platform capability and optional settings contract without a GPU dependency. @author 雾晚 */
 class DialogBlurPolicyTest {
-    @Test fun unsupportedDisabledReducedAndZeroKeepNativeAppearance() {
+    @Test fun unsupportedReducedAndZeroDoNotBlur() {
         for (api in listOf(21, 23, 29, 30)) assertEquals(0,
-            DialogBlurPolicy.radiusPx(api, true, 25, true, false, 3f))
-        assertEquals(0, DialogBlurPolicy.radiusPx(35, false, 12, true, false, 3f))
-        assertEquals(0, DialogBlurPolicy.radiusPx(35, true, 12, false, false, 3f))
-        assertEquals(0, DialogBlurPolicy.radiusPx(35, true, 12, true, true, 3f))
-        assertEquals(0, DialogBlurPolicy.radiusPx(35, true, 0, true, false, 3f))
+            DialogBlurPolicy.radiusPx(api, 25, true, false, 3f))
+        assertEquals(0, DialogBlurPolicy.radiusPx(35, 12, false, false, 3f))
+        assertEquals(0, DialogBlurPolicy.radiusPx(35, 12, true, true, 3f))
+        assertEquals(0, DialogBlurPolicy.radiusPx(35, 0, true, false, 3f))
     }
 
     @Test fun strengthAndDensityAreBoundedForEverySupportedApi() {
         for (api in 31..35) {
-            assertEquals(36, DialogBlurPolicy.radiusPx(api, true, 12, true, false, 3f))
-            assertEquals(75, DialogBlurPolicy.radiusPx(api, true, 999, true, false, 3f))
-            assertEquals(100, DialogBlurPolicy.radiusPx(api, true, 25, true, false, 10f))
-            assertEquals(0, DialogBlurPolicy.radiusPx(api, true, -1, true, false, 3f))
+            assertEquals(36, DialogBlurPolicy.radiusPx(api, 12, true, false, 3f))
+            assertEquals(75, DialogBlurPolicy.radiusPx(api, 999, true, false, 3f))
+            assertEquals(100, DialogBlurPolicy.radiusPx(api, 25, true, false, 10f))
+            assertEquals(0, DialogBlurPolicy.radiusPx(api, -1, true, false, 3f))
             for (density in listOf(0f, -1f, Float.NaN, Float.POSITIVE_INFINITY))
-                assertEquals(0, DialogBlurPolicy.radiusPx(api, true, 25, true, false, density))
+                assertEquals(0, DialogBlurPolicy.radiusPx(api, 25, true, false, density))
         }
     }
 
-    @Test fun settingsAreOptInAndLifecycleOwnsWindowListener() {
+    @Test fun settingsDefaultOnAndLifecycleOwnsWindowListener() {
+        assertTrue(File("../buildSrc/src/main/kotlin/Helpers.kt").readText().contains("minSdk = 31"))
         val ns = "http://schemas.android.com/apk/res-auto"
         val factory = DocumentBuilderFactory.newInstance().apply { isNamespaceAware = true }
         val nodes = factory.newDocumentBuilder().parse(File("src/main/res/xml/global_preferences.xml"))
             .getElementsByTagName("*")
         val keyed = (0 until nodes.length).map { nodes.item(it) as Element }
             .associateBy { it.getAttributeNS(ns, "key") }
-        assertEquals("false", keyed.getValue("dialogBlurEnabled").getAttributeNS(ns, "defaultValue"))
+        assertFalse(keyed.containsKey("dialogBlurEnabled"))
         val strength = keyed.getValue("dialogBlurStrength")
-        assertEquals("dialogBlurEnabled", strength.getAttributeNS(ns, "dependency"))
+        assertEquals("", strength.getAttributeNS(ns, "dependency"))
         assertEquals("12", strength.getAttributeNS(ns, "defaultValue"))
         assertEquals("0", strength.getAttributeNS(ns, "min"))
         assertEquals("25", strength.getAttributeNS("http://schemas.android.com/apk/res/android", "max"))

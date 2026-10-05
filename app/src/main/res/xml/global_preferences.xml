@@ -96,20 +96,14 @@
         app:key="categoryUI"
         app:title="@string/ui_settings">
 
-        <SwitchPreference
-            app:key="dialogBlurEnabled"
-            app:defaultValue="false"
-            app:title="@string/dialog_blur"
-            app:summary="@string/dialog_blur_summary" />
-
         <androidx.preference.SeekBarPreference
             app:key="dialogBlurStrength"
-            app:dependency="dialogBlurEnabled"
             app:defaultValue="12"
             app:min="0"
             android:max="25"
             app:showSeekBarValue="true"
-            app:title="@string/dialog_blur_strength" />
+            app:title="@string/dialog_blur_strength"
+            app:summary="@string/dialog_blur_summary" />
 
         <moe.matsuri.nb4a.ui.SimpleMenuPreference
             app:defaultValue="0"

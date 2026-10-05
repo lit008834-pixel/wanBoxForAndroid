@@ -6,13 +6,13 @@
 
 实际实现基线是 origin/main `b7795ab3653d80a8014ed1011bc7514ca03221f0`（preview.3），比指定 preview.2 新。保留已完成的输入法按钮移除及普通路由迁移，合并进入 preview.4。原用户工作区不覆盖。
 
-当前：XML / ViewBinding / Fragment / Material Components 1.8.0，minSdk 21、target/compileSdk 35，JDK 17、Gradle 8.10.2，sing-box v1.15.0-alpha.10。没有 Compose 架构。正式构建已经 R8 + shrinkResources，不重复打开、不改变包名/签名/核心/Room/用户路由默认值。
+当前：XML / ViewBinding / Fragment / Material Components 1.8.0，原基线 minSdk21，本次按用户最新要求提高到31、target/compileSdk35，JDK 17、Gradle 8.10.2，sing-box v1.15.0-alpha.10。没有 Compose 架构。正式构建已经 R8 + shrinkResources，不重复打开、不改变包名/签名/核心/Room/用户路由默认值。
 
-本次按用户允许的分步开发实施**第一阶段：可选弹窗背景模糊**。其余模块是下一阶段设计和源码差异清单，不能理解为已经全部实现。
+本次按用户允许的分步开发实施**第一阶段：默认启用、仅强度调节的系统高斯弹窗背景模糊**。其余模块是下一阶段设计和源码差异清单，不能理解为已经全部实现。
 
 | 模块 | 当前证据 | 本次 / 下一阶段 | 风险与验证 |
 |---|---|---|---|
-| UI 模糊 | UiChrome / GlassPalette 已有静态材质；bg_dialog 是语义 Surface；bg_dialog_glass 是固定深色旧资源 | 已新增弹窗模糊开关（默认关）和 0–25 强度；复用原 Material 内容与 dim；不将 Widget drawable 套到 App | API31+ 需系统支持；能力回调关闭时退回原外观；监听随窗口移除 |
+| UI 模糊 | UiChrome / GlassPalette 已有静态材质；bg_dialog 是语义 Surface；bg_dialog_glass 是固定深色旧资源 | 已新增0–25 高斯模糊强度（默认12，无关闭开关）；复用原 Material 内容与 dim；不将 Widget drawable 套到 App | API31+ 需系统支持；能力回调关闭时退回原外观；监听随窗口移除 |
 | 路由增强 | RuleEntity + ConfigBuilder 生成 sing-box JSON；RouteRuleEditor 已校验 CIDR、端口、动作、规则集；当前 libcore 负责 RE2 校验 | 不新造第二套执行引擎。下一阶段先加解析回归再改域名输入；分组/白黑名单先定义数据与组合语义 | DNS 和流量规则必须一致；数据迁移/原规则顺序需单独审查；绝不悄悄丢弃无效原规则 |
 | 代码精简 | Helpers.kt release 已开启 R8 / 资源压缩；多 ABI、JNI 与反射 keep 属于必要能力 | 已删除 ConfigurationFragment 未使用的 BottomSheetDialog import；其余依赖/语言/图片不凭搜索一次就删除 | 反射、Manifest、RemoteViews、JNI 和动态资源引用需跟踪；不删多语言、不盲改 keep |
 | 耗电优化 | TrafficPollPolicy 已有后台 6/15/30秒策略；DefaultNetworkListener 有首次等待、专用线程、500ms 防抖 | 保留既有实现；新模糊无截图、timer、常驻动画/线程；下一阶段做持续连接电量与帧时间采样 | 不能把降低显示刷新当作暂停核心；不降低必要心跳、不增加保活权限 |
@@ -27,8 +27,7 @@
 // @author 雾晚
 // DialogBlur.Controller.update 的实际核心路径；省略周围生命周期代码见源文件。
 val radius = DialogBlurPolicy.radiusPx(
-    Build.VERSION.SDK_INT, DataStore.dialogBlurEnabled,
-    DataStore.dialogBlurStrength, systemEnabled,
+    Build.VERSION.SDK_INT, DataStore.dialogBlurStrength, systemEnabled,
     UiChrome.reduceEffects(window.context),
     window.context.resources.displayMetrics.density
 )
@@ -41,11 +40,11 @@ else (attributes.flags and WindowManager.LayoutParams.FLAG_BLUR_BEHIND.inv()) or
 window.attributes = attributes
 ```
 
-设置：用户界面设置 → 弹窗背景模糊；修改从下次弹窗打开生效。0 等于不模糊。强度表示 dp，转换为物理像素且上限100px，防止异常 density 超出预算。设置只增加两个 KV 偏好，无 Room schema 迁移。
+设置：用户界面设置 → 高斯模糊强度；修改从下次弹窗打开生效。0 等于不模糊。强度表示 dp，转换为物理像素且上限100px，防止异常 density 超出预算。设置只增加一个 KV 偏好，无 Room schema 迁移。
 
-窗口 attach 时注册 `addCrossWindowBlurEnabledListener`，detach 时移除并恢复原 blur flag/radius。无替换 onDismiss/onShow，保留调用方事件。默认关/0 时不注册系统监听。系统支持变化时更新原窗口；关闭能力后恢复原外观。
+窗口 attach 时注册 `addCrossWindowBlurEnabledListener`，detach 时移除并恢复原 blur flag/radius。无替换 onDismiss/onShow，保留调用方事件。关闭/0 时不注册系统监听。系统支持变化时更新原窗口；关闭能力后恢复原外观。
 
-Android 10/11 和更低版本没有这条窗口模糊 API：沿用原有 Material Surface / UiChrome 静态材质，不伪称有实时模糊。没有引入 BlurView 或截图降级，它们会增加采样、合成与滚动成本。Android12–15 也可能由设备、省电或设置关闭能力。低内存、TalkBack 触摸探索、关闭动画时不开启效果。
+Android 10/11 及以下不再支持本软件：APK minSdk=31，由 Android 安装器拒绝安装/升级。没有兼容版本，不删除旧设备已有安装或数据。新功能仅以 API31+ 为支持范围。没有引入 BlurView 或截图降级，它们会增加采样、合成与滚动成本。Android12–15 也可能由设备、省电或设置关闭能力。按用户确认，仅限制系统版本；系统临时关闭模糊不阻止 App 正常运行。低内存、TalkBack 触摸探索、关闭动画时不开启效果。
 
 没有给整个 View 设置 RenderEffect：那会模糊其自身文字/子树，并不自动模糊背后 sibling。没有改弹窗内容半透明，保留背景和文字对比度；本阶段视觉变化是弹窗后方景深，不能称为实时折射。窗口 API 依据：[Android WindowManager](https://developer.android.com/reference/android/view/WindowManager)、[LayoutParams blurBehindRadius](https://developer.android.com/reference/android/view/WindowManager.LayoutParams)。
 
@@ -108,10 +107,18 @@ Android10–15 前台服务、VPN授权与通知类型维持已有 Manifest，�
 
 ## 测试清单与实际执行记录
 
-- 自动：DialogBlurPolicyTest 覆盖 API21/23/29/30 fallback、31–35 支持、默认关/0/关闭系统模糊/减少效果、密度/强度上下界、设置资源契约和窗口监听释放契约。
-- 自动 Android：DialogBlurTest 在实际窗口中覆盖关闭/开启、按钮与背景保留、dismiss清理、重新show能力判定。它验证 API/生命周期，不代表 GPU画质或续航达标。
+- 自动：DialogBlurPolicyTest 覆盖 API21/23/29/30 fallback、31–35 支持、默认强度12/0/关闭系统模糊/减少效果、密度/强度上下界、设置资源契约和窗口监听释放契约。
+- 自动 Android：DialogBlurTest 在实际窗口中覆盖强度0/12、按钮与背景保留、dismiss清理、重新show能力判定。它验证 API/生命周期，不代表 GPU画质或续航达标。
 - 原单测/仪器测试保留：路由/备份迁移、VPN/Root 配置、单双列、静态材质字体矩阵等。
 - 构建：真实任务已从 app:tasks --all 确认；执行 `app:testPreviewDebugUnitTest app:assemblePreviewDebug app:assembleOssDebugAndroidTest`，CI 另外完整 OSS/Preview 单测、API35仪器测试与发布签名构建。具体最终结果以本次交付记录为准。
 - `git diff --check` 与安全契约检查；lint结果如有失败只按真实报告记录，不通过删保护制造通过。
-- 人工待验：Android10/11 fallback、API31–35 支持/关闭模糊、省电切换、浅深黑白/自定义主题、1.0/1.3/2.0字体、横屏/分屏、嵌套弹窗/Sheet、TalkBack、窗口销毁；Perfetto 在滚动及弹窗开启前后比较帧时间，持续 VPN/Root 同节点/同网络熄屏对照至少1小时电量。
+- 人工待验：Android10/11拒绝安装、API31–35 支持/关闭模糊、省电切换、浅深黑白/自定义主题、1.0/1.3/2.0字体、横屏/分屏、嵌套弹窗/Sheet、TalkBack、窗口销毁；Perfetto 在滚动及弹窗开启前后比较帧时间，持续 VPN/Root 同节点/同网络熄屏对照至少1小时电量。
 - 不将源码契约、模拟器能力判定或静态截图称作 Root 真机网络/续航验证。
+
+### 本地执行结果（2026-10-05）
+
+- 最终强度调节版：`app:testPreviewDebugUnitTest app:assemblePreviewDebug app:assembleOssDebugAndroidTest` 成功，197项单测0失败。
+- AAPT 检查 Debug APK：versionName=3.0.7-preview.4，versionCode=1725，minSdk=31，targetSdk=35。Debug ID 含原有 .debug 后缀；预览Release仍用独立正式应用ID。
+- `git diff --check` 与 `tools/check_android_security.py` 成功。
+- `app:lintPreviewDebug --offline` 实际失败，149项错误；首项为原有 AssetsActivity.onBackPressed MissingSuperCall。报告中没有 DialogBlur / DialogBlurPolicy 新增文件错误。未关闭 lint 规则或改变依赖来掩盖结果。
+- Android窗口仪器测试与正式签名/升级验证交由本次CI；最终结果以发布后验证记录为准。

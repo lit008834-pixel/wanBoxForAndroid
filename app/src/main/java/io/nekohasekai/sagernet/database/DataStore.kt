@@ -115,7 +115,6 @@ object DataStore : OnPreferenceDataStoreChangeListener {
 
     var isExpert by configurationStore.boolean(Key.APP_EXPERT)
     var appTheme by configurationStore.int(Key.APP_THEME) { Theme.LIGHT_GRAY }
-    var dialogBlurEnabled by configurationStore.boolean(Key.DIALOG_BLUR_ENABLED) { false }
     var dialogBlurStrength by configurationStore.int(Key.DIALOG_BLUR_STRENGTH) { 12 }
     val useSystemTheme: Boolean get() = false
     var nightTheme by configurationStore.stringToInt(Key.NIGHT_THEME)
