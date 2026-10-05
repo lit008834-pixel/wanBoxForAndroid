@@ -539,7 +539,7 @@
     <string name="action_switch">切换</string>
     <string name="acquire_wake_lock">获取唤醒锁</string>
     <string name="release_wake_lock">释放唤醒锁</string>
-    <string name="acquire_wake_lock_summary">保持 CPU 开启</string>
+    <string name="acquire_wake_lock_summary">服务运行时保持 CPU 唤醒；VPN 模式还可能持有 WiFi 锁。会增加耗电，默认关闭。</string>
     <string name="hide_from_recent_apps">从最近任务中隐藏</string>
     <string name="hide_from_recent_apps_summary">应用在后台运行时，在最近任务中隐藏</string>
     <string name="move">移动</string>
@@ -1132,4 +1132,10 @@
     <string name="docs_backup_portable_title">跨手机备份与 WebDAV</string>
     <string name="docs_backup_portable_body">工具 → 备份生成带 schemaVersion 的 JSON，包含所选配置、分组、规则和设置。选择实际导出的 JSON 或受支持 ZIP，不要选择 OWN 日志。历史备份按其格式迁移；旧 Parcel 损坏需在旧版本重新导出。备份含凭据，请使用可信存储，WebDAV 保持 HTTPS。</string>
     <string name="docs_backup_portable_keywords">backup schemaVersion profiles proxies WebDAV JSON ZIP 备份 跨手机</string>
+    <!-- @author 雾晚 -->
+    <string name="connection_background_settings">连接与后台</string>
+    <string name="security_allow_insecure_warning">允许代理节点跳过证书验证。仅在了解安全风险时开启。</string>
+    <string name="advanced_json_warning">覆盖核心生成配置；无效内容可能导致无法连接。</string>
+    <string name="reset_settings_warning">需确认后重置设置，不删除节点和路由规则。</string>
+    <string name="performance_priority_mode_summary">调整内存整理与刷新频率，可能增加内存占用和耗电；默认关闭。</string>
 </resources>

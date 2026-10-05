@@ -1,0 +1,713 @@
+{
+  "categoryUI": {
+    "type": "moe.matsuri.nb4a.ui.ExpandablePreferenceCategory",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}key": "categoryUI",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/ui_settings"
+    }
+  },
+  "profileCardStyle": {
+    "type": "moe.matsuri.nb4a.ui.SimpleMenuPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "0",
+      "{http://schemas.android.com/apk/res-auto}entries": "@array/card_style_entries",
+      "{http://schemas.android.com/apk/res-auto}entryValues": "@array/card_style_values",
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_baseline_view_list_24",
+      "{http://schemas.android.com/apk/res-auto}key": "profileCardStyle",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/card_style",
+      "{http://schemas.android.com/apk/res-auto}useSimpleSummaryProvider": "true"
+    }
+  },
+  "showDirectSpeed": {
+    "type": "SwitchPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "true",
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_baseline_speed_24",
+      "{http://schemas.android.com/apk/res-auto}key": "showDirectSpeed",
+      "{http://schemas.android.com/apk/res-auto}summary": "@string/show_direct_speed_sum",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/show_direct_speed",
+      "{http://schemas.android.com/apk/res-auto}useSimpleSummaryProvider": "true"
+    }
+  },
+  "speedInterval": {
+    "type": "moe.matsuri.nb4a.ui.SimpleMenuPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "1000",
+      "{http://schemas.android.com/apk/res-auto}entries": "@array/notification_entry",
+      "{http://schemas.android.com/apk/res-auto}entryValues": "@array/notification_value",
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_baseline_shutter_speed_24",
+      "{http://schemas.android.com/apk/res-auto}key": "speedInterval",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/speed_interval",
+      "{http://schemas.android.com/apk/res-auto}useSimpleSummaryProvider": "true"
+    }
+  },
+  "profileTrafficStatistics": {
+    "type": "SwitchPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "true",
+      "{http://schemas.android.com/apk/res-auto}key": "profileTrafficStatistics",
+      "{http://schemas.android.com/apk/res-auto}summary": "@string/profile_traffic_statistics_summary",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/profile_traffic_statistics"
+    }
+  },
+  "showGroupInNotification": {
+    "type": "SwitchPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}key": "showGroupInNotification",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/show_group_in_notification"
+    }
+  },
+  "showLandingIp": {
+    "type": "SwitchPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "true",
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/baseline_public_24",
+      "{http://schemas.android.com/apk/res-auto}key": "showLandingIp",
+      "{http://schemas.android.com/apk/res-auto}summary": "@string/show_landing_ip_sum",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/show_landing_ip",
+      "{http://schemas.android.com/apk/res-auto}useSimpleSummaryProvider": "true"
+    }
+  },
+  "alwaysShowAddress": {
+    "type": "SwitchPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_baseline_center_focus_weak_24",
+      "{http://schemas.android.com/apk/res-auto}key": "alwaysShowAddress",
+      "{http://schemas.android.com/apk/res-auto}summary": "@string/always_show_address_sum",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/always_show_address"
+    }
+  },
+  "confirmProfileDelete": {
+    "type": "SwitchPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "true",
+      "{http://schemas.android.com/apk/res-auto}key": "confirmProfileDelete",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/confirm_profile_delete"
+    }
+  },
+  "show_subscription_info_card": {
+    "type": "SwitchPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "true",
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_file_cloud_queue",
+      "{http://schemas.android.com/apk/res-auto}key": "show_subscription_info_card",
+      "{http://schemas.android.com/apk/res-auto}summary": "@string/show_subscription_info_card_summary",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/show_subscription_info_card"
+    }
+  },
+  "appTheme": {
+    "type": "moe.matsuri.nb4a.ui.ColorPickerPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res/android}title": "@string/theme",
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_baseline_color_lens_24",
+      "{http://schemas.android.com/apk/res-auto}key": "appTheme"
+    }
+  },
+  "nightTheme": {
+    "type": "moe.matsuri.nb4a.ui.SimpleMenuPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "0",
+      "{http://schemas.android.com/apk/res-auto}entries": "@array/night_mode",
+      "{http://schemas.android.com/apk/res-auto}entryValues": "@array/int_array_4",
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_baseline_wb_sunny_24",
+      "{http://schemas.android.com/apk/res-auto}key": "nightTheme",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/night_mode",
+      "{http://schemas.android.com/apk/res-auto}useSimpleSummaryProvider": "true"
+    }
+  },
+  "appLanguage": {
+    "type": "moe.matsuri.nb4a.ui.SimpleMenuPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "",
+      "{http://schemas.android.com/apk/res-auto}entries": "@array/language_entries",
+      "{http://schemas.android.com/apk/res-auto}entryValues": "@array/language_values",
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/baseline_translate_24",
+      "{http://schemas.android.com/apk/res-auto}key": "appLanguage",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/language",
+      "{http://schemas.android.com/apk/res-auto}useSimpleSummaryProvider": "true"
+    }
+  },
+  "showBottomBar": {
+    "type": "SwitchPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}key": "showBottomBar",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/show_bottom_bar"
+    }
+  },
+  "hapticFeedback": {
+    "type": "SwitchPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "true",
+      "{http://schemas.android.com/apk/res-auto}key": "hapticFeedback",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/haptic_feedback",
+      "{http://schemas.android.com/apk/res-auto}summary": "@string/haptic_feedback_summary"
+    }
+  },
+  "showAllGroupsTab": {
+    "type": "SwitchPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "false",
+      "{http://schemas.android.com/apk/res-auto}key": "showAllGroupsTab",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/show_all_groups_tab",
+      "{http://schemas.android.com/apk/res-auto}summary": "@string/show_all_groups_tab_summary"
+    }
+  },
+  "categoryVPN": {
+    "type": "moe.matsuri.nb4a.ui.ExpandablePreferenceCategory",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}key": "categoryVPN",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/vpn_settings"
+    }
+  },
+  "isAutoConnect": {
+    "type": "SwitchPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "false",
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_communication_phonelink_ring",
+      "{http://schemas.android.com/apk/res-auto}key": "isAutoConnect",
+      "{http://schemas.android.com/apk/res-auto}summary": "@string/auto_connect_summary",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/auto_connect"
+    }
+  },
+  "proxyApps": {
+    "type": "SwitchPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_navigation_apps",
+      "{http://schemas.android.com/apk/res-auto}key": "proxyApps",
+      "{http://schemas.android.com/apk/res-auto}summary": "@string/proxied_apps_summary",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/proxied_apps"
+    }
+  },
+  "bypassLan": {
+    "type": "SwitchPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_baseline_legend_toggle_24",
+      "{http://schemas.android.com/apk/res-auto}key": "bypassLan",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/route_opt_bypass_lan"
+    }
+  },
+  "bypassLanInCore": {
+    "type": "SwitchPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}key": "bypassLanInCore",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/bypass_lan_in_core"
+    }
+  },
+  "strictRoute": {
+    "type": "SwitchPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "true",
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_baseline_security_24",
+      "{http://schemas.android.com/apk/res-auto}key": "strictRoute",
+      "{http://schemas.android.com/apk/res-auto}summary": "@string/strict_route_sum",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/strict_route"
+    }
+  },
+  "meteredNetwork": {
+    "type": "SwitchPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_device_data_usage",
+      "{http://schemas.android.com/apk/res-auto}key": "meteredNetwork",
+      "{http://schemas.android.com/apk/res-auto}summary": "@string/metered_summary",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/metered"
+    }
+  },
+  "tunImplementation": {
+    "type": "moe.matsuri.nb4a.ui.SimpleMenuPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "3",
+      "{http://schemas.android.com/apk/res-auto}entries": "@array/tun_implementation",
+      "{http://schemas.android.com/apk/res-auto}entryValues": "@array/int_array_4",
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_baseline_flip_camera_android_24",
+      "{http://schemas.android.com/apk/res-auto}key": "tunImplementation",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/tun_implementation",
+      "{http://schemas.android.com/apk/res-auto}useSimpleSummaryProvider": "true"
+    }
+  },
+  "mtu": {
+    "type": "moe.matsuri.nb4a.ui.MTUPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "9000",
+      "{http://schemas.android.com/apk/res-auto}entries": "@array/mtu_select",
+      "{http://schemas.android.com/apk/res-auto}entryValues": "@array/mtu_select",
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/baseline_public_24",
+      "{http://schemas.android.com/apk/res-auto}key": "mtu",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/mtu"
+    }
+  },
+  "categoryMode": {
+    "type": "moe.matsuri.nb4a.ui.ExpandablePreferenceCategory",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}key": "categoryMode",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/mode_and_inbound_settings"
+    }
+  },
+  "serviceMode": {
+    "type": "moe.matsuri.nb4a.ui.SimpleMenuPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "vpn",
+      "{http://schemas.android.com/apk/res-auto}entries": "@array/service_modes",
+      "{http://schemas.android.com/apk/res-auto}entryValues": "@array/service_mode_values",
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_device_developer_mode",
+      "{http://schemas.android.com/apk/res-auto}key": "serviceMode",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/service_mode",
+      "{http://schemas.android.com/apk/res-auto}useSimpleSummaryProvider": "true"
+    }
+  },
+  "disableMixedInbound": {
+    "type": "SwitchPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "false",
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_baseline_block_24",
+      "{http://schemas.android.com/apk/res-auto}key": "disableMixedInbound",
+      "{http://schemas.android.com/apk/res-auto}summary": "@string/disable_mixed_inbound_sum",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/disable_mixed_inbound"
+    }
+  },
+  "mixedPort": {
+    "type": "EditTextPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_maps_directions_boat",
+      "{http://schemas.android.com/apk/res-auto}key": "mixedPort",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/port_proxy",
+      "{http://schemas.android.com/apk/res-auto}useSimpleSummaryProvider": "true"
+    }
+  },
+  "mixedAuthConfig": {
+    "type": "Preference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_baseline_lock_24",
+      "{http://schemas.android.com/apk/res-auto}key": "mixedAuthConfig",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/mixed_auth_config"
+    }
+  },
+  "httpProxyBypass": {
+    "type": "EditTextPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "",
+      "{http://schemas.android.com/apk/res-auto}dialogMessage": "@string/http_proxy_bypass_dialog_message",
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_baseline_domain_24",
+      "{http://schemas.android.com/apk/res-auto}key": "httpProxyBypass",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/http_proxy_bypass",
+      "{http://schemas.android.com/apk/res-auto}useSimpleSummaryProvider": "true"
+    }
+  },
+  "lanSharing": {
+    "type": "Preference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_social_share",
+      "{http://schemas.android.com/apk/res-auto}key": "lanSharing",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/lan_sharing"
+    }
+  },
+  "categoryCore": {
+    "type": "moe.matsuri.nb4a.ui.ExpandablePreferenceCategory",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}key": "categoryCore",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/core_settings"
+    }
+  },
+  "trafficSniffing": {
+    "type": "moe.matsuri.nb4a.ui.SimpleMenuPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "1",
+      "{http://schemas.android.com/apk/res-auto}entries": "@array/traffic_sniffing_values",
+      "{http://schemas.android.com/apk/res-auto}entryValues": "@array/int_array_2",
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_baseline_manage_search_24",
+      "{http://schemas.android.com/apk/res-auto}key": "trafficSniffing",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/traffic_sniffing",
+      "{http://schemas.android.com/apk/res-auto}useSimpleSummaryProvider": "true"
+    }
+  },
+  "resolveDestination": {
+    "type": "SwitchPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/baseline_wrap_text_24",
+      "{http://schemas.android.com/apk/res-auto}key": "resolveDestination",
+      "{http://schemas.android.com/apk/res-auto}summary": "@string/resolve_destination_summary",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/resolve_destination"
+    }
+  },
+  "ipv6Mode": {
+    "type": "moe.matsuri.nb4a.ui.SimpleMenuPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "0",
+      "{http://schemas.android.com/apk/res-auto}entries": "@array/ipv6_mode",
+      "{http://schemas.android.com/apk/res-auto}entryValues": "@array/int_array_4",
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_image_looks_6",
+      "{http://schemas.android.com/apk/res-auto}key": "ipv6Mode",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/ipv6",
+      "{http://schemas.android.com/apk/res-auto}useSimpleSummaryProvider": "true"
+    }
+  },
+  "dualNetworkAcceleration": {
+    "type": "SwitchPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_baseline_compare_arrows_24",
+      "{http://schemas.android.com/apk/res-auto}key": "dualNetworkAcceleration",
+      "{http://schemas.android.com/apk/res-auto}summary": "@string/dual_network_acceleration_summary",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/dual_network_acceleration"
+    }
+  },
+  "concurrentDial": {
+    "type": "SwitchPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_baseline_speed_24",
+      "{http://schemas.android.com/apk/res-auto}key": "concurrentDial",
+      "{http://schemas.android.com/apk/res-auto}summary": "@string/concurrent_dial_summary",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/concurrent_dial"
+    }
+  },
+  "rulesProvider": {
+    "type": "moe.matsuri.nb4a.ui.SimpleMenuPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "0",
+      "{http://schemas.android.com/apk/res-auto}entries": "@array/rules_dat_provider",
+      "{http://schemas.android.com/apk/res-auto}entryValues": "@array/int_array_5",
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_baseline_rule_folder_24",
+      "{http://schemas.android.com/apk/res-auto}key": "rulesProvider",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/route_rules_provider",
+      "{http://schemas.android.com/apk/res-auto}useSimpleSummaryProvider": "true"
+    }
+  },
+  "rulesGeositeUrl": {
+    "type": "EditTextPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "https://github.com/SagerNet/sing-geosite/releases/latest/download/geosite.db",
+      "{http://schemas.android.com/apk/res-auto}key": "rulesGeositeUrl",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/rules_geosite_url",
+      "{http://schemas.android.com/apk/res-auto}useSimpleSummaryProvider": "true"
+    }
+  },
+  "rulesGeoipUrl": {
+    "type": "EditTextPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "https://github.com/SagerNet/sing-geoip/releases/latest/download/geoip.db",
+      "{http://schemas.android.com/apk/res-auto}key": "rulesGeoipUrl",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/rules_geoip_url",
+      "{http://schemas.android.com/apk/res-auto}useSimpleSummaryProvider": "true"
+    }
+  },
+  "rulesUpdateInterval": {
+    "type": "EditTextPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "0",
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_baseline_shutter_speed_24",
+      "{http://schemas.android.com/apk/res-auto}key": "rulesUpdateInterval",
+      "{http://schemas.android.com/apk/res-auto}summary": "@string/ruleset_update_interval_summary",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/ruleset_update_interval"
+    }
+  },
+  "categoryDNS": {
+    "type": "moe.matsuri.nb4a.ui.ExpandablePreferenceCategory",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}key": "categoryDNS",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/dns_settings"
+    }
+  },
+  "remoteDns": {
+    "type": "EditTextPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "https://dns.google/dns-query",
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_action_dns",
+      "{http://schemas.android.com/apk/res-auto}key": "remoteDns",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/remote_dns",
+      "{http://schemas.android.com/apk/res-auto}useSimpleSummaryProvider": "true"
+    }
+  },
+  "domain_strategy_for_remote": {
+    "type": "moe.matsuri.nb4a.ui.SimpleMenuPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "auto",
+      "{http://schemas.android.com/apk/res-auto}entries": "@array/dns_network_select",
+      "{http://schemas.android.com/apk/res-auto}entryValues": "@array/dns_network_select",
+      "{http://schemas.android.com/apk/res-auto}key": "domain_strategy_for_remote",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/domain_strategy_for_remote",
+      "{http://schemas.android.com/apk/res-auto}useSimpleSummaryProvider": "true"
+    }
+  },
+  "directDns": {
+    "type": "EditTextPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "https://223.5.5.5/dns-query",
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_action_dns",
+      "{http://schemas.android.com/apk/res-auto}key": "directDns",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/direct_dns",
+      "{http://schemas.android.com/apk/res-auto}useSimpleSummaryProvider": "true"
+    }
+  },
+  "domain_strategy_for_direct": {
+    "type": "moe.matsuri.nb4a.ui.SimpleMenuPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "auto",
+      "{http://schemas.android.com/apk/res-auto}entries": "@array/dns_network_select",
+      "{http://schemas.android.com/apk/res-auto}entryValues": "@array/dns_network_select",
+      "{http://schemas.android.com/apk/res-auto}key": "domain_strategy_for_direct",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/domain_strategy_for_direct",
+      "{http://schemas.android.com/apk/res-auto}useSimpleSummaryProvider": "true"
+    }
+  },
+  "domain_strategy_for_server": {
+    "type": "moe.matsuri.nb4a.ui.SimpleMenuPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "auto",
+      "{http://schemas.android.com/apk/res-auto}entries": "@array/dns_network_select",
+      "{http://schemas.android.com/apk/res-auto}entryValues": "@array/dns_network_select",
+      "{http://schemas.android.com/apk/res-auto}key": "domain_strategy_for_server",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/domain_strategy_for_server",
+      "{http://schemas.android.com/apk/res-auto}useSimpleSummaryProvider": "true"
+    }
+  },
+  "enableDnsRouting": {
+    "type": "SwitchPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "true",
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_baseline_camera_24",
+      "{http://schemas.android.com/apk/res-auto}key": "enableDnsRouting",
+      "{http://schemas.android.com/apk/res-auto}summary": "@string/dns_routing_message",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/enable_dns_routing"
+    }
+  },
+  "enableFakeDns": {
+    "type": "SwitchPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "true",
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_action_lock",
+      "{http://schemas.android.com/apk/res-auto}key": "enableFakeDns",
+      "{http://schemas.android.com/apk/res-auto}summary": "@string/fakedns_message",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/enable_fakedns"
+    }
+  },
+  "dnsHosts": {
+    "type": "EditTextPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "",
+      "{http://schemas.android.com/apk/res-auto}dialogMessage": "@string/dns_hosts_dialog_message",
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_baseline_transform_24",
+      "{http://schemas.android.com/apk/res-auto}key": "dnsHosts",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/dns_hosts",
+      "{http://schemas.android.com/apk/res-auto}useSimpleSummaryProvider": "true"
+    }
+  },
+  "categoryFragment": {
+    "type": "moe.matsuri.nb4a.ui.ExpandablePreferenceCategory",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}key": "categoryFragment",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/fragment_settings"
+    }
+  },
+  "enableTLSFragment": {
+    "type": "SwitchPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}key": "enableTLSFragment",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/enable_tls_fragment"
+    }
+  },
+  "fragmentLength": {
+    "type": "EditTextPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "100-200",
+      "{http://schemas.android.com/apk/res-auto}key": "fragmentLength",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/fragment_length",
+      "{http://schemas.android.com/apk/res-auto}useSimpleSummaryProvider": "true"
+    }
+  },
+  "fragmentInterval": {
+    "type": "EditTextPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "10-20",
+      "{http://schemas.android.com/apk/res-auto}key": "fragmentInterval",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/fragment_interval",
+      "{http://schemas.android.com/apk/res-auto}useSimpleSummaryProvider": "true"
+    }
+  },
+  "categoryObservatory": {
+    "type": "moe.matsuri.nb4a.ui.ExpandablePreferenceCategory",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}key": "categoryObservatory",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/observatory_settings"
+    }
+  },
+  "connectionTestURL": {
+    "type": "moe.matsuri.nb4a.ui.UrlTestPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "@string/default_connection_test_url",
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_baseline_cast_connected_24",
+      "{http://schemas.android.com/apk/res-auto}key": "connectionTestURL",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/connection_test_url",
+      "{http://schemas.android.com/apk/res-auto}useSimpleSummaryProvider": "true"
+    }
+  },
+  "hideUnavailableProfiles": {
+    "type": "SwitchPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "false",
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_baseline_filter_list_24",
+      "{http://schemas.android.com/apk/res-auto}key": "hideUnavailableProfiles",
+      "{http://schemas.android.com/apk/res-auto}summary": "@string/hide_unavailable_profiles_sum",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/hide_unavailable_profiles"
+    }
+  },
+  "speedTestMode": {
+    "type": "moe.matsuri.nb4a.ui.SimpleMenuPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "@string/default_speed_test_mode",
+      "{http://schemas.android.com/apk/res-auto}entries": "@array/speed_test_modes",
+      "{http://schemas.android.com/apk/res-auto}entryValues": "@array/speed_test_mode_values",
+      "{http://schemas.android.com/apk/res-auto}key": "speedTestMode",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/speed_test_mode",
+      "{http://schemas.android.com/apk/res-auto}useSimpleSummaryProvider": "true"
+    }
+  },
+  "speedTestTimeoutMs": {
+    "type": "EditTextPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "@string/default_speed_test_timeout_ms",
+      "{http://schemas.android.com/apk/res-auto}key": "speedTestTimeoutMs",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/speed_test_timeout_ms",
+      "{http://schemas.android.com/apk/res-auto}useSimpleSummaryProvider": "true"
+    }
+  },
+  "simpleDownloadURL": {
+    "type": "EditTextPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "@string/default_simple_download_url",
+      "{http://schemas.android.com/apk/res-auto}key": "simpleDownloadURL",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/simple_download_url",
+      "{http://schemas.android.com/apk/res-auto}useSimpleSummaryProvider": "true"
+    }
+  },
+  "categoryAdvanced": {
+    "type": "moe.matsuri.nb4a.ui.ExpandablePreferenceCategory",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}key": "categoryAdvanced",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/advanced_settings"
+    }
+  },
+  "defaultSubscriptionUserAgent": {
+    "type": "io.nekohasekai.sagernet.widget.SubscriptionUserAgentPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_baseline_http_24",
+      "{http://schemas.android.com/apk/res-auto}key": "defaultSubscriptionUserAgent",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/default_subscription_user_agent"
+    }
+  },
+  "enableClashAPI": {
+    "type": "SwitchPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/baseline_construction_24",
+      "{http://schemas.android.com/apk/res-auto}key": "enableClashAPI",
+      "{http://schemas.android.com/apk/res-auto}summary": "@string/enable_clash_api_summary",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/enable_clash_api"
+    }
+  },
+  "networkChangeResetConnections": {
+    "type": "SwitchPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "false",
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_baseline_flip_camera_android_24",
+      "{http://schemas.android.com/apk/res-auto}key": "networkChangeResetConnections",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/network_change_reset_connections",
+      "{http://schemas.android.com/apk/res-auto}useSimpleSummaryProvider": "true"
+    }
+  },
+  "wakeResetConnections": {
+    "type": "SwitchPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}key": "wakeResetConnections",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/wake_reset_connections",
+      "{http://schemas.android.com/apk/res-auto}useSimpleSummaryProvider": "true"
+    }
+  },
+  "globalAllowInsecure": {
+    "type": "SwitchPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_action_lock_open",
+      "{http://schemas.android.com/apk/res-auto}key": "globalAllowInsecure",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/global_allow_insecure"
+    }
+  },
+  "allowInsecureOnRequest": {
+    "type": "SwitchPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}key": "allowInsecureOnRequest",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/allow_insecure_on_request_sum"
+    }
+  },
+  "appTLSVersion": {
+    "type": "moe.matsuri.nb4a.ui.SimpleMenuPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "1.2",
+      "{http://schemas.android.com/apk/res-auto}entries": "@array/app_tls_version",
+      "{http://schemas.android.com/apk/res-auto}entryValues": "@array/app_tls_version",
+      "{http://schemas.android.com/apk/res-auto}key": "appTLSVersion",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/app_tls_version",
+      "{http://schemas.android.com/apk/res-auto}useSimpleSummaryProvider": "true"
+    }
+  },
+  "performancePriorityMode": {
+    "type": "SwitchPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "false",
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_baseline_speed_24",
+      "{http://schemas.android.com/apk/res-auto}key": "performancePriorityMode",
+      "{http://schemas.android.com/apk/res-auto}summary": "@string/performance_priority_mode_summary",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/performance_priority_mode"
+    }
+  },
+  "acquireWakeLock": {
+    "type": "SwitchPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/baseline_developer_board_24",
+      "{http://schemas.android.com/apk/res-auto}key": "acquireWakeLock",
+      "{http://schemas.android.com/apk/res-auto}summary": "@string/acquire_wake_lock_summary",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/acquire_wake_lock"
+    }
+  },
+  "hideFromRecentApps": {
+    "type": "SwitchPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}key": "hideFromRecentApps",
+      "{http://schemas.android.com/apk/res-auto}summary": "@string/hide_from_recent_apps_summary",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/hide_from_recent_apps"
+    }
+  },
+  "logLevel": {
+    "type": "moe.matsuri.nb4a.ui.LongClickListPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}defaultValue": "0",
+      "{http://schemas.android.com/apk/res-auto}entries": "@array/log_level",
+      "{http://schemas.android.com/apk/res-auto}entryValues": "@array/int_array_5",
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_baseline_bug_report_24",
+      "{http://schemas.android.com/apk/res-auto}key": "logLevel",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/log_level",
+      "{http://schemas.android.com/apk/res-auto}useSimpleSummaryProvider": "true"
+    }
+  },
+  "globalCustomConfig": {
+    "type": "moe.matsuri.nb4a.ui.EditConfigPreference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_baseline_layers_24",
+      "{http://schemas.android.com/apk/res-auto}key": "globalCustomConfig",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/custom_config",
+      "{http://schemas.android.com/apk/res-auto}useSimpleSummaryProvider": "true"
+    }
+  },
+  "clearCache": {
+    "type": "Preference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/ic_baseline_delete_24",
+      "{http://schemas.android.com/apk/res-auto}key": "clearCache",
+      "{http://schemas.android.com/apk/res-auto}summary": "@string/clear_cache_summary",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/clear_cache"
+    }
+  },
+  "resetSettings": {
+    "type": "Preference",
+    "attributes": {
+      "{http://schemas.android.com/apk/res-auto}icon": "@drawable/baseline_undo_24",
+      "{http://schemas.android.com/apk/res-auto}key": "resetSettings",
+      "{http://schemas.android.com/apk/res-auto}title": "@string/reset_settings"
+    }
+  }
+}

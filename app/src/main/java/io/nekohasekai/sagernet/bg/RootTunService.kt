@@ -1,10 +1,8 @@
 // @author 雾晚
 package io.nekohasekai.sagernet.bg
 
-import android.annotation.SuppressLint
 import android.app.Service
 import android.content.Intent
-import android.os.PowerManager
 import io.nekohasekai.sagernet.Key
 import io.nekohasekai.sagernet.R
 import io.nekohasekai.sagernet.SagerNet
@@ -27,7 +25,7 @@ import kotlin.concurrent.thread
 class RootTunService : Service(), BaseService.Interface {
     override val data = BaseService.Data(this)
     override val tag = "SagerNetRootTunService"
-    override var wakeLock: PowerManager.WakeLock? = null
+    override val powerLocks = ServicePowerLocks()
     override var upstreamInterfaceName: String? = null
     @Volatile private var rootProcess: Process? = null
     private var rootWatcher: Job? = null
@@ -41,10 +39,10 @@ class RootTunService : Service(), BaseService.Interface {
     override fun createNotification(profileName: String) =
         ServiceNotification(this, profileName, "service-proxy", true)
 
-    @SuppressLint("WakelockTimeout")
     override fun acquireWakeLock() {
-        wakeLock = SagerNet.power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "sagernet:root-tun")
-            .apply { acquire() }
+        powerLocks.acquire("cpu") {
+            AndroidPowerLockLease(SagerNet.power, "sagernet:root-tun")
+        }
     }
 
     // @author 雾晚: probe the running root core through its local mixed inbound,

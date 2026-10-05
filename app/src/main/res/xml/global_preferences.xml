@@ -3,6 +3,94 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
+    <!-- 3. 模式与入站设置 -->
+    <moe.matsuri.nb4a.ui.ExpandablePreferenceCategory
+        app:key="categoryMode"
+        app:title="@string/mode_and_inbound_settings">
+
+        <moe.matsuri.nb4a.ui.SimpleMenuPreference
+            app:defaultValue="vpn"
+            app:entries="@array/service_modes"
+            app:entryValues="@array/service_mode_values"
+            app:icon="@drawable/ic_device_developer_mode"
+            app:key="serviceMode"
+            app:title="@string/service_mode"
+            app:useSimpleSummaryProvider="true" />
+
+        <SwitchPreference
+            app:defaultValue="false"
+            app:icon="@drawable/ic_baseline_block_24"
+            app:key="disableMixedInbound"
+            app:summary="@string/disable_mixed_inbound_sum"
+            app:title="@string/disable_mixed_inbound" />
+
+        <EditTextPreference
+            app:icon="@drawable/ic_maps_directions_boat"
+            app:key="mixedPort"
+            app:title="@string/port_proxy"
+            app:useSimpleSummaryProvider="true" />
+
+        <Preference
+            app:icon="@drawable/ic_baseline_lock_24"
+            app:key="mixedAuthConfig"
+            app:title="@string/mixed_auth_config" />
+
+        <EditTextPreference
+            app:defaultValue=""
+            app:dialogMessage="@string/http_proxy_bypass_dialog_message"
+            app:icon="@drawable/ic_baseline_domain_24"
+            app:key="httpProxyBypass"
+            app:title="@string/http_proxy_bypass"
+            app:useSimpleSummaryProvider="true" />
+
+        <Preference
+            app:icon="@drawable/ic_social_share"
+            app:key="lanSharing"
+            app:title="@string/lan_sharing" />
+
+    </moe.matsuri.nb4a.ui.ExpandablePreferenceCategory>
+
+    <!-- 7. 连接观测设置 (Observatory) -->
+    <moe.matsuri.nb4a.ui.ExpandablePreferenceCategory
+        app:key="categoryObservatory"
+        app:title="@string/observatory_settings">
+
+        <moe.matsuri.nb4a.ui.UrlTestPreference
+            app:defaultValue="@string/default_connection_test_url"
+            app:icon="@drawable/ic_baseline_cast_connected_24"
+            app:key="connectionTestURL"
+            app:title="@string/connection_test_url"
+            app:useSimpleSummaryProvider="true" />
+
+        <SwitchPreference
+            app:defaultValue="false"
+            app:icon="@drawable/ic_baseline_filter_list_24"
+            app:key="hideUnavailableProfiles"
+            app:summary="@string/hide_unavailable_profiles_sum"
+            app:title="@string/hide_unavailable_profiles" />
+
+        <moe.matsuri.nb4a.ui.SimpleMenuPreference
+            app:defaultValue="@string/default_speed_test_mode"
+            app:entries="@array/speed_test_modes"
+            app:entryValues="@array/speed_test_mode_values"
+            app:key="speedTestMode"
+            app:title="@string/speed_test_mode"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:defaultValue="@string/default_speed_test_timeout_ms"
+            app:key="speedTestTimeoutMs"
+            app:title="@string/speed_test_timeout_ms"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:defaultValue="@string/default_simple_download_url"
+            app:key="simpleDownloadURL"
+            app:title="@string/simple_download_url"
+            app:useSimpleSummaryProvider="true" />
+
+    </moe.matsuri.nb4a.ui.ExpandablePreferenceCategory>
+
     <!-- 1. 用户界面设置 -->
     <moe.matsuri.nb4a.ui.ExpandablePreferenceCategory
         app:key="categoryUI"
@@ -110,12 +198,17 @@
             app:title="@string/show_all_groups_tab"
             app:summary="@string/show_all_groups_tab_summary" />
 
+        <SwitchPreference
+            app:key="hideFromRecentApps"
+            app:summary="@string/hide_from_recent_apps_summary"
+            app:title="@string/hide_from_recent_apps" />
+
     </moe.matsuri.nb4a.ui.ExpandablePreferenceCategory>
 
     <!-- 2. VPN 设置 -->
     <moe.matsuri.nb4a.ui.ExpandablePreferenceCategory
         app:key="categoryVPN"
-        app:title="@string/vpn_settings">
+        app:title="@string/connection_background_settings">
 
         <SwitchPreference
             app:defaultValue="false"
@@ -170,52 +263,97 @@
             app:key="mtu"
             app:title="@string/mtu" />
 
-    </moe.matsuri.nb4a.ui.ExpandablePreferenceCategory>
-
-    <!-- 3. 模式与入站设置 -->
-    <moe.matsuri.nb4a.ui.ExpandablePreferenceCategory
-        app:key="categoryMode"
-        app:title="@string/mode_and_inbound_settings">
-
-        <moe.matsuri.nb4a.ui.SimpleMenuPreference
-            app:defaultValue="vpn"
-            app:entries="@array/service_modes"
-            app:entryValues="@array/service_mode_values"
-            app:icon="@drawable/ic_device_developer_mode"
-            app:key="serviceMode"
-            app:title="@string/service_mode"
-            app:useSimpleSummaryProvider="true" />
+        <SwitchPreference
+            app:icon="@drawable/baseline_developer_board_24"
+            app:key="acquireWakeLock"
+            app:summary="@string/acquire_wake_lock_summary"
+            app:title="@string/acquire_wake_lock" />
 
         <SwitchPreference
             app:defaultValue="false"
-            app:icon="@drawable/ic_baseline_block_24"
-            app:key="disableMixedInbound"
-            app:summary="@string/disable_mixed_inbound_sum"
-            app:title="@string/disable_mixed_inbound" />
+            app:icon="@drawable/ic_baseline_speed_24"
+            app:key="performancePriorityMode"
+            app:summary="@string/performance_priority_mode_summary"
+            app:title="@string/performance_priority_mode" />
 
-        <EditTextPreference
-            app:icon="@drawable/ic_maps_directions_boat"
-            app:key="mixedPort"
-            app:title="@string/port_proxy"
+        <SwitchPreference
+            app:defaultValue="false"
+            app:icon="@drawable/ic_baseline_flip_camera_android_24"
+            app:key="networkChangeResetConnections"
+            app:title="@string/network_change_reset_connections"
             app:useSimpleSummaryProvider="true" />
 
-        <Preference
-            app:icon="@drawable/ic_baseline_lock_24"
-            app:key="mixedAuthConfig"
-            app:title="@string/mixed_auth_config" />
+        <SwitchPreference
+            app:key="wakeResetConnections"
+            app:title="@string/wake_reset_connections"
+            app:useSimpleSummaryProvider="true" />
+
+    </moe.matsuri.nb4a.ui.ExpandablePreferenceCategory>
+
+    <!-- 5. DNS 设置 -->
+    <moe.matsuri.nb4a.ui.ExpandablePreferenceCategory
+        app:key="categoryDNS"
+        app:title="@string/dns_settings">
+
+        <EditTextPreference
+            app:defaultValue="https://dns.google/dns-query"
+            app:icon="@drawable/ic_action_dns"
+            app:key="remoteDns"
+            app:title="@string/remote_dns"
+            app:useSimpleSummaryProvider="true" />
+
+        <moe.matsuri.nb4a.ui.SimpleMenuPreference
+            app:defaultValue="auto"
+            app:entries="@array/dns_network_select"
+            app:entryValues="@array/dns_network_select"
+            app:key="domain_strategy_for_remote"
+            app:title="@string/domain_strategy_for_remote"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:defaultValue="https://223.5.5.5/dns-query"
+            app:icon="@drawable/ic_action_dns"
+            app:key="directDns"
+            app:title="@string/direct_dns"
+            app:useSimpleSummaryProvider="true" />
+
+        <moe.matsuri.nb4a.ui.SimpleMenuPreference
+            app:defaultValue="auto"
+            app:entries="@array/dns_network_select"
+            app:entryValues="@array/dns_network_select"
+            app:key="domain_strategy_for_direct"
+            app:title="@string/domain_strategy_for_direct"
+            app:useSimpleSummaryProvider="true" />
+
+        <moe.matsuri.nb4a.ui.SimpleMenuPreference
+            app:defaultValue="auto"
+            app:entries="@array/dns_network_select"
+            app:entryValues="@array/dns_network_select"
+            app:key="domain_strategy_for_server"
+            app:title="@string/domain_strategy_for_server"
+            app:useSimpleSummaryProvider="true" />
+
+        <SwitchPreference
+            app:defaultValue="true"
+            app:icon="@drawable/ic_baseline_camera_24"
+            app:key="enableDnsRouting"
+            app:summary="@string/dns_routing_message"
+            app:title="@string/enable_dns_routing" />
+
+        <SwitchPreference
+            app:defaultValue="true"
+            app:icon="@drawable/ic_action_lock"
+            app:key="enableFakeDns"
+            app:summary="@string/fakedns_message"
+            app:title="@string/enable_fakedns" />
 
         <EditTextPreference
             app:defaultValue=""
-            app:dialogMessage="@string/http_proxy_bypass_dialog_message"
-            app:icon="@drawable/ic_baseline_domain_24"
-            app:key="httpProxyBypass"
-            app:title="@string/http_proxy_bypass"
+            app:dialogMessage="@string/dns_hosts_dialog_message"
+            app:icon="@drawable/ic_baseline_transform_24"
+            app:key="dnsHosts"
+            app:title="@string/dns_hosts"
             app:useSimpleSummaryProvider="true" />
-
-        <Preference
-            app:icon="@drawable/ic_social_share"
-            app:key="lanSharing"
-            app:title="@string/lan_sharing" />
 
     </moe.matsuri.nb4a.ui.ExpandablePreferenceCategory>
 
@@ -288,137 +426,29 @@
             app:summary="@string/ruleset_update_interval_summary"
             app:title="@string/ruleset_update_interval" />
 
-    </moe.matsuri.nb4a.ui.ExpandablePreferenceCategory>
 
-    <!-- 5. DNS 设置 -->
-    <moe.matsuri.nb4a.ui.ExpandablePreferenceCategory
-        app:key="categoryDNS"
-        app:title="@string/dns_settings">
+        <!-- 6. 分片 (Fragment) 设置 -->
+        <moe.matsuri.nb4a.ui.ExpandablePreferenceCategory
+            app:key="categoryFragment"
+            app:title="@string/fragment_settings">
 
-        <EditTextPreference
-            app:defaultValue="https://dns.google/dns-query"
-            app:icon="@drawable/ic_action_dns"
-            app:key="remoteDns"
-            app:title="@string/remote_dns"
-            app:useSimpleSummaryProvider="true" />
+            <SwitchPreference
+                app:key="enableTLSFragment"
+                app:title="@string/enable_tls_fragment" />
 
-        <moe.matsuri.nb4a.ui.SimpleMenuPreference
-            app:defaultValue="auto"
-            app:entries="@array/dns_network_select"
-            app:entryValues="@array/dns_network_select"
-            app:key="domain_strategy_for_remote"
-            app:title="@string/domain_strategy_for_remote"
-            app:useSimpleSummaryProvider="true" />
+            <EditTextPreference
+                app:defaultValue="100-200"
+                app:key="fragmentLength"
+                app:title="@string/fragment_length"
+                app:useSimpleSummaryProvider="true" />
 
-        <EditTextPreference
-            app:defaultValue="https://223.5.5.5/dns-query"
-            app:icon="@drawable/ic_action_dns"
-            app:key="directDns"
-            app:title="@string/direct_dns"
-            app:useSimpleSummaryProvider="true" />
+            <EditTextPreference
+                app:defaultValue="10-20"
+                app:key="fragmentInterval"
+                app:title="@string/fragment_interval"
+                app:useSimpleSummaryProvider="true" />
 
-        <moe.matsuri.nb4a.ui.SimpleMenuPreference
-            app:defaultValue="auto"
-            app:entries="@array/dns_network_select"
-            app:entryValues="@array/dns_network_select"
-            app:key="domain_strategy_for_direct"
-            app:title="@string/domain_strategy_for_direct"
-            app:useSimpleSummaryProvider="true" />
-
-        <moe.matsuri.nb4a.ui.SimpleMenuPreference
-            app:defaultValue="auto"
-            app:entries="@array/dns_network_select"
-            app:entryValues="@array/dns_network_select"
-            app:key="domain_strategy_for_server"
-            app:title="@string/domain_strategy_for_server"
-            app:useSimpleSummaryProvider="true" />
-
-        <SwitchPreference
-            app:defaultValue="true"
-            app:icon="@drawable/ic_baseline_camera_24"
-            app:key="enableDnsRouting"
-            app:summary="@string/dns_routing_message"
-            app:title="@string/enable_dns_routing" />
-
-        <SwitchPreference
-            app:defaultValue="true"
-            app:icon="@drawable/ic_action_lock"
-            app:key="enableFakeDns"
-            app:summary="@string/fakedns_message"
-            app:title="@string/enable_fakedns" />
-
-        <EditTextPreference
-            app:defaultValue=""
-            app:dialogMessage="@string/dns_hosts_dialog_message"
-            app:icon="@drawable/ic_baseline_transform_24"
-            app:key="dnsHosts"
-            app:title="@string/dns_hosts"
-            app:useSimpleSummaryProvider="true" />
-
-    </moe.matsuri.nb4a.ui.ExpandablePreferenceCategory>
-
-    <!-- 6. 分片 (Fragment) 设置 -->
-    <moe.matsuri.nb4a.ui.ExpandablePreferenceCategory
-        app:key="categoryFragment"
-        app:title="@string/fragment_settings">
-
-        <SwitchPreference
-            app:key="enableTLSFragment"
-            app:title="@string/enable_tls_fragment" />
-
-        <EditTextPreference
-            app:defaultValue="100-200"
-            app:key="fragmentLength"
-            app:title="@string/fragment_length"
-            app:useSimpleSummaryProvider="true" />
-
-        <EditTextPreference
-            app:defaultValue="10-20"
-            app:key="fragmentInterval"
-            app:title="@string/fragment_interval"
-            app:useSimpleSummaryProvider="true" />
-
-    </moe.matsuri.nb4a.ui.ExpandablePreferenceCategory>
-
-    <!-- 7. 连接观测设置 (Observatory) -->
-    <moe.matsuri.nb4a.ui.ExpandablePreferenceCategory
-        app:key="categoryObservatory"
-        app:title="@string/observatory_settings">
-
-        <moe.matsuri.nb4a.ui.UrlTestPreference
-            app:defaultValue="@string/default_connection_test_url"
-            app:icon="@drawable/ic_baseline_cast_connected_24"
-            app:key="connectionTestURL"
-            app:title="@string/connection_test_url"
-            app:useSimpleSummaryProvider="true" />
-
-        <SwitchPreference
-            app:defaultValue="false"
-            app:icon="@drawable/ic_baseline_filter_list_24"
-            app:key="hideUnavailableProfiles"
-            app:summary="@string/hide_unavailable_profiles_sum"
-            app:title="@string/hide_unavailable_profiles" />
-
-        <moe.matsuri.nb4a.ui.SimpleMenuPreference
-            app:defaultValue="@string/default_speed_test_mode"
-            app:entries="@array/speed_test_modes"
-            app:entryValues="@array/speed_test_mode_values"
-            app:key="speedTestMode"
-            app:title="@string/speed_test_mode"
-            app:useSimpleSummaryProvider="true" />
-
-        <EditTextPreference
-            app:defaultValue="@string/default_speed_test_timeout_ms"
-            app:key="speedTestTimeoutMs"
-            app:title="@string/speed_test_timeout_ms"
-            app:useSimpleSummaryProvider="true" />
-
-        <EditTextPreference
-            app:defaultValue="@string/default_simple_download_url"
-            app:key="simpleDownloadURL"
-            app:title="@string/simple_download_url"
-            app:useSimpleSummaryProvider="true" />
-
+        </moe.matsuri.nb4a.ui.ExpandablePreferenceCategory>
     </moe.matsuri.nb4a.ui.ExpandablePreferenceCategory>
 
     <!-- 8. 进阶设置 -->
@@ -437,21 +467,14 @@
             app:summary="@string/enable_clash_api_summary"
             app:title="@string/enable_clash_api" />
 
-        <SwitchPreference
-            app:defaultValue="false"
-            app:icon="@drawable/ic_baseline_flip_camera_android_24"
-            app:key="networkChangeResetConnections"
-            app:title="@string/network_change_reset_connections"
-            app:useSimpleSummaryProvider="true" />
 
-        <SwitchPreference
-            app:key="wakeResetConnections"
-            app:title="@string/wake_reset_connections"
-            app:useSimpleSummaryProvider="true" />
+
+
 
         <SwitchPreference
             app:icon="@drawable/ic_action_lock_open"
             app:key="globalAllowInsecure"
+            app:summary="@string/security_allow_insecure_warning"
             app:title="@string/global_allow_insecure" />
 
         <SwitchPreference
@@ -466,23 +489,11 @@
             app:title="@string/app_tls_version"
             app:useSimpleSummaryProvider="true" />
 
-        <SwitchPreference
-            app:defaultValue="false"
-            app:icon="@drawable/ic_baseline_speed_24"
-            app:key="performancePriorityMode"
-            app:summary="@string/performance_priority_mode_summary"
-            app:title="@string/performance_priority_mode" />
 
-        <SwitchPreference
-            app:icon="@drawable/baseline_developer_board_24"
-            app:key="acquireWakeLock"
-            app:summary="@string/acquire_wake_lock_summary"
-            app:title="@string/acquire_wake_lock" />
 
-        <SwitchPreference
-            app:key="hideFromRecentApps"
-            app:summary="@string/hide_from_recent_apps_summary"
-            app:title="@string/hide_from_recent_apps" />
+
+
+
 
         <moe.matsuri.nb4a.ui.LongClickListPreference
             app:defaultValue="0"
@@ -496,6 +507,7 @@
         <moe.matsuri.nb4a.ui.EditConfigPreference
             app:icon="@drawable/ic_baseline_layers_24"
             app:key="globalCustomConfig"
+            app:summary="@string/advanced_json_warning"
             app:title="@string/custom_config"
             app:useSimpleSummaryProvider="true" />
 
@@ -508,6 +520,7 @@
         <Preference
             app:icon="@drawable/baseline_undo_24"
             app:key="resetSettings"
+            app:summary="@string/reset_settings_warning"
             app:title="@string/reset_settings" />
 
     </moe.matsuri.nb4a.ui.ExpandablePreferenceCategory>

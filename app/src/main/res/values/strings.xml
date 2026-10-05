@@ -656,9 +656,9 @@
     <string name="packet_encoding">Packet Encoding</string>
     <string name="acquire_wake_lock">Acquire WakeLock</string>
     <string name="release_wake_lock">Release WakeLock</string>
-    <string name="acquire_wake_lock_summary">Keep the CPU on</string>
+    <string name="acquire_wake_lock_summary">Keep the CPU awake while the service runs; VPN may also hold a WiFi lock. Increases battery use; disabled by default.</string>
     <string name="performance_priority_mode">性能优先模式</string>
-    <string name="performance_priority_mode_summary">开启后内核不限内存，速度更快但后台 RAM 占用增大；关闭时 Go 运行时积极回收内存（推荐默认关闭）</string>
+    <string name="performance_priority_mode_summary">Changes memory reclamation and refresh frequency. May increase memory use and battery consumption; disabled by default.</string>
     <string name="hide_from_recent_apps">Hide from recent tasks</string>
     <string name="hide_from_recent_apps_summary">Hide the app from recent tasks when running in background</string>
     <string name="action_switch">Switch</string>
@@ -1217,4 +1217,9 @@
     <string name="docs_backup_portable_title">Portable backups and WebDAV</string>
     <string name="docs_backup_portable_body">Tools → Backup exports versioned JSON for the selected profiles, groups, rules and settings. Choose the actual backup JSON or supported ZIP, not an OWN log. Legacy formats are migrated when possible; damaged Parcel data needs re-export from the old version. Protect credentials and use trusted HTTPS WebDAV storage.</string>
     <string name="docs_backup_portable_keywords">backup schemaVersion profiles proxies WebDAV JSON ZIP 备份 跨手机</string>
+    <!-- @author 雾晚 -->
+    <string name="connection_background_settings">Connection and background</string>
+    <string name="security_allow_insecure_warning">Disables certificate verification for proxy nodes. Enable only if you understand the security risk.</string>
+    <string name="advanced_json_warning">Overrides generated core settings. Invalid configuration can prevent connection.</string>
+    <string name="reset_settings_warning">Requires confirmation. Resets settings; does not delete nodes or routing rules.</string>
 </resources>
