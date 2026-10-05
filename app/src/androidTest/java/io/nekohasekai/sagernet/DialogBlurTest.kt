@@ -4,6 +4,8 @@ package io.nekohasekai.sagernet
 import android.app.Activity
 import android.content.Intent
 import android.os.Build
+import android.os.ParcelFileDescriptor
+import android.provider.Settings
 import android.view.WindowManager
 import androidx.appcompat.app.AlertDialog
 import androidx.test.platform.app.InstrumentationRegistry
@@ -21,9 +23,18 @@ class DialogBlurTest {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val store = DataStore.configurationStore
         val previousStrength = store.getInt(Key.DIALOG_BLUR_STRENGTH)
+        val previousScale = Settings.Global.getFloat(instrumentation.targetContext.contentResolver,
+            Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
+        fun animatorScale(value: Float) {
+            ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(
+                "settings put global animator_duration_scale $value")).use { it.readBytes() }
+        }
         var activity: Activity? = null
         var dialog: AlertDialog? = null
         try {
+            // The CI emulator disables animations. Exercise the listener path rather
+            // than testing only the reduced-effects branch, then restore its setting.
+            animatorScale(1f)
             activity = instrumentation.startActivitySync(Intent(instrumentation.targetContext,
                 MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             instrumentation.runOnMainSync {
@@ -64,6 +75,7 @@ class DialogBlurTest {
             instrumentation.runOnMainSync { dialog?.dismiss(); activity?.finish() }
             if (previousStrength == null) store.remove(Key.DIALOG_BLUR_STRENGTH)
             else store.putInt(Key.DIALOG_BLUR_STRENGTH, previousStrength)
+            animatorScale(previousScale)
         }
     }
 }

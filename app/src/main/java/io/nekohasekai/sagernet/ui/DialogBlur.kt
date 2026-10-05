@@ -84,7 +84,9 @@ internal object DialogBlur {
             attributes.blurBehindRadius = originalRadius
             attributes.flags = (attributes.flags and WindowManager.LayoutParams.FLAG_BLUR_BEHIND.inv()) or
                 (originalFlags and WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
-            window.attributes = attributes
+            // Detach can run inside WindowManager.removeViewImmediate. Update stored
+            // attributes for the next show without asking a removed window to relayout.
+            if (attached) window.attributes = attributes
         }
 
         override fun onViewDetachedFromWindow(view: View) {
