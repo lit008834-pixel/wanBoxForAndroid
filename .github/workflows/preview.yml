@@ -162,13 +162,15 @@ jobs:
             -p wanBoxForAndroid-3.0.5-preview.2-x86_64-release.apk -D previous
           echo '05abf838efc0be8781e52c0cf6e0393b023fd66ca80c4b88c6a71002d2274ed8  previous/wanBoxForAndroid-3.0.5-x86_64.apk' | sha256sum --check
           echo '8dba440911f90b60d94574d62c28ce20dbab80dded19a580142ddaf0413fc863  previous/wanBoxForAndroid-3.0.5-preview.2-x86_64-release.apk' | sha256sum --check
-          gh release download v2.9.1-preview \
+          # @author 雾晚: deleted v2.9.1-preview replaced by a pinned, verified co-install fixture.
+          gh release download v3.0.0 \
             -R Own716/OwnBoxForAndroid \
-            -p OwnBox-2.9.1-x86_64-release.apk -D previous
+            -p OwnBox-3.0.0-x86_64-release.apk -D previous
+          echo '86062de59591df18cbd257e484f43e1a1483d961af3f793b4194ac019d618348  previous/OwnBox-3.0.0-x86_64-release.apk' | sha256sum --check
           echo '048d1792bfb8f2134fdd2f836f99cc85e8050a54920cbf99c1014f3f98331ba8  previous/wanBoxForAndroid-3.0.3-x86_64.apk' | sha256sum --check
           echo 'a0659bc001bb3dd3b7ac458b662418d72970a654363ca5df7a3a2f0e47a298e2  previous/wanBoxForAndroid-3.0.4-preview.1-x86_64-release.apk' | sha256sum --check
-          # @author 雾晚: 上游 OwnBox 会替换同名附件；该文件只用于临时模拟器验证。
-          OWNBOX=previous/OwnBox-2.9.1-x86_64-release.apk
+          # @author 雾晚: 该固定版本只用于临时模拟器验证，不修改上游或用户安装。
+          OWNBOX=previous/OwnBox-3.0.0-x86_64-release.apk
           AAPT=$(find "${ANDROID_HOME}/build-tools" -name aapt | sort -V | tail -n 1)
           APKSIGNER=$(find "${ANDROID_HOME}/build-tools" -name apksigner | sort -V | tail -n 1)
           test -s "$OWNBOX"
