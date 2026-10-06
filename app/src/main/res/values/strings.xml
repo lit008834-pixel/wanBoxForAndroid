@@ -1225,6 +1225,4 @@
     <!-- @author 雾晚 -->
     <string name="input_method_direct">Current keyboard direct connection</string>
     <!-- @author 雾晚 -->
-    <string name="dialog_blur_summary">Default strength: 12; 0 means no blur. Applies to the next dialog. Requires Android 12+ system window blur. No compatibility blur is provided when the system does not support or enables no blur.</string>
-    <string name="dialog_blur_strength">Gaussian blur strength (0–25)</string>
 </resources>

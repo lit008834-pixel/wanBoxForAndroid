@@ -31,7 +31,7 @@ import androidx.core.graphics.drawable.DrawableCompat
 import androidx.core.widget.NestedScrollView
 import androidx.preference.Preference
 import androidx.preference.PreferenceViewHolder
-import io.nekohasekai.sagernet.ui.BlurredAlertDialogBuilder as MaterialAlertDialogBuilder
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import io.nekohasekai.sagernet.R
 import io.nekohasekai.sagernet.database.DataStore
 import io.nekohasekai.sagernet.ktx.dp2px

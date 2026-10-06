@@ -96,15 +96,6 @@
         app:key="categoryUI"
         app:title="@string/ui_settings">
 
-        <androidx.preference.SeekBarPreference
-            app:key="dialogBlurStrength"
-            app:defaultValue="12"
-            app:min="0"
-            android:max="25"
-            app:showSeekBarValue="true"
-            app:title="@string/dialog_blur_strength"
-            app:summary="@string/dialog_blur_summary" />
-
         <moe.matsuri.nb4a.ui.SimpleMenuPreference
             app:defaultValue="0"
             app:entries="@array/card_style_entries"

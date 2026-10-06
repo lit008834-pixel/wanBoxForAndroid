@@ -46,7 +46,7 @@ fun Project.setupCommon() {
         buildToolsVersion = "35.0.1"
         compileSdk = 35
         defaultConfig {
-            // @author 雾晚: product support starts at Android 12 system window blur.
+            // @author 雾晚: product support remains Android 12+, independently of visual effects.
             minSdk = 31
             targetSdk = 35
         }

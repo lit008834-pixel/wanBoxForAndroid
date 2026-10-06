@@ -3,7 +3,7 @@ package io.nekohasekai.sagernet.ui.route
 
 import android.text.InputType
 import androidx.preference.*
-import io.nekohasekai.sagernet.ui.BlurredAlertDialogBuilder as MaterialAlertDialogBuilder
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import io.nekohasekai.sagernet.Key
 import io.nekohasekai.sagernet.R
 import io.nekohasekai.sagernet.database.DataStore

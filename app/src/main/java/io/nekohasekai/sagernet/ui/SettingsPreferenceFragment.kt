@@ -12,7 +12,7 @@ import android.widget.EditText
 import androidx.core.app.ActivityCompat
 import androidx.core.graphics.drawable.DrawableCompat
 import androidx.preference.*
-import io.nekohasekai.sagernet.ui.BlurredAlertDialogBuilder as MaterialAlertDialogBuilder
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import io.nekohasekai.sagernet.Key
 import io.nekohasekai.sagernet.R
 import io.nekohasekai.sagernet.SagerNet
