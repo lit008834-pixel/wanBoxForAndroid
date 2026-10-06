@@ -22,7 +22,7 @@ class SettingsHierarchyContractTest {
             if (key.isNotEmpty()) { assertNull("Duplicate key $key", actual.put(key, element)) }
         }
         // @author 雾晚: input-method routing is an ordinary rule, not a separate preference.
-        assertEquals(old.keySet() + setOf("dialogBlurStrength"), actual.keys)
+        assertEquals(old.keySet(), actual.keys)
         old.keys().forEach { key ->
             val before = old.getJSONObject(key); val node = actual.getValue(key)
             assertEquals(key, before.getString("type"), node.tagName)

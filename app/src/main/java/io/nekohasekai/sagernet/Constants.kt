@@ -12,7 +12,6 @@ object Key {
 
     const val APP_EXPERT = "isExpert"
     const val APP_THEME = "appTheme"
-    const val DIALOG_BLUR_STRENGTH = "dialogBlurStrength"
     const val USE_SYSTEM_THEME = "useSystemTheme"
     const val NIGHT_THEME = "nightTheme"
     const val APP_LANGUAGE = "appLanguage"

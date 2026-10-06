@@ -17,7 +17,6 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.FragmentManager
 import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.snackbar.Snackbar
@@ -64,10 +63,6 @@ abstract class ThemedActivity : AppCompatActivity {
                     fm: FragmentManager, fragment: Fragment, view: View, savedInstanceState: Bundle?
                 ) {
                     Theme.tintCustomViews(view)
-                }
-
-                override fun onFragmentStarted(fm: FragmentManager, fragment: Fragment) {
-                    (fragment as? DialogFragment)?.dialog?.let(DialogBlur::install)
                 }
             }, true
         )

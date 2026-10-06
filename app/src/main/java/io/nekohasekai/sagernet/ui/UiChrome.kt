@@ -25,7 +25,7 @@ internal object UiChrome {
         else -> context.getColorAttr(R.attr.colorSurface)
     }
 
-    internal fun reduceEffects(context: Context): Boolean {
+    private fun reduceEffects(context: Context): Boolean {
         val activity = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
         val power = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
         val accessibility = context.getSystemService(Context.ACCESSIBILITY_SERVICE) as? AccessibilityManager
