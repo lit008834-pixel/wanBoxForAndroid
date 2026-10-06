@@ -4,7 +4,7 @@ set -euo pipefail
 
 previous=previous/wanBoxForAndroid-3.0.5-x86_64.apk
 prior_preview=previous/wanBoxForAndroid-3.0.5-preview.2-x86_64-release.apk
-own=previous/OwnBox-2.9.1-x86_64-release.apk
+own=previous/OwnBox-3.0.0-x86_64-release.apk
 shopt -s nullglob
 new_apks=(apks/wanBoxForAndroid-*-x86_64-release.apk)
 test "${#new_apks[@]}" -eq 1
