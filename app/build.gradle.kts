@@ -24,7 +24,11 @@ android {
         versionCode = requireMetadata().getProperty("VERSION_CODE").toInt() * 5
     }
     // Internal x86_64 verification is never a published ABI.
-    if (providers.gradleProperty("wanboxReleaseTests").isPresent) testBuildType = "release"
+    if (providers.gradleProperty("wanboxReleaseTests").isPresent) {
+        testBuildType = "release"
+        // @author 雾晚: external test APKs need stable shared APIs; shipping builds omit these rules.
+        buildTypes.named("release") { proguardFiles("proguard-release-tests.pro") }
+    }
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
     }
