@@ -58,8 +58,9 @@ class TcpPing {
                     })
             }
         }, bind = { socket ->
-            if (DataStore.vpnService?.protect(socket) == false) throw IOException("VPN socket protect failed")
+            // @author 雾晚: Network.bindSocket materializes the descriptor before protect.
             network?.bindSocket(socket)
+            if (DataStore.vpnService?.protect(socket) == false) throw IOException("VPN socket protect failed")
             if (SagerNet.underlyingNetwork != network) throw IOException("Network changed during TCP test")
         })
     }
