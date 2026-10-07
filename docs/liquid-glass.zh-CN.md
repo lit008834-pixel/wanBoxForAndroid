@@ -2,6 +2,8 @@
 
 作者：@author 雾晚
 
+> 适用范围：本文记录基于 `7e41d95` 的静态材质试点；下文的验证结果和 `v3.0.7-preview.2` 发布边界均为该次历史记录，不代表当前分支重新验证。截至 2026-10-06，`origin/main` 为 `f2886b9`（`v3.0.7-preview.5`）：当前仍有 `UiChrome`/`GlassPalette` 静态主题材质；提交 `352c06f` 已移除 Gaussian 窗口模糊实现及其强度偏好，因此本文不是当前模糊功能说明。
+
 ## 基线与范围
 
 origin/main 与 v3.0.7-preview.1 均为 7e41d95f05b5bc37ebc68b4ee9e9dffd659f231f。实际架构为 XML/ViewBinding、Fragment、Material Components 和 RecyclerView；minSdk 21，compile/targetSdk 35。没有 Compose 或新增 UI 依赖。

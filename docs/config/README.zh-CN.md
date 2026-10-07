@@ -10,7 +10,7 @@
 JSON 标准不允许注释，关键字段在本文注释。模板中的 Trojan 节点是占位示例：
 必须把 proxy.example.com、密码、TLS server_name 换成真实服务器配置，并同步 DNS 直连排除的服务器域名。
 你的 VLESS/Reality 节点应使用导出的完整 outbound 替换 node，保留 tag=node；不要把 Trojan 参数照搬给 VLESS。
-模板没有包含真实凭据，未经填写无法连通。模板使用 sing-box 1.15 字段，不是 Mihomo YAML。
+模板没有包含真实凭据，未经填写无法连通。模板按 sing-box 1.15.0-alpha.10 字段编写（NB4A 当前核心版本），不是 Mihomo YAML。
 
 ## 关键字段注释
 
@@ -43,7 +43,7 @@ Root 默认测试 URL 通过本地 mixed 入站强制进入当前代理；自定
 无混合入站时使用独立节点测试，不代表当前 Root 转发路径的端到端时延。
 网络、节点负载或 TLS 分片造成的真实 2000ms 不会被修改成虚假的低值。
 
-wanBox 手动测速默认总超时为 3000ms，内置自动组探测也限制为 3 秒。
+wanBox 手动 URL 延迟测试默认总超时为 3000ms（带宽测速使用独立的 `speedTestTimeoutMs` 设置）；内置自动组探测也限制为 3 秒。
 sing-box 的 urltest JSON 没有通用 timeout 字段，不要添加不支持的字段。
 模板用于独立官方核心时，自动组遵循该核心自身的超时；间隔为 300 秒。
 
@@ -55,7 +55,7 @@ python tools/clean_subscription.py input.json cleaned.json
 
 支持 sing-box outbounds / Mihomo proxies 的 JSON；YAML 先用可信工具转 JSON，原文件保留。
 脚本更新组与路由引用，删除后出现空组或无效默认引用时会报错，不会静默改为直连。
-不接受覆盖原文件或已有输出文件；不联网，不输出密码或订阅链接。
+不接受覆盖原文件或已有输出文件；不联网、不在终端打印密码或订阅链接。生成 JSON 会保留输入节点凭据及其他未删除字段（可能含订阅链接），请妥善保管。
 
 ## 官方字段参考
 

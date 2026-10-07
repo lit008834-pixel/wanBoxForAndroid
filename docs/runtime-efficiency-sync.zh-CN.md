@@ -1,5 +1,7 @@
 # OwnBox 2.9.21 选择性审查与运行期开销修复
 
+> **文档性质（截至 2026-10-06）**：本文记录 2026-10-05 对照 OwnBox 与 wanBox 的选择性审查、运行期开销/TUN 修复，以及随后加入的“当前输入法直连”选项；不是当前版本的完整功能说明。当前核对基准 `origin/main`=`f2886b93a68a94ec4bf04cde73134e48c67e044d`（`v3.0.7-preview.5`）已包含上述实现。下文的版本基线、测试数量和检查结果均是当时的记录，不代表在当前基准重新执行。
+
 作者：@author 雾晚
 
 ## 基线与范围
@@ -55,7 +57,7 @@
 - 红灯回归：修复前运行期开销契约 2 项失败；日志超大输入回归失败。
 - `app:tasks --all` 确认真实 Preview/Oss Gradle 任务。
 - `app:testPreviewDebugUnitTest`、`app:assemblePreviewDebug`、`app:assembleOssDebugAndroidTest` 本地通过；Android 测试 APK 编译不代表设备执行。
-- 最终本地 Preview 单测 190 项通过。`app:lintPreviewDebug` 失败，仍为已有 133 项错误，未扩大范围去修改不相关页面；不把单测/编译通过说成 lint 通过。
+- 核心修复阶段本地 Preview 单测 190 项通过；随后为输入法直连补充 4 项单元回归，后续记录为 194 项通过（见本节首项）。`app:lintPreviewDebug` 当时失败，报告已有 133 项错误；未扩大范围修改不相关页面，不把单测/编译通过说成 lint 通过。
 - Go 本地 `go test libcore/log.go libcore/log_test.go`、`go test libcore/tun_source.go libcore/tun_source_test.go` 通过。Windows append-only 文件不能 Truncate，日志测试在 Windows 使用可读写句柄；Linux/Android 测试仍使用生产 O_APPEND 标志，CI 另加 race 检查。
 - 真实 ConfigBuilder 仪器回归覆盖 VPN/Root、FakeIP 开关的 TUN 必需字段及无 GSO；CI 使用本次源码重新构建 AAR/Root 四 ABI 后执行，不以旧缓存替代核心验证。
 - 未量测用户设备 RSS、后台电耗、滚动帧率或 Root 真机语音长连接效果，不宣称百分比节省或语音真机故障已复现。
