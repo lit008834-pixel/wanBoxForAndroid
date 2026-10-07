@@ -14,6 +14,7 @@
 -keep,allowobfuscation class com.google.gson.Gson { public *; }
 -keep,allowobfuscation class com.google.gson.GsonBuilder { public *; }
 -keep,allowobfuscation class com.google.zxing.qrcode.QRCodeWriter { public *; }
+-keep,allowobfuscation class com.google.zxing.common.BitMatrix { public *; }
 -keep,allowobfuscation class com.google.zxing.Result { public *; }
 -keep,allowobfuscation class com.king.zxing.util.CodeUtils { public *; }
 -keep,allowobfuscation class okhttp3.OkHttpClient {
