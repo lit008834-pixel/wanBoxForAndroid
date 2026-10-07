@@ -389,7 +389,7 @@
         <activity
             android:name=".QuickToggleShortcut"
             android:excludeFromRecents="true"
-            android:exported="true"
+            android:exported="false"
             android:label="@string/quick_toggle"
             android:launchMode="singleTask"
             android:process=":bg"
@@ -402,7 +402,7 @@
         <activity
             android:name="io.nekohasekai.sagernet.ui.QuickEnableShortcut"
             android:excludeFromRecents="true"
-            android:exported="true"
+            android:exported="false"
             android:label="@string/quick_enable"
             android:launchMode="singleTask"
             android:process=":bg"
@@ -411,7 +411,7 @@
         <activity
             android:name="io.nekohasekai.sagernet.ui.QuickDisableShortcut"
             android:excludeFromRecents="true"
-            android:exported="true"
+            android:exported="false"
             android:label="@string/quick_disable"
             android:launchMode="singleTask"
             android:process=":bg"

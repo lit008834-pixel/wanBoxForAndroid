@@ -1110,7 +1110,6 @@
     <string name="group_tab_all">All</string>
 
     <!-- @author 雾晚 -->
-    <string name="shortcut_control_confirm">Allow this shortcut to change the proxy connection?</string>
     <string name="dashboard_secure_url">Use HTTPS for remote dashboards, or the built-in local dashboard. Remote HTTPS pages cannot connect to the local HTTP API.</string>
     <string name="database_recovery_notice">The database could not be opened. Your database and journal files have been preserved. Export a diagnostic copy before attempting recovery. This copy contains private keys and passwords; keep it private. No automatic reset will occur.</string>
     <string name="database_recovery_export">Export diagnostic copy</string>

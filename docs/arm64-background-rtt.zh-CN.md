@@ -107,6 +107,14 @@ val rtt = TimeUnit.NANOSECONDS.toMillis(clock() - start).coerceAtLeast(1)
 
 ## 验证与回滚
 
+### 桌面快捷方式直接执行
+
+按用户追加要求，开关、启用、停用和指定节点快捷方式不再显示应用内确认弹窗。三个控制 Activity 改为 `android:exported="false"`，保留既有 ShortcutManager 发布的 ID/Intent、节点存在性检查、服务状态判断与 Binder 释放；VPN 系统授权和 Root 权限检查不变。Android 系统的 ShortcutService 以发布者身份启动快捷方式，目标 Activity 无需导出，普通外部 Intent 则由系统拒绝。未使用可伪造的 referrer 或 Intent extra 判断调用者。
+
+依据：[AOSP LauncherAppsService 的 startShortcutIntentsAsPublisher](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/android13-dev/services/core/java/com/android/server/pm/LauncherAppsService.java)。最低 Android 12，保留系统静态及固定快捷方式；第三方直接拼接 Activity Intent 的旧式自动化入口不属于系统快捷方式。
+
+新增 ShortcutControlContractTest 检查私有边界、直接连接和授权/节点行为；独立测试 APK 验证外部直接调用被拒，再仅在临时模拟器取得 HOME 角色，通过公开 LauncherApps.startShortcut 启动三个实际发布的快捷方式，检查服务回调已执行且无需应用确认。测试结束恢复模拟器原 HOME 角色。此测试不替代带真实节点的 VPN/Root 连接验证。
+
 - 分支 perf/arm64-background；用户另一工作树保持原样。
 - 本地列出真实任务后运行 testPreviewDebugUnitTest、assemblePreviewDebug、assemblePreviewDebugAndroidTest 和 git diff --check。
 - CI 跑 OSS/Preview 单测、ARM64 R8 Release、内部 x86_64 Debug/Release 仪器测试与升级安装；内部模拟器包不进入公开附件。

@@ -36,6 +36,7 @@ import io.nekohasekai.sagernet.bg.SagerConnection
 import io.nekohasekai.sagernet.database.DataStore
 
 @Suppress("DEPRECATION")
+/** System-published shortcuts execute directly through a private activity. @author 雾晚 */
 class QuickToggleShortcut : Activity(), SagerConnection.Callback {
     private val connection = SagerConnection(SagerConnection.CONNECTION_ID_SHORTCUT)
     private var profileId = -1L
@@ -54,23 +55,11 @@ class QuickToggleShortcut : Activity(), SagerConnection.Callback {
             finish()
         } else {
             profileId = intent.getLongExtra("profile", -1L)
-            confirmControl()
+            connection.connect(this, this)
             if (Build.VERSION.SDK_INT >= 25) {
                 getSystemService<ShortcutManager>()!!.reportShortcutUsed(if (profileId >= 0) "shortcut-profile-$profileId" else "toggle")
             }
         }
-    }
-
-    private fun confirmControl() {
-        android.app.AlertDialog.Builder(this)
-            .setTitle(R.string.app_name)
-            .setMessage(R.string.shortcut_control_confirm)
-            .setPositiveButton(android.R.string.ok) { _, _ -> connection.connect(this, this) }
-            .setNegativeButton(android.R.string.cancel) { _, _ -> finish() }
-            .setOnCancelListener { finish() }
-            .show().also { dialog ->
-                dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).filterTouchesWhenObscured = true
-            }
     }
 
     override fun onServiceConnected(service: ISagerNetService) {
@@ -79,6 +68,7 @@ class QuickToggleShortcut : Activity(), SagerConnection.Callback {
             return
         }
         val state = BaseService.State.values().getOrNull(service.state) ?: return
+        if (BuildConfig.DEBUG) android.util.Log.d("WanBoxShortcut", "Executing toggle shortcut")
         when {
             state.canStop -> {
                 if (profileId == DataStore.selectedProxy || profileId == -1L) {

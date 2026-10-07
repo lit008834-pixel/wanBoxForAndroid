@@ -18,10 +18,12 @@ for receiver in widgets:
     actions = [a.get(android+"name") for a in receiver.findall("./intent-filter/action")]
     assert actions == ["android.appwidget.action.APPWIDGET_UPDATE"], actions
 for name in ["QuickEnableShortcut", "QuickDisableShortcut", "QuickToggleShortcut"]:
+    activities = [a for a in app.findall("activity") if a.get(android+"name", "").endswith("."+name)]
+    assert len(activities) == 1 and activities[0].get(android+"exported") == "false", "shortcut control must be private"
     matches = list((root/"app/src/main/java").rglob(name+".kt"))
     text = matches[0].read_text(encoding="utf-8")
-    assert "confirmControl()" in text and "setPositiveButton" in text
-    assert ".filterTouchesWhenObscured = true" in text
+    assert "connection.connect(this, this)" in text and "connection.disconnect(this)" in text
+    assert "confirmControl" not in text and "shortcut_control_confirm" not in text
 db = (root/"app/src/main/java/io/nekohasekai/sagernet/database/SagerDatabase.kt").read_text(encoding="utf-8")
 assert "fallbackToDestructiveMigration" not in db and "deleteDatabase" not in db
 security = ET.parse(root/"app/src/main/res/xml/network_security_config.xml").getroot()

@@ -26,37 +26,26 @@ import android.content.pm.ShortcutManager
 import android.os.Build
 import android.os.Bundle
 import androidx.core.content.getSystemService
-import io.nekohasekai.sagernet.R
 import io.nekohasekai.sagernet.SagerNet
 import io.nekohasekai.sagernet.aidl.ISagerNetService
 import io.nekohasekai.sagernet.bg.BaseService
 import io.nekohasekai.sagernet.bg.SagerConnection
 
+/** Private system shortcut stops directly without an app confirmation. @author 雾晚 */
 class QuickDisableShortcut : Activity(), SagerConnection.Callback {
     private val connection = SagerConnection(SagerConnection.CONNECTION_ID_SHORTCUT)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        confirmControl()
+        connection.connect(this, this)
         if (Build.VERSION.SDK_INT >= 25) {
             getSystemService<ShortcutManager>()!!.reportShortcutUsed("disable")
         }
     }
 
-    private fun confirmControl() {
-        android.app.AlertDialog.Builder(this)
-            .setTitle(R.string.app_name)
-            .setMessage(R.string.shortcut_control_confirm)
-            .setPositiveButton(android.R.string.ok) { _, _ -> connection.connect(this, this) }
-            .setNegativeButton(android.R.string.cancel) { _, _ -> finish() }
-            .setOnCancelListener { finish() }
-            .show().also { dialog ->
-                dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).filterTouchesWhenObscured = true
-            }
-    }
-
     override fun onServiceConnected(service: ISagerNetService) {
         val state = BaseService.State.values().getOrNull(service.state) ?: return
+        if (io.nekohasekai.sagernet.BuildConfig.DEBUG) android.util.Log.d("WanBoxShortcut", "Executing disable shortcut")
         if (state.canStop) {
             SagerNet.stopService()
         }
