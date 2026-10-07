@@ -11,8 +11,8 @@
 -keep,allowobfuscation class androidx.sqlite.** { public *; }
 -keep,allowobfuscation class com.google.android.material.** { public *; }
 # @author 雾晚 Shared APIs invoked only by migration/scanner/serialization tests.
--keep,allowobfuscation class com.google.gson.Gson { public *; }
--keep,allowobfuscation class com.google.gson.GsonBuilder { public *; }
+# Room migration-bundle adapters in the separate test APK also use TypeToken/tree/stream APIs.
+-keep,allowobfuscation class com.google.gson.** { public *; protected *; }
 -keep,allowobfuscation class com.google.zxing.qrcode.QRCodeWriter { public *; }
 -keep,allowobfuscation class com.google.zxing.common.BitMatrix { public *; }
 -keep,allowobfuscation class com.google.zxing.Result { public *; }
