@@ -1,63 +1,67 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.bg.proto
 
-import android.os.Build
-import android.os.SystemClock
+import android.net.DnsResolver
+import android.net.InetAddresses
+import android.os.CancellationSignal
 import io.nekohasekai.sagernet.SagerNet
+import io.nekohasekai.sagernet.R
 import io.nekohasekai.sagernet.database.DataStore
 import io.nekohasekai.sagernet.database.ProxyEntity
-import io.nekohasekai.sagernet.ktx.Logs
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import java.net.InetSocketAddress
-import java.net.Socket
+import kotlinx.coroutines.asExecutor
+import kotlinx.coroutines.suspendCancellableCoroutine
+import java.io.IOException
+import java.net.InetAddress
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
+/** Physical-network node TCP RTT, separately from proxy-channel health. @author 雾晚 */
 class TcpPing {
-
-    private val timeout = DataStore.connectionTestTimeout
-
-    suspend fun doTest(profile: ProxyEntity): Int = withContext(Dispatchers.IO) {
-        val bean = profile.requireBean()
-        val host = if (!bean.finalAddress.isNullOrBlank()) bean.finalAddress else bean.serverAddress
-        val port = if (bean.finalPort != 0) {
-            bean.finalPort
-        } else if (bean is io.nekohasekai.sagernet.fmt.hysteria.HysteriaBean) {
-            io.nekohasekai.sagernet.fmt.hysteria.getFirstPort(bean.serverPorts ?: "443")
-        } else {
-            bean.serverPort ?: 443
-        }
-
-        if (host.isNullOrBlank() || port <= 0 || port > 65535) {
-            error("Invalid host or port: $host:$port")
-        }
-
-        Logs.d("TcpPing ${profile.displayName()}: start, host=$host, port=$port, timeout=${timeout}ms")
-
-        val isUdpOnly = bean is io.nekohasekai.sagernet.fmt.hysteria.HysteriaBean ||
-                bean is io.nekohasekai.sagernet.fmt.tuic.TuicBean ||
-                bean is io.nekohasekai.sagernet.fmt.wireguard.WireGuardBean
-
-        if (isUdpOnly) {
-            Logs.d("TcpPing ${profile.displayName()}: UDP/QUIC protocol, using URLTest directly")
-            return@withContext UrlTest().doTest(profile)
-        }
-
-        val socket = Socket()
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                runCatching { SagerNet.underlyingNetwork?.bindSocket(socket) }
-            }
-            runCatching { DataStore.vpnService?.protect(socket) }
-
-            // 预先解析地址，避免将本地 Android DNS 解析耗时计入 TCP Ping 握手延迟中导致延迟虚高
-            val address = InetSocketAddress(host, port)
-            val startTime = SystemClock.elapsedRealtime()
-            socket.connect(address, timeout)
-            val latency = (SystemClock.elapsedRealtime() - startTime).toInt().coerceAtLeast(1)
-            Logs.d("TcpPing ${profile.displayName()}: done, latency=${latency}ms")
-            latency
-        } finally {
-            runCatching { socket.close() }
+    companion object {
+        private val probe = TcpRttProbe()
+        fun supports(profile: ProxyEntity): Boolean {
+            val bean = profile.requireBean()
+            return bean !is io.nekohasekai.sagernet.fmt.hysteria.HysteriaBean &&
+                bean !is io.nekohasekai.sagernet.fmt.tuic.TuicBean &&
+                bean !is io.nekohasekai.sagernet.fmt.wireguard.WireGuardBean &&
+                !bean.serverAddress.isNullOrBlank() && (bean.serverPort ?: 0) in 1..65535
         }
     }
-
+    suspend fun doTest(profile: ProxyEntity): Int {
+        val bean = profile.requireBean()
+        if (!supports(profile)) {
+            throw UnsupportedOperationException(SagerNet.application.getString(R.string.tcp_rtt_udp_unavailable))
+        }
+        val host = bean.finalAddress?.takeIf { it.isNotBlank() } ?: bean.serverAddress
+        val port = bean.finalPort.takeIf { it != 0 } ?: bean.serverPort ?: 443
+        require(!host.isNullOrBlank() && port in 1..65535)
+        val network = SagerNet.underlyingNetwork
+        if (network == null && DataStore.serviceState.connected) {
+            throw IOException(SagerNet.application.getString(R.string.tcp_rtt_network_unavailable))
+        }
+        return probe.measure(host!!, port, network?.networkHandle ?: 0, resolve = { domain ->
+            if (InetAddresses.isNumericAddress(domain)) listOf(InetAddresses.parseNumericAddress(domain))
+            else suspendCancellableCoroutine { continuation ->
+                val signal = CancellationSignal()
+                continuation.invokeOnCancellation { signal.cancel() }
+                DnsResolver.getInstance().query(network, domain, DnsResolver.FLAG_EMPTY,
+                    Dispatchers.IO.asExecutor(), signal, object : DnsResolver.Callback<Collection<InetAddress>> {
+                        override fun onAnswer(answer: Collection<InetAddress>, rcode: Int) {
+                            if (!continuation.isActive) return
+                            if (rcode == 0 && answer.isNotEmpty()) continuation.resume(answer.toList())
+                            else continuation.resumeWithException(IOException("DNS query failed ($rcode)"))
+                        }
+                        override fun onError(error: DnsResolver.DnsException) {
+                            if (continuation.isActive) continuation.resumeWithException(error)
+                        }
+                    })
+            }
+        }, bind = { socket ->
+            // @author 雾晚: Network.bindSocket materializes the descriptor before protect.
+            network?.bindSocket(socket)
+            if (DataStore.vpnService?.protect(socket) == false) throw IOException("VPN socket protect failed")
+            if (SagerNet.underlyingNetwork != network) throw IOException("Network changed during TCP test")
+        })
+    }
 }

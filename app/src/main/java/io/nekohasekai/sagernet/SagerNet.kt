@@ -28,6 +28,7 @@ import io.nekohasekai.sagernet.ktx.isPreview
 import io.nekohasekai.sagernet.ktx.runOnDefaultDispatcher
 import io.nekohasekai.sagernet.ui.MainActivity
 import io.nekohasekai.sagernet.utils.*
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.DEBUG_PROPERTY_NAME
 import kotlinx.coroutines.DEBUG_PROPERTY_VALUE_ON
 import libcore.Libcore
@@ -253,19 +254,31 @@ class SagerNet : Application(),
         fun startService() {
             // @author 雾晚: verify privilege before creating a root foreground service.
             if (DataStore.serviceMode == Key.MODE_ROOT) {
-                runOnDefaultDispatcher {
+                application.applicationScope.launch {
                     if (RootAccess.available()) {
-                        ContextCompat.startForegroundService(
-                            application, Intent(application, SagerConnection.serviceClass)
-                        )
+                        launchForegroundService()
                     } else {
                         RootAccess.fallbackToVpn(application)
                     }
                 }
             } else {
-                ContextCompat.startForegroundService(
-                    application, Intent(application, SagerConnection.serviceClass)
-                )
+                launchForegroundService()
+            }
+        }
+
+        // @author 雾晚: Android can reject background starts; do not crash or retry indefinitely.
+        private fun launchForegroundService() {
+            try {
+                ContextCompat.startForegroundService(application, Intent(application, SagerConnection.serviceClass))
+            } catch (e: IllegalStateException) { reportStartRejected() }
+              catch (e: SecurityException) { reportStartRejected() }
+        }
+
+        private fun reportStartRejected() {
+            Logs.w("Foreground service start rejected by Android")
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                android.widget.Toast.makeText(application, R.string.service_start_rejected,
+                    android.widget.Toast.LENGTH_LONG).show()
             }
         }
 

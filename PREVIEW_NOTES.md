@@ -1,18 +1,22 @@
-# wanBox 3.0.7-preview.5
+# wanBox 3.0.7-preview.6
 
 作者：@author 雾晚
 
-## 更新内容
-
-- 取消高斯模糊，弹窗恢复原有 Material 效果；移除窗口模糊监听、模糊强度设置及相关实现。
-- 保留已有主题与静态材质样式。
-
-## 回归测试
-
-- 更新设置层级契约测试，检查移除模糊强度项后设置项键集合与基线一致。
+- 仅发布 arm64-v8a，最低系统为 Android 12。
+- 精简 R8 保留规则和语言资源，合并完全相同的启动器图片，保留压缩原生库及 Root 加载方式。
+- 修复通知权限变化影响连接、前台服务提升失败被忽略、启动时熄屏仍刷新通知的问题。
+- Android 14+ 的 Root/本地代理前台服务使用符合用途的 specialUse 类型，避免未取得系统 VPN 身份时被拒绝启动；VPN 类型与授权保持原样。
+- 自动订阅更新保留任务周期，按各订阅自己的更新时间安排；联网且电量不低时执行，取消和异常均清理通知。
+- TCP RTT 测试最多 4 个并发，排除 DNS/TLS 时间；增加网络隔离的限量 DNS 缓存、3–8 秒自适应连接超时及取消关闭连接。
+- UDP/QUIC 及无独立 TCP 端点的配置跳过 TCP RTT，不标成不可用；请使用通道测试验证。
+- 新建 URLTest 分组默认使用 http://connectivitycheck.gstatic.com/generate_204，间隔 600 秒、容差 100ms，不中断已有连接。已有显式设置保留。
+- 状态栏仍显示真实代理通道检测。TCP RTT 不代表代理通道可用性，不保证固定几十毫秒。
+- WebDAV 复用安全 HTTP 客户端及连接池，保留 HTTPS、禁止跳转和输入大小限制。
+- 取消开关、启用、停用及节点桌面快捷方式的应用内二次确认；系统发布的快捷方式直接执行，保留 VPN/Root 授权，并阻止普通外部应用直接调用控制入口。
+- 保持包名、签名、用户数据格式、协议及核心版本不变，可覆盖安装上一预览版。
 
 ## 兼容性与升级
 
-- 预览版 `versionName` 为 `3.0.7-preview.5`；元数据 `PRE_VERSION_CODE=346`，Android `versionCode=1730`（构建时乘以 5）。
-- 最低系统版本为 Android 12（API 31）；保持应用包名 `com.lit008834.pixel.wanboxforandroid`、既有签名及 sing-box `v1.15.0-alpha.10`。
-- 可覆盖安装上一 wanBox 预览版，用户配置保持不变。Release 提供 `arm64-v8a`、`armeabi-v7a`、`x86`、`x86_64` 四种架构 APK，并附 `SHA256SUMS`。
+- 预览 versionName 为 3.0.7-preview.6；PRE_VERSION_CODE=347，Android versionCode=1735。
+- 最低 Android 12，包名 com.lit008834.pixel.wanboxforandroid；sing-box v1.15.0-alpha.10。
+- 公开 Release 仅提供 arm64-v8a APK 和 SHA256SUMS；模拟器测试包不公开。

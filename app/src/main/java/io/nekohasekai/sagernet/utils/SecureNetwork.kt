@@ -16,14 +16,17 @@ object SecureNetwork {
         }
     }
 
-    fun webDAVClient(): OkHttpClient = OkHttpClient.Builder()
+    private val sharedWebDAVClient: OkHttpClient by lazy { OkHttpClient.Builder()
+        .connectionPool(okhttp3.ConnectionPool(10, 5, java.util.concurrent.TimeUnit.MINUTES))
         .callTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
         .followRedirects(false)
         .followSslRedirects(false)
         .addInterceptor { chain ->
             requireSecure(chain.request().url)
             chain.proceed(chain.request())
-        }.build()
+        }.build() }
+
+    fun webDAVClient(): OkHttpClient = sharedWebDAVClient
 
     fun text(body: ResponseBody?, limit: Int = BoundedInput.JSON_BYTES): String {
         body ?: throw IOException("服务器返回空内容")

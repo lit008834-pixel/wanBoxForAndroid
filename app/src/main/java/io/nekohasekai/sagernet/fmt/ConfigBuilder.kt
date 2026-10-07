@@ -176,13 +176,11 @@ internal fun buildUrlTestOutbound(
         tag = customTag?.takeIf { it.isNotBlank() } ?: TAG_PROXY
         outbounds = memberTags
         url = testUrl?.takeIf { it.isNotBlank() }
-            ?: runCatching { DataStore.connectionTestURL }.getOrNull()?.takeIf { it.isNotBlank() }
-            ?: "https://www.gstatic.com/generate_204"
-        val iv = (intervalSec?.takeIf { it > 0 } ?: 300L).coerceAtLeast(10L)
+            ?: "http://connectivitycheck.gstatic.com/generate_204"
+        val iv = (intervalSec?.takeIf { it > 0 } ?: 600L).coerceAtLeast(10L)
         interval = "${iv}s"
-        // 50ms tolerance: prevents micro-jitter (< 50ms delta) from triggering node switch.
-        // This is independent of the memory profile toggle — always active for leastPing stability.
-        tolerance = toleranceMs?.takeIf { it >= 0 } ?: 50
+        // @author 雾晚: saved settings override the quieter defaults for new groups.
+        tolerance = toleranceMs?.takeIf { it >= 0 } ?: 100
         // Enforce minimum 10-minute idle_timeout regardless of memory mode.
         // This guarantees Telegram file uploads (which can take many minutes) are never
         // interrupted by the kernel reclaiming an "idle" leastPing connection pool.

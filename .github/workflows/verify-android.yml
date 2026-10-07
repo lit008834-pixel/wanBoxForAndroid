@@ -98,7 +98,7 @@ jobs:
           echo "ndk.dir=${ANDROID_HOME}/ndk/25.0.8775105" >> local.properties
           ./run init action gradle
           ./gradlew app:tasks --all
-          ./gradlew app:assembleOssDebug
+          WANBOX_INTERNAL_TEST=1 ./gradlew app:assembleOssDebug -PwanboxInternalTestAbi=x86_64
       - name: Prepare key for the unpublished release comparison build
         env:
           WANBOX_KEYSTORE_BASE64: ${{ secrets.WANBOX_KEYSTORE_BASE64 }}
@@ -110,7 +110,12 @@ jobs:
           WANBOX_KEYSTORE_FILE: ${{ runner.temp }}/wanbox-release.p12
           WANBOX_KEYSTORE_PASSWORD: ${{ secrets.WANBOX_KEYSTORE_PASSWORD }}
         run: |
-          ./gradlew app:testOssDebugUnitTest app:assembleOssDebugAndroidTest app:assembleOssRelease
+          WANBOX_INTERNAL_TEST=1 ./gradlew app:testOssDebugUnitTest app:assembleOssDebugAndroidTest -PwanboxInternalTestAbi=x86_64
+          ./gradlew app:assembleOssRelease
+          mkdir -p public-apks
+          cp app/build/outputs/apk/oss/release/*arm64-v8a*.apk public-apks/
+          python3 tools/verify_apk_abi.py public-apks/*.apk
+          WANBOX_INTERNAL_TEST=1 ./gradlew app:assembleOssReleaseAndroidTest -PwanboxInternalTestAbi=x86_64 -PwanboxReleaseTests
           ./gradlew app:testPreviewDebugUnitTest app:assemblePreviewDebug
           python3 tools/check_android_security.py
           bash tools/diagnostics/build_security_probe.sh
@@ -121,7 +126,7 @@ jobs:
           mkdir -p audit-baseline
           gh release download v3.0.3 -R lit008834-pixel/wanBoxForAndroid -p wanBoxForAndroid-3.0.3-arm64-v8a.apk -D audit-baseline
           echo 'a3737032bf022e16aacb9ab0dafae8ca170fb4bea9b831ad2de69ba360c97bc5  audit-baseline/wanBoxForAndroid-3.0.3-arm64-v8a.apk' | sha256sum --check
-          python3 tools/apk_payload_report.py audit-baseline/*.apk app/build/outputs/apk/oss/release/*arm64-v8a*.apk > audit-baseline/payload.json
+          python3 tools/apk_payload_report.py audit-baseline/*.apk public-apks/*arm64-v8a*.apk > audit-baseline/payload.json
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -129,13 +134,21 @@ jobs:
           sudo udevadm trigger --name-match=kvm
       - name: Validate database migrations, rollback and external control
         uses: reactivecircus/android-emulator-runner@v2
+        env:
+          WANBOX_KEYSTORE_FILE: ${{ runner.temp }}/wanbox-release.p12
+          WANBOX_KEYSTORE_PASSWORD: ${{ secrets.WANBOX_KEYSTORE_PASSWORD }}
         with:
           api-level: 35
           target: google_apis
           arch: x86_64
           profile: pixel_7_pro
           # @author 雾晚: preserve synthetic native XML material comparisons from the emulator.
-          script: ./gradlew app:connectedOssDebugAndroidTest && test "$(find app/build/outputs/connected_android_test_additional_output -name '*.png' | wc -l)" -eq 72 && bash tools/diagnostics/verify_external_control.sh
+          script: |
+            WANBOX_INTERNAL_TEST=1 ./gradlew app:connectedOssReleaseAndroidTest -PwanboxInternalTestAbi=x86_64 -PwanboxReleaseTests
+            test "$(find app/build/outputs/connected_android_test_additional_output -name '*.png' | wc -l)" -eq 72
+            WANBOX_INTERNAL_TEST=1 ./gradlew app:connectedOssDebugAndroidTest -PwanboxInternalTestAbi=x86_64
+            test "$(find app/build/outputs/connected_android_test_additional_output -name '*.png' | wc -l)" -ge 72
+            bash tools/diagnostics/verify_external_control.sh
       - name: Preserve complete test reports
         if: always()
         uses: actions/upload-artifact@v5

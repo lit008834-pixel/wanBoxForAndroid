@@ -112,11 +112,11 @@ jobs:
           FORMAL_CODE=$(grep '^VERSION_CODE=' nb4a.properties | cut -d= -f2 | tr -d '\r')
           test "$PREVIEW_CODE" -gt "$FORMAL_CODE"
           PREVIEW_CODE=$((PREVIEW_CODE * 5))
-          test "$(find "$APK_DIR" -maxdepth 1 -name '*.apk' | wc -l)" -eq 4
+          test "$(find "$APK_DIR" -maxdepth 1 -name '*.apk' | wc -l)" -eq 1
           test "$(grep -c 'android:targetPackage="com.lit008834.pixel.wanboxforandroid"' app/src/main/res/xml/shortcuts.xml)" -eq 4
           for apk in "$APK_DIR"/*.apk; do
             case "$(basename "$apk")" in wanBoxForAndroid-"$PREVIEW_VERSION"-*.apk) ;; *) exit 1 ;; esac
-            unzip -Z1 "$apk" | grep -Eq '^lib/(armeabi-v7a|arm64-v8a|x86|x86_64)/librootbox.so$'
+            python3 tools/verify_apk_abi.py "$apk"
             "$AAPT" dump badging "$apk" | grep -q "^package: name='com.lit008834.pixel.wanboxforandroid' versionCode='$PREVIEW_CODE' versionName='$PREVIEW_VERSION' "
             manifest=$($AAPT dump xmltree "$apk" AndroidManifest.xml)
             printf '%s\n' "$manifest" | grep -q 'com.lit008834.pixel.wanboxforandroid.cache'
@@ -125,11 +125,24 @@ jobs:
             echo "$(basename "$apk") certificate SHA-256: $signer_digest"
             test "$signer_digest" = 'AEC62C7003FA515534817250D3CD0DC705E19F4CD578A7A9A1D22519596EA598'
           done
-          echo "APK=$APK_DIR" >> "$GITHUB_ENV"
+          mkdir -p public-apks
+          cp "$APK_DIR"/*arm64-v8a*.apk public-apks/
+          echo "APK=public-apks" >> "$GITHUB_ENV"
+          # @author 雾晚: same source and signature, emulator-only ABI; never uploaded to Release.
+          WANBOX_INTERNAL_TEST=1 ./gradlew app:assemblePreviewRelease -PwanboxInternalTestAbi=x86_64
+          mkdir -p internal-apks
+          cp "$APK_DIR"/*x86_64*.apk internal-apks/
+          for fixture in internal-apks/*.apk; do "$APKSIGNER" verify "$fixture"; done
       - uses: actions/upload-artifact@v4
         with:
           name: APKs
           path: ${{ env.APK }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: internal-upgrade-fixture
+          path: internal-apks/*.apk
+          if-no-files-found: error
+          retention-days: 1
 
   verify_upgrade:
     name: Verify preview updates in place
@@ -141,7 +154,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: APKs
+          name: internal-upgrade-fixture
           path: apks
       - name: Download previous wanBox releases and OwnBox
         env:
@@ -213,7 +226,7 @@ jobs:
           mkdir -p apks
           find artifacts -name "*.apk" -exec cp {} apks/ \;
           ls -la apks/
-          test "$(find apks -maxdepth 1 -name '*.apk' | wc -l)" -eq 4
+          test "$(find apks -maxdepth 1 -name '*.apk' | wc -l)" -eq 1
           (cd apks && sha256sum *.apk > SHA256SUMS && sha256sum --check SHA256SUMS)
           CODE=$(grep '^PRE_VERSION_CODE=' nb4a.properties | cut -d= -f2 | tr -d '\r')
           CODE=$((CODE * 5))

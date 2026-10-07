@@ -3,14 +3,14 @@
 <p align="center">
   <img src="docs/logo.png" width="128" height="128" alt="wanBoxForAndroid Logo">
   <br>
-  <b>Android 通用代理与网络调试客户端：正式版 v3.0.6；当前预览版 v3.0.7-preview.5，均使用 sing-box v1.15.0-alpha.10</b>
+  <b>Android 通用代理与网络调试客户端：正式版 v3.0.6；当前预览版 v3.0.7-preview.6，均使用 sing-box v1.15.0-alpha.10</b>
   <br>
-  <b>An Android proxy and network diagnostics client: stable v3.0.6 and current preview v3.0.7-preview.5 use sing-box v1.15.0-alpha.10</b>
+  <b>An Android proxy and network diagnostics client: stable v3.0.6 and current preview v3.0.7-preview.6 use sing-box v1.15.0-alpha.10</b>
 </p>
 
 <p align="center">
   <a href="https://github.com/lit008834-pixel/wanBoxForAndroid/releases/tag/v3.0.6"><img src="https://img.shields.io/badge/Stable-v3.0.6-blue.svg?style=flat-square" alt="Latest stable release"></a>
-  <a href="https://github.com/lit008834-pixel/wanBoxForAndroid/releases/tag/v3.0.7-preview.5"><img src="https://img.shields.io/badge/Preview-v3.0.7--preview.5-5b7cfa.svg?style=flat-square" alt="Latest preview release"></a>
+  <a href="https://github.com/lit008834-pixel/wanBoxForAndroid/releases/tag/v3.0.7-preview.6"><img src="https://img.shields.io/badge/Preview-v3.0.7--preview.6-5b7cfa.svg?style=flat-square" alt="Latest preview release"></a>
   <a href="https://android-arsenal.com/api?level=21"><img src="https://img.shields.io/badge/Stable%20Android-5.0%2B%20(API%2021%2B)-brightgreen.svg?style=flat-square" alt="Stable minimum Android version"></a>
   <a href="https://android-arsenal.com/api?level=31"><img src="https://img.shields.io/badge/Preview%20Android-12%2B%20(API%2031%2B)-brightgreen.svg?style=flat-square" alt="Preview minimum Android version"></a>
   <a href="https://www.gnu.org/licenses/gpl-3.0"><img src="https://img.shields.io/badge/License-GPL--3.0-orange.svg?style=flat-square" alt="License"></a>
@@ -46,6 +46,12 @@ Download APKs published by **this wanBoxForAndroid repository** and read the rel
 ---
 
 ### 📦 安装包架构说明 / Architecture Notes
+
+从 **v3.0.7-preview.6** 起，本仓库新构建只发布 **arm64-v8a**，面向 Android 12 及以上。内部 x86_64 模拟器测试包不作为下载附件。
+
+From **v3.0.7-preview.6**, new public builds are **arm64-v8a only** and require Android 12 or newer. Internal x86_64 emulator fixtures are not release downloads.
+
+以下其他架构说明仅适用于仍保留对应附件的历史版本。
 
 * **ARM64 (v8a)**：适用于绝大多数主流 64 位安卓手机与平板设备；
 * **ARM64 (v8a)**: Suitable for the vast majority of mainstream 64-bit Android phones and tablets;

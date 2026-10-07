@@ -137,6 +137,14 @@ fun Project.setupAppCommon() {
     }
 }
 
+/** Public builds are ARM64; CI can explicitly build an unpublished emulator fixture. @author 雾晚 */
+val Project.wanboxAbi: String
+    get() = providers.gradleProperty("wanboxInternalTestAbi").orNull?.also {
+        require(it == "x86_64" && System.getenv("WANBOX_INTERNAL_TEST") == "1") {
+            "wanboxInternalTestAbi is restricted to the internal x86_64 verification job"
+        }
+    } ?: "arm64-v8a"
+
 fun Project.setupApp() {
     val pkgName = requireMetadata().getProperty("PACKAGE_NAME")
     require(pkgName == "com.lit008834.pixel.wanboxforandroid") {
@@ -170,10 +178,7 @@ fun Project.setupApp() {
             reset()
             isEnable = true
             isUniversalApk = false
-            include("armeabi-v7a")
-            include("arm64-v8a")
-            include("x86")
-            include("x86_64")
+            include(wanboxAbi)
         }
 
         flavorDimensions += "vendor"

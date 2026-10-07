@@ -2,11 +2,24 @@
 <!-- @author 雾晚: independently installed test APK, never shipped in release assets. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.wanbox.auditprobe">
     <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="35"/>
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN"/>
+            <category android:name="android.intent.category.LAUNCHER"/>
+        </intent>
+    </queries>
     <application android:theme="@android:style/Theme.Material.Light" android:label="Audit probe">
         <activity android:name=".ControlProbe" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        <activity android:name=".ShortcutLaunchProbe" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.HOME"/>
+                <category android:name="android.intent.category.DEFAULT"/>
             </intent-filter>
         </activity>
     </application>

@@ -28,9 +28,14 @@ public class ControlProbe extends Activity {
         }
         String quick = getIntent().getStringExtra("quick");
         if (quick == null) quick = "ui.QuickEnableShortcut";
-        startActivity(new Intent(Intent.ACTION_MAIN).setComponent(new ComponentName(target, base+quick)));
+        try {
+            startActivity(new Intent(Intent.ACTION_MAIN).setComponent(new ComponentName(target, base+quick)));
+            throw new AssertionError("private shortcut control allowed an external caller");
+        } catch (SecurityException | android.content.ActivityNotFoundException expected) {
+            Log.i("WanBoxAuditProbe", "QUICK_ACTIVITY_REJECTED");
+        }
         TextView result = new TextView(this);
-        result.setText("External probe sent; connection must stay stopped until user confirmation.");
+        result.setText("External probe sent; private controls must reject direct callers.");
         setContentView(result);
         Log.i("WanBoxAuditProbe", "PROBE_SENT");
     }

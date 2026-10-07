@@ -697,7 +697,7 @@
     <string name="wireguard_listen_port">监听端口</string>
     <string name="wireguard_persistent_keepalive">持久保活间隔</string>
     <string name="connection_test_url_test">URL 测试本组</string>
-    <string name="connection_test_tcp_ping">TCP Ping 测试本组</string>
+    <string name="connection_test_tcp_ping">TCP RTT 测试本组</string>
     <string name="action_auto_lowest_latency">自动优选最低延迟节点 (URL-Test)</string>
     <string name="route_preset_title">分流规则一键预设</string>
     <string name="preset_bypass_cn_apps">预设：常用国内应用直连白名单 (微信/支付宝/淘宝/抖音等)</string>
@@ -1026,7 +1026,6 @@
     <string name="batch_add_nodes">批量添加节点</string>
 
     <!-- @author 雾晚 -->
-    <string name="shortcut_control_confirm">允许此快捷方式更改代理连接状态吗？</string>
     <string name="dashboard_secure_url">远程面板请使用 HTTPS，或选择内置本地面板。远程 HTTPS 页面不能连接本地 HTTP 接口。</string>
     <string name="database_recovery_notice">数据库无法打开，原数据库和日志文件已保留。请先导出诊断副本，再进行恢复处理。副本含私钥和密码，请妥善保管。本应用不会自动重置或删除数据。</string>
     <string name="database_recovery_export">导出诊断副本</string>
@@ -1141,4 +1140,9 @@
     <!-- @author 雾晚 -->
     <string name="input_method_direct">当前输入法直连</string>
     <!-- @author 雾晚 -->
+    <!-- @author 雾晚 -->
+    <string name="tcp_rtt_udp_unavailable">UDP/QUIC 节点不支持 TCP RTT，请使用代理通道测试。</string>
+    <string name="tcp_rtt_network_unavailable">物理网络尚未就绪，请连接网络后重试。</string>
+    <string name="service_start_rejected">系统拒绝在后台启动服务，请打开 wanBox 重新连接，并检查电池限制。</string>
+    <string name="connection_test_tcp_all">TCP RTT 测试（全部）</string>
 </resources>

@@ -19,7 +19,7 @@ import java.io.IOException
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 object NodeTestRunner {
-    const val DEFAULT_URL = "http://cp.cloudflare.com/generate_204"
+    const val DEFAULT_URL = "http://connectivitycheck.gstatic.com/generate_204"
     const val CONCURRENCY = 4
     const val NETWORK_TIMEOUT_MS = 5000
     const val ATTEMPT_BUDGET_MS = 10000L // Includes temporary core/plugin preparation; network budget stays 5s.
