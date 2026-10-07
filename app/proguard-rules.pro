@@ -6,6 +6,8 @@
 -keepattributes Signature,*Annotation*,InnerClasses,EnclosingMethod,SourceFile,LineNumberTable
 -keep class go.** { *; }
 -keep class libcore.** { *; }
+# @author 雾晚: the external AndroidJUnitRunner uses this shared runtime class.
+-keep class androidx.tracing.Trace { *; }
 -keep class io.nekohasekai.sagernet.fmt.Serializable { *; }
 -keep class io.nekohasekai.sagernet.fmt.AbstractBean { *; }
 -keep class * extends io.nekohasekai.sagernet.fmt.AbstractBean { *; }

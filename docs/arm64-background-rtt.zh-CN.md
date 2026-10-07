@@ -40,6 +40,8 @@ R8 去掉所有业务类一律 keep 与 dontobfuscate，精确保护 JNI、AIDL�
 
 移除假定 Kotlin 空值检查无副作用的规则。ReleaseSerializationTest 在实际 R8 Release 上验证 VMess 分享、Kryo、JSON 备份、反射字段与核心配置属性。
 
+首次 Release 仪器测试发现 AndroidJUnitRunner 依赖的共享 androidx.tracing.Trace 被内联删除，测试进程启动失败；根据 usage.txt 补充单类 keep，保留 Release 混淆与资源缩减，并重跑同一验证流程。
+
 ServiceNotification 在核心初始化前同步提升前台服务，失败交给既有 stopRunner 清理；通知权限变化只阻止普通更新，不跳过必须的 startForeground。Android 拒绝后台启动时给出提示，没有无界重试。
 
 现有 Manifest 声明保持，例如：
