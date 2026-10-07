@@ -2,6 +2,8 @@
 
 @author 雾晚
 
+> **记录范围与当前状态：**这是 2026-10-04 合并的 URLTest/LoadBalance 生命周期故障修复记录（PR #31，已包含于 `v3.0.6-preview.2`），不是当前功能总览。截至仓库基准 `f2886b9`（`v3.0.7-preview.5`），NB4A 元数据仍指定 `sing-box v1.15.0-alpha.10`，当前 `libcore` 仍包含本文所述生命周期实现及回归测试。下文回归、备份及本地验证数据记录的是当时的证据，不表示它们已在当前版本重新运行，也不构成真机或 Root 联网验证结论。
+
 ## 证据与根因
 
 两份本地日志均出现 URLTestGroup.Touch 空指针、URLTest.DialContext 与 net/http Transport 后台拨号调用栈，随后代理进程 SIGABRT。外层测速函数的 recover 无法捕获另一个 goroutine 的 panic。

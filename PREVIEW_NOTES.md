@@ -12,3 +12,9 @@
 - 状态栏仍显示真实代理通道检测。TCP RTT 不代表代理通道可用性，不保证固定几十毫秒。
 - WebDAV 复用安全 HTTP 客户端及连接池，保留 HTTPS、禁止跳转和输入大小限制。
 - 保持包名、签名、用户数据格式、协议及核心版本不变，可覆盖安装上一预览版。
+
+## 兼容性与升级
+
+- 预览 versionName 为 3.0.7-preview.6；PRE_VERSION_CODE=347，Android versionCode=1735。
+- 最低 Android 12，包名 com.lit008834.pixel.wanboxforandroid；sing-box v1.15.0-alpha.10。
+- 公开 Release 仅提供 arm64-v8a APK 和 SHA256SUMS；模拟器测试包不公开。

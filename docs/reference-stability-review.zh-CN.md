@@ -10,8 +10,10 @@
 - OwnBox main：`406257c7c0c23966021ad2a64a382ada533fb59a`；与 wanBox 共同祖先：`55f0e6878fe35c192c40101ef300ad3a448d0296`。
 - Throne main：`3b29800c463a3bc7daac4951a4dd28b02a3558ba`，只读获取目标文件；没有更改其他仓库工作树。
 - 检查了祖先目录和项目子目录中的 AGENTS.md，没有发现；阅读了 README、构建配置、CI、已有安全/生命周期、备份/测速和上游筛选记录。README 的旧核心描述不能代替实际 pin。
-- 实际版本：正式元数据 `3.0.5/337`，Preview `3.0.6-preview.2/339`；applicationId `com.lit008834.pixel.wanboxforandroid`，namespace `io.nekohasekai.sagernet`。签名、版本与包名未修改。
+- 本次审查时实际版本（2026-10-04）：正式元数据 `3.0.5/337`，Preview `3.0.6-preview.2/339`；applicationId `com.lit008834.pixel.wanboxforandroid`，namespace `io.nekohasekai.sagernet`。签名、版本与包名未修改。
 - 核心保持 `v1.15.0-alpha.10`，官方核心对应 `c992297988288565a24a6d36e2cf4d77cb835fcd`；Gradle 8.10.2、JDK 17、Go 1.25.5、compile/target SDK 35、min SDK 21。现有架构为 Kotlin/Fragment/Preference/XML、Room 和 Go bridge，不改为 Compose 或引入新依赖。
+
+截至本次文档维护基准 `origin/main=f2886b93a68a94ec4bf04cde73134e48c67e044d`（2026-10-06），`nb4a.properties` 当前元数据为正式 `3.0.6/341`、Preview `3.0.7-preview.5/346`；`app/build.gradle.kts` 将 `VERSION_CODE` 乘以 5 作为 Android `versionCode`。本审查的网络观察者隔离和订阅 DNS 任务归属实现仍在当前源码中；相关实现文件自审查提交 `aa07423` 后无后续提交。下文验证记录仍仅陈述 2026-10-04 的历史执行结果，不代表本次重新运行。
 
 ## 功能/质量对照与取舍
 

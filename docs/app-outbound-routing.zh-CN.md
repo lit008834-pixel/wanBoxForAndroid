@@ -2,6 +2,10 @@
 
 @author 雾晚
 
+## 文档范围与当前状态（截至 2026-10-06）
+
+本文是 `fix/app-outbound-routing` 修复及当时验证的历史记录，基于 `v3.0.6-preview.3`，不是当前版本的功能说明。修复提交 `f39d9a5` 和后续测试提交 `4c7fd4a` 已包含在当前 `origin/main`（`v3.0.7-preview.5`，`f2886b93a68a94ec4bf04cde73134e48c67e044d`）的提交历史中。下文“合并前”验收要求记录的是撰写时的门槛；本文件未记载相应的合并后 CI、正式打包或真机验收结果，不能据此推断这些检查现已通过。
+
 ## 基线及根因
 
 - 工作分支 `fix/app-outbound-routing`，基线 main/`v3.0.6-preview.3`：`993ac25e58203d8cc7a4eb6746e5f07a41a6215f`。原未跟踪文件保留，没有整仓同步 OwnBox/Throne。

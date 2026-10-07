@@ -3,14 +3,16 @@
 <p align="center">
   <img src="docs/logo.png" width="128" height="128" alt="wanBoxForAndroid Logo">
   <br>
-  <b>Android 通用代理与网络调试客户端：正式版 v3.0.5 使用 sing-box 官方 v1.15.0-alpha.9，当前主分支预览版使用 v1.15.0-alpha.10</b>
+  <b>Android 通用代理与网络调试客户端：正式版 v3.0.6；当前预览版 v3.0.7-preview.6，均使用 sing-box v1.15.0-alpha.10</b>
   <br>
-  <b>An Android universal proxy and network debugging client: stable v3.0.5 uses the official sing-box v1.15.0-alpha.9 core; the current main-branch preview uses v1.15.0-alpha.10</b>
+  <b>An Android proxy and network diagnostics client: stable v3.0.6 and current preview v3.0.7-preview.6 use sing-box v1.15.0-alpha.10</b>
 </p>
 
 <p align="center">
-  <a href="https://github.com/lit008834-pixel/wanBoxForAndroid/releases/tag/v3.0.5"><img src="https://img.shields.io/badge/Release-v3.0.5-blue.svg?style=flat-square" alt="Version"></a>
-  <a href="https://android-arsenal.com/api?level=21"><img src="https://img.shields.io/badge/Android-5.0%2B%20(API%2021%2B)-brightgreen.svg?style=flat-square" alt="API"></a>
+  <a href="https://github.com/lit008834-pixel/wanBoxForAndroid/releases/tag/v3.0.6"><img src="https://img.shields.io/badge/Stable-v3.0.6-blue.svg?style=flat-square" alt="Latest stable release"></a>
+  <a href="https://github.com/lit008834-pixel/wanBoxForAndroid/releases/tag/v3.0.7-preview.6"><img src="https://img.shields.io/badge/Preview-v3.0.7--preview.6-5b7cfa.svg?style=flat-square" alt="Latest preview release"></a>
+  <a href="https://android-arsenal.com/api?level=21"><img src="https://img.shields.io/badge/Stable%20Android-5.0%2B%20(API%2021%2B)-brightgreen.svg?style=flat-square" alt="Stable minimum Android version"></a>
+  <a href="https://android-arsenal.com/api?level=31"><img src="https://img.shields.io/badge/Preview%20Android-12%2B%20(API%2031%2B)-brightgreen.svg?style=flat-square" alt="Preview minimum Android version"></a>
   <a href="https://www.gnu.org/licenses/gpl-3.0"><img src="https://img.shields.io/badge/License-GPL--3.0-orange.svg?style=flat-square" alt="License"></a>
   <a href="https://t.me/OwnBoxs"><img src="https://img.shields.io/badge/Telegram-@OwnBoxs-2CA5E0.svg?logo=telegram&style=flat-square" alt="Telegram"></a>
 </p>
@@ -27,9 +29,9 @@
 ---
 ## 📖 项目介绍 / Introduction
 
-**wanBoxForAndroid 是 OwnBoxForAndroid 的非官方 Root 分支。上游项目：[OwnBoxForAndroid](https://github.com/Own716/OwnBoxForAndroid)。**
+**wanBoxForAndroid 是基于 OwnBoxForAndroid 的非官方 Android 分支，支持 VPN TUN 与需要 Root 权限的 Root TUN 运行方式。上游项目：[OwnBoxForAndroid](https://github.com/Own716/OwnBoxForAndroid)。**
 
-**wanBoxForAndroid is the unofficial Root branch of OwnBoxForAndroid. Upstream project: [OwnBoxForAndroid](https://github.com/Own716/OwnBoxForAndroid).**
+**wanBoxForAndroid is an unofficial Android fork based on OwnBoxForAndroid. It supports VPN TUN and Root TUN (root access required). Upstream project: [OwnBoxForAndroid](https://github.com/Own716/OwnBoxForAndroid).**
 
 ---
 
