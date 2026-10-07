@@ -49,6 +49,13 @@ echo 'Independent external APK could not invoke private controls or change proxy
 # @author 雾晚: only this disposable emulator gives the independent probe the HOME role.
 # Prove real published shortcuts can launch private controls through LauncherApps,
 # rather than treating an ordinary same-UID startActivity as launcher verification.
+# The static shortcut resource targets the shipping ID, not Debug's .debug suffix.
+release_apk=$(find app/build/outputs/apk/oss/release -name '*x86_64*.apk' | head -n 1)
+test -s "$release_apk"
+adb install -r "$release_apk"
+AAPT=$(find "${ANDROID_HOME}/build-tools" -name aapt | sort -V | tail -n 1)
+package=$("$AAPT" dump badging "$release_apk" | sed -n "s/^package: name='\([^']*\)'.*/\1/p")
+test -n "$package"
 original_home=$(adb shell cmd role get-role-holders --user 0 android.app.role.HOME | tr -d '\r')
 cleanup() {
   adb logcat -d > probe/external-control-logcat.txt || true
@@ -65,10 +72,14 @@ for shortcut in enable disable toggle; do
   adb logcat -c
   adb shell am start -n com.wanbox.auditprobe/.ShortcutLaunchProbe --es target "$package" --es shortcut "$shortcut"
   for attempt in $(seq 1 20); do
-    if adb logcat -d -s WanBoxShortcut:D | grep -q "Executing $shortcut shortcut"; then break; fi
+    if adb logcat -d -s WanBoxAuditProbe:I | grep -q "LAUNCHER_SHORTCUT_STARTED $shortcut"; then break; fi
     sleep 1
   done
   adb logcat -d -s WanBoxAuditProbe:I | grep -q "LAUNCHER_SHORTCUT_STARTED $shortcut"
-  adb logcat -d -s WanBoxShortcut:D | grep -q "Executing $shortcut shortcut"
+  sleep 2
+  if adb logcat -d -s AndroidRuntime:E | grep -q 'FATAL EXCEPTION'; then
+    echo "Shortcut $shortcut crashed during platform launch" >&2
+    exit 1
+  fi
 done
-echo 'All three published system shortcuts reached their service callback without an app confirmation.'
+echo 'LauncherApps accepted all three published private system shortcuts without an app confirmation.'

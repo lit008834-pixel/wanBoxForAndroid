@@ -113,7 +113,7 @@ val rtt = TimeUnit.NANOSECONDS.toMillis(clock() - start).coerceAtLeast(1)
 
 依据：[AOSP LauncherAppsService 的 startShortcutIntentsAsPublisher](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/android13-dev/services/core/java/com/android/server/pm/LauncherAppsService.java)。最低 Android 12，保留系统静态及固定快捷方式；第三方直接拼接 Activity Intent 的旧式自动化入口不属于系统快捷方式。
 
-新增 ShortcutControlContractTest 检查私有边界、直接连接和授权/节点行为；独立测试 APK 验证外部直接调用被拒，再仅在临时模拟器取得 HOME 角色，通过公开 LauncherApps.startShortcut 启动三个实际发布的快捷方式，检查服务回调已执行且无需应用确认。测试结束恢复模拟器原 HOME 角色。此测试不替代带真实节点的 VPN/Root 连接验证。
+新增 ShortcutControlContractTest 检查私有边界、直接连接和授权/节点行为；独立测试 APK 验证外部直接调用被拒，再仅在临时模拟器取得 HOME 角色，通过公开 LauncherApps.startShortcut 启动内部 Release 测试包实际发布的三个快捷方式，检查系统接受启动且没有崩溃。该包使用正式 applicationId，避免 Debug 的 .debug 后缀与静态快捷方式目标不同。测试结束恢复模拟器原 HOME 角色。此测试不替代带真实节点的 VPN/Root 连接验证。
 
 - 分支 perf/arm64-background；用户另一工作树保持原样。
 - 本地列出真实任务后运行 testPreviewDebugUnitTest、assemblePreviewDebug、assemblePreviewDebugAndroidTest 和 git diff --check。

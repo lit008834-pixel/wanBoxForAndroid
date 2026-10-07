@@ -45,7 +45,6 @@ class QuickEnableShortcut : Activity(), SagerConnection.Callback {
 
     override fun onServiceConnected(service: ISagerNetService) {
         val state = BaseService.State.values().getOrNull(service.state) ?: return
-        if (io.nekohasekai.sagernet.BuildConfig.DEBUG) android.util.Log.d("WanBoxShortcut", "Executing enable shortcut")
         if (state == BaseService.State.Stopped) {
             SagerNet.startService()
         }

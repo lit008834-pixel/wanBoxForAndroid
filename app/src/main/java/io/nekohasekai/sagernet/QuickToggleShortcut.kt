@@ -68,7 +68,6 @@ class QuickToggleShortcut : Activity(), SagerConnection.Callback {
             return
         }
         val state = BaseService.State.values().getOrNull(service.state) ?: return
-        if (BuildConfig.DEBUG) android.util.Log.d("WanBoxShortcut", "Executing toggle shortcut")
         when {
             state.canStop -> {
                 if (profileId == DataStore.selectedProxy || profileId == -1L) {
