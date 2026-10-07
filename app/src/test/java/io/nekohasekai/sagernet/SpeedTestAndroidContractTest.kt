@@ -261,7 +261,7 @@ class SpeedTestAndroidContractTest {
             .substringAfter("R.id.action_connection_test_clear_results ->")
             .substringBefore("R.id.action_remove_duplicate ->")
 
-        assertTrue(urlTest.contains("repeat(DataStore.connectionTestConcurrent)"))
+        assertTrue(urlTest.contains("repeat(DataStore.connectionTestConcurrent.coerceIn(1, 4))"))
         assertTrue(urlTest.contains("val urlTest = UrlTest(targetUrl)"))
         assertTrue(urlTest.contains("profile.ping = result"))
         assertTrue(urlTest.contains("ProfileManager.postUpdate(profile, false)"))

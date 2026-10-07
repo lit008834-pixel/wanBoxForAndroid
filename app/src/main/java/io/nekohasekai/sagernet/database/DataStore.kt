@@ -402,13 +402,13 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     var groupIsUrlTest by profileCacheStore.boolean("groupIsUrlTest")
     var groupIsLoadBalance by profileCacheStore.boolean("groupIsLoadBalance")
     private var rawGroupUrlTestUrl by profileCacheStore.string("groupUrlTestUrl") {
-        SagerNet.application.getString(R.string.default_connection_test_url)
+        SagerNet.application.getString(R.string.default_group_test_url)
     }
     var groupUrlTestUrl: String
         get() {
             val url = rawGroupUrlTestUrl.trim()
             if (url.isBlank()) {
-                val newUrl = SagerNet.application.getString(R.string.default_connection_test_url)
+                val newUrl = SagerNet.application.getString(R.string.default_group_test_url)
                 rawGroupUrlTestUrl = newUrl
                 return newUrl
             }
@@ -417,8 +417,8 @@ object DataStore : OnPreferenceDataStoreChangeListener {
         set(value) {
             rawGroupUrlTestUrl = value.trim()
         }
-    var groupUrlTestInterval by profileCacheStore.stringToInt("groupUrlTestInterval") { 300 }
-    var groupUrlTestTolerance by profileCacheStore.stringToInt("groupUrlTestTolerance") { 50 }
+    var groupUrlTestInterval by profileCacheStore.stringToInt("groupUrlTestInterval") { 600 }
+    var groupUrlTestTolerance by profileCacheStore.stringToInt("groupUrlTestTolerance") { 100 }
     var groupUrlTestIdleTimeout by profileCacheStore.string("groupUrlTestIdleTimeout") { "30m" }
     var groupUrlTestInterruptExist by profileCacheStore.boolean("groupUrlTestInterruptExist")
 
@@ -446,20 +446,20 @@ object DataStore : OnPreferenceDataStoreChangeListener {
 
     fun groupUrlTestUrl(groupId: Long): String {
         val stored = configurationStore.getString("group_${groupId}_urlTestUrl", "")?.trim()?.takeIf { it.isNotBlank() }
-        return stored ?: connectionTestURL
+        return stored ?: SagerNet.application.getString(R.string.default_group_test_url)
     }
     fun setGroupUrlTestUrl(groupId: Long, value: String) {
         configurationStore.putString("group_${groupId}_urlTestUrl", value)
     }
 
     fun groupUrlTestInterval(groupId: Long): Long =
-        configurationStore.getString("group_${groupId}_urlTestInterval", "300")?.toLongOrNull() ?: 300L
+        configurationStore.getString("group_${groupId}_urlTestInterval", "600")?.toLongOrNull() ?: 600L
     fun setGroupUrlTestInterval(groupId: Long, value: Long) {
         configurationStore.putString("group_${groupId}_urlTestInterval", value.toString())
     }
 
     fun groupUrlTestTolerance(groupId: Long): Int =
-        configurationStore.getString("group_${groupId}_urlTestTolerance", "50")?.toIntOrNull() ?: 50
+        configurationStore.getString("group_${groupId}_urlTestTolerance", "100")?.toIntOrNull() ?: 100
     fun setGroupUrlTestTolerance(groupId: Long, value: Int) {
         configurationStore.putString("group_${groupId}_urlTestTolerance", value.toString())
     }

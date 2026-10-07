@@ -513,7 +513,7 @@ class ConfigurationFragment @JvmOverloads constructor(
         if (isAll) {
             toolbar.menu.findItem(R.id.action_update_subscription)?.setTitle("更新全部订阅")
             toolbar.menu.findItem(R.id.action_connection_url_test)?.setTitle("URL 测试（全部）")
-            toolbar.menu.findItem(R.id.action_connection_tcp_ping)?.setTitle("TCP Ping 测试（全部）")
+            toolbar.menu.findItem(R.id.action_connection_tcp_ping)?.setTitle(R.string.connection_test_tcp_all)
             toolbar.menu.findItem(R.id.action_speed_test_group)?.setTitle("速度测试（全部）")
             toolbar.menu.findItem(R.id.action_clear_traffic_statistics)?.setTitle("清空全部流量统计数据")
             toolbar.menu.findItem(R.id.action_remove_duplicate)?.setTitle("删除全部重复的服务器")
@@ -2264,24 +2264,31 @@ class ConfigurationFragment @JvmOverloads constructor(
             } else {
                 if (DataStore.isGroupDisabled(group.id)) emptyList() else SagerDatabase.proxyDao.getByGroup(group.id)
             }
-            test.proxyN = profilesList.size
-            val profiles = ConcurrentLinkedQueue(profilesList)
+            val candidates = profilesList.filter { io.nekohasekai.sagernet.bg.proto.TcpPing.supports(it) }
+            if (candidates.size != profilesList.size) runOnMainDispatcher {
+                context?.let { android.widget.Toast.makeText(it, R.string.tcp_rtt_udp_unavailable,
+                    android.widget.Toast.LENGTH_LONG).show() }
+            }
+            test.proxyN = candidates.size
+            val profiles = ConcurrentLinkedQueue(candidates)
             val tcpPing = io.nekohasekai.sagernet.bg.proto.TcpPing()
-            repeat(DataStore.connectionTestConcurrent) { workerId ->
+            repeat(DataStore.connectionTestConcurrent.coerceIn(1, 4)) { workerId ->
                 testJobs.add(launch(Dispatchers.IO) {
                     while (isActive) {
                         val profile = profiles.poll() ?: break
                         profile.status = 0
+                        profile.ping = 0
+                        profile.error = null
                         try {
-                            val result = kotlinx.coroutines.withTimeoutOrNull(DataStore.connectionTestTimeout + 1500L) {
-                                tcpPing.doTest(profile)
-                            } ?: throw java.util.concurrent.TimeoutException("TCP ping timeout")
+                            val result = tcpPing.doTest(profile)
                             profile.status = 1
                             profile.ping = result
                             profile.error = null
                             Logs.d("TcpPing ${profile.displayName()}: done, ping=${result}ms")
+                        } catch (e: kotlinx.coroutines.CancellationException) {
+                            throw e
                         } catch (e: Exception) {
-                            profile.status = 3
+                            profile.status = if (e is UnsupportedOperationException) 2 else 3
                             profile.error = e.readableMessage
                             Logs.w("TcpPing ${profile.displayName()} failed error=${e.readableMessage}")
                         }
@@ -2325,7 +2332,7 @@ class ConfigurationFragment @JvmOverloads constructor(
             test.dialogStatus.set(1)
             test.notification = ConnectionTestNotification(
                 dialog.context,
-                "[$displayName] TCP Ping"
+                "[$displayName] TCP RTT"
             )
             dialog.hide()
         }

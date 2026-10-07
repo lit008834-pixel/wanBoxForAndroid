@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.bg
 
 import android.content.Context
@@ -11,58 +12,39 @@ import androidx.work.multiprocess.RemoteCoroutineWorker
 import androidx.work.multiprocess.RemoteListenableWorker
 import androidx.work.multiprocess.RemoteWorkManager
 import androidx.work.multiprocess.RemoteWorkerService
-import com.google.common.util.concurrent.ListenableFuture
+import androidx.work.Constraints
+import androidx.work.NetworkType
+import io.nekohasekai.sagernet.utils.awaitCancellable
+import kotlinx.coroutines.CancellationException
 import io.nekohasekai.sagernet.R
 import io.nekohasekai.sagernet.database.DataStore
 import io.nekohasekai.sagernet.database.SagerDatabase
 import io.nekohasekai.sagernet.group.GroupUpdater
 import io.nekohasekai.sagernet.ktx.Logs
 import io.nekohasekai.sagernet.ktx.app
-import kotlinx.coroutines.suspendCancellableCoroutine
 import java.util.concurrent.TimeUnit
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 
 object SubscriptionUpdater {
 
     private const val WORK_NAME = "SubscriptionUpdater"
 
-    private suspend fun <T> ListenableFuture<T>.awaitResult(): T =
-        suspendCancellableCoroutine { cont ->
-            addListener({
-                try {
-                    cont.resume(get())
-                } catch (e: Throwable) {
-                    cont.resumeWithException(e)
-                }
-            }, { it.run() })
-        }
-
     suspend fun reconfigureUpdater() {
         val workManager = RemoteWorkManager.getInstance(app)
-        try {
-            workManager.cancelUniqueWork(WORK_NAME).awaitResult()
-        } catch (e: Throwable) {
-            Logs.w("SubscriptionUpdater: cancel work failed", e)
-        }
-
         val subscriptions = SagerDatabase.groupDao.subscriptions()
             .filter { it.subscription!!.autoUpdate }
         if (subscriptions.isEmpty()) {
+            try { workManager.cancelUniqueWork(WORK_NAME).awaitCancellable() }
+            catch (e: CancellationException) { throw e }
+            catch (e: Exception) { Logs.w("SubscriptionUpdater: cancel work failed", e) }
             Logs.d("SubscriptionUpdater: no auto-update subscriptions, work cancelled")
             return
         }
 
-        // PeriodicWorkRequest.MIN_PERIODIC_INTERVAL_MILLIS
-        var minDelay =
-            subscriptions.minByOrNull { it.subscription!!.autoUpdateDelay }!!.subscription!!.autoUpdateDelay.toLong()
-        val now = System.currentTimeMillis() / 1000L
-        var minInitDelay =
-            subscriptions.minOf { it.subscription!!.lastUpdated + minDelay * 60 - now }
-        if (minDelay < 15) minDelay = 15
-        if (minInitDelay > 60) minInitDelay = 60
-
-        Logs.d("SubscriptionUpdater: scheduling ${subscriptions.size} subscription(s), period=${minDelay}min, initDelay=${minInitDelay}s")
+        val plan = SubscriptionSchedule.plan(subscriptions.map {
+            SubscriptionSchedule.Entry(it.subscription!!.autoUpdateDelay, it.subscription!!.lastUpdated)
+        }, System.currentTimeMillis() / 1000L)!!
+        val minDelay = plan.intervalMinutes
+        val minInitDelay = plan.initialDelaySeconds
 
         // main process
         try {
@@ -70,6 +52,8 @@ object SubscriptionUpdater {
                 WORK_NAME,
                 UPDATE,
                 PeriodicWorkRequest.Builder(UpdateTask::class.java, minDelay, TimeUnit.MINUTES)
+                    .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED)
+                        .setRequiresBatteryNotLow(true).build())
                     .setInputData(
                         Data.Builder()
                             // Run the worker in the :bg process (RemoteWorkerService),
@@ -88,9 +72,11 @@ object SubscriptionUpdater {
                         if (minInitDelay > 0) setInitialDelay(minInitDelay, TimeUnit.SECONDS)
                     }
                     .build()
-            ).awaitResult()
+            ).awaitCancellable()
             Logs.d("SubscriptionUpdater: work enqueued")
-        } catch (e: Throwable) {
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
             Logs.w("SubscriptionUpdater: enqueue work failed", e)
         }
     }
@@ -117,27 +103,30 @@ object SubscriptionUpdater {
                 subscriptions = subscriptions.filter { !it.subscription!!.updateWhenConnectedOnly }
             }
 
-            if (subscriptions.isNotEmpty()) for (profile in subscriptions) {
-                val subscription = profile.subscription!!
+            try {
+                for (profile in subscriptions) {
+                    val subscription = profile.subscription!!
 
-                if (((System.currentTimeMillis() / 1000).toInt() - subscription.lastUpdated) < subscription.autoUpdateDelay * 60) {
-                    Logs.d("work: not updating " + profile.displayName())
-                    continue
-                }
-                Logs.d("work: updating " + profile.displayName())
+                    if ((System.currentTimeMillis() / 1000 - subscription.lastUpdated.toLong()) < subscription.autoUpdateDelay.toLong().coerceAtLeast(15) * 60) {
+                        Logs.d("work: not updating " + profile.displayName())
+                        continue
+                    }
+                    Logs.d("work: updating " + profile.displayName())
 
-                notification.setContentText(
-                    applicationContext.getString(
-                        R.string.subscription_update_message, profile.displayName()
+                    notification.setContentText(
+                        applicationContext.getString(
+                            R.string.subscription_update_message, profile.displayName()
+                        )
                     )
-                )
-                nm.notify(2, notification.build())
+                    if (nm.areNotificationsEnabled()) {
+                        try { nm.notify(2, notification.build()) }
+                        catch (_: SecurityException) { /* Permission can be revoked during an update. */ }
+                    }
 
-                GroupUpdater.executeUpdate(profile, false)
-            }
+                    GroupUpdater.executeUpdate(profile, false)
+                }
 
-            nm.cancel(2)
-
+            } finally { nm.cancel(2) }
             return Result.success()
         }
     }

@@ -1,3 +1,4 @@
+// @author 雾晚
 @file:Suppress("UnstableApiUsage")
 
 plugins {
@@ -17,11 +18,13 @@ val generateRootLicenseAsset by tasks.registering(Copy::class) {
 
 android {
     defaultConfig {
-        // @author 雾晚
+        resourceConfigurations += listOf("en-rUS", "zh-rCN", "zh-rHK", "zh-rTW")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         versionName = requireMetadata().getProperty("VERSION_NAME")
         versionCode = requireMetadata().getProperty("VERSION_CODE").toInt() * 5
     }
+    // Internal x86_64 verification is never a published ABI.
+    if (providers.gradleProperty("wanboxReleaseTests").isPresent) testBuildType = "release"
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
     }
@@ -42,6 +45,7 @@ android {
     namespace = "io.nekohasekai.sagernet"
     packaging {
         jniLibs {
+            // @author 雾晚: compressed APK and extracted Root PIE in nativeLibraryDir.
             useLegacyPackaging = true
         }
     }

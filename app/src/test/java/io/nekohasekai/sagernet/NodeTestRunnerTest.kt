@@ -14,7 +14,7 @@ class NodeTestRunnerTest {
         val active=AtomicInteger();val peak=AtomicInteger()
         coroutineScope { (1..20).map { async {
             NodeTestRunner.measure { url,timeout ->
-                assertEquals("http://cp.cloudflare.com/generate_204",url);assertEquals(5000,timeout)
+                assertEquals("http://connectivitycheck.gstatic.com/generate_204",url);assertEquals(5000,timeout)
                 val n=active.incrementAndGet();peak.updateAndGet { maxOf(it,n) }
                 try { delay(20); 42 } finally { active.decrementAndGet() }
             }

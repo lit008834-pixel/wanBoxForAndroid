@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.fmt
 
 import io.nekohasekai.sagernet.Key
@@ -8,6 +9,19 @@ import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class ConfigBuilderLoadBalanceTest {
+    @Test fun newUrlTestDefaultsKeepSavedOverridesAndNeverInterruptConnections() {
+        val defaults = buildUrlTestOutbound(listOf("fixture-node"))
+        assertEquals("http://connectivitycheck.gstatic.com/generate_204", defaults.url)
+        assertEquals("600s", defaults.interval)
+        assertEquals(100, defaults.tolerance)
+        assertFalse(defaults.interrupt_exist_connections)
+        val saved = buildUrlTestOutbound(listOf("fixture-node"), "https://example.invalid/204", 300, 50, interruptExist = true)
+        assertEquals("https://example.invalid/204", saved.url)
+        assertEquals("300s", saved.interval)
+        assertEquals(50, saved.tolerance)
+        assertFalse(saved.interrupt_exist_connections)
+    }
+
 
     @Test
     fun buildLoadBalanceOutboundSetsCorrectTypeTagAndMembers() {
@@ -42,7 +56,7 @@ class ConfigBuilderLoadBalanceTest {
         assertEquals(30, ut30.tolerance)
 
         val utNull = buildUrlTestOutbound(members, testUrl = testUrl, toleranceMs = null)
-        assertEquals(50, utNull.tolerance)
+        assertEquals(100, utNull.tolerance)
     }
 
     @Test

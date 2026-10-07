@@ -603,7 +603,8 @@ class BaseService {
             }
             this as Context
             if (profile == null) { // gracefully shutdown: https://stackoverflow.com/q/47337857/2245107
-                data.notification = createNotification("")
+                try { data.notification = createNotification("") }
+                catch (e: RuntimeException) { Logs.w("Foreground promotion failed for empty profile", e) }
                 stopRunner(false, getString(R.string.profile_empty))
                 return Service.START_NOT_STICKY
             }

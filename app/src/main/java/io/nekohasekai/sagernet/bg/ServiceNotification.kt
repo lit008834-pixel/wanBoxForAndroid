@@ -10,7 +10,7 @@ import android.content.IntentFilter
 import android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED
 import android.os.Build
 import android.text.format.Formatter
-import android.widget.Toast
+import io.nekohasekai.sagernet.ktx.Logs
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import io.nekohasekai.sagernet.Action
@@ -22,7 +22,6 @@ import io.nekohasekai.sagernet.database.ProxyEntity
 import io.nekohasekai.sagernet.database.SagerDatabase
 import io.nekohasekai.sagernet.ktx.app
 import io.nekohasekai.sagernet.ktx.getColorAttr
-import io.nekohasekai.sagernet.ktx.runOnMainDispatcher
 import io.nekohasekai.sagernet.ui.SwitchActivity
 import io.nekohasekai.sagernet.utils.Theme
 import io.nekohasekai.sagernet.bg.proto.ProxyInstance
@@ -55,7 +54,7 @@ class ServiceNotification(
         }
     }
 
-    var listenPostSpeed = true
+    var listenPostSpeed = SagerNet.power.isInteractive
 
     @Volatile private var destroyed = false
     private val contentCache = NotificationContentCache()
@@ -119,8 +118,15 @@ class ServiceNotification(
         if (!contentCache.changed(content)) return
         builder.setContentTitle(content.title).setContentText(content.text).setSubText(null)
             .setStyle(NotificationCompat.BigTextStyle().bigText(content.expanded))
-        NotificationManagerCompat.from(service as Service).notify(notificationId, builder.build())
-        contentCache.committed(content)
+        val manager = NotificationManagerCompat.from(service as Service)
+        if (!manager.areNotificationsEnabled()) return
+        try {
+            manager.notify(notificationId, builder.build())
+            contentCache.committed(content)
+        } catch (_: SecurityException) {
+            // @author 雾晚: revoking notification permission must not disconnect the core.
+            Logs.w("Service notification permission unavailable")
+        }
     }
 
     suspend fun postNotificationWakeLockStatus(acquired: Boolean) {
@@ -162,15 +168,20 @@ class ServiceNotification(
             addAction(Intent.ACTION_SCREEN_OFF)
         })
 
-        runOnMainDispatcher {
+        // @author 雾晚: promote before core initialization; propagate failure to stopRunner.
+        try {
             updateActions()
             show()
+        } catch (e: RuntimeException) {
+            service.unregisterReceiver(this)
+            throw e
         }
     }
 
-    private suspend fun updateActions() {
+    private fun updateActions() {
         service as Context
-        useBuilder {
+        synchronized(buildLock) {
+            val it = builder
             it.clearActions()
 
             val closeAction = NotificationCompat.Action.Builder(
@@ -198,9 +209,9 @@ class ServiceNotification(
     }
 
     override fun onReceive(context: Context, intent: Intent) {
-        if (service.data.state == BaseService.State.Connected) {
+        if (intent.action == Intent.ACTION_SCREEN_ON || intent.action == Intent.ACTION_SCREEN_OFF) {
             listenPostSpeed = intent.action == Intent.ACTION_SCREEN_ON
-            if (listenPostSpeed) runOnIoDispatcher { useBuilder {
+            if (listenPostSpeed && service.data.state == BaseService.State.Connected) runOnIoDispatcher { useBuilder {
                 lastSpeed = null
                 contentCache.clear()
                 renderAndPublish()
@@ -209,26 +220,13 @@ class ServiceNotification(
     }
 
 
-    private suspend fun show() =
-        useBuilder {
-            try {
-                if (Build.VERSION.SDK_INT >= 34) {
-                    (service as Service).startForeground(
-                        notificationId,
-                        it.build(),
-                        FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED
-                    )
-                } else {
-                    (service as Service).startForeground(notificationId, it.build())
-                }
-            } catch (e: Exception) {
-                Toast.makeText(
-                    SagerNet.application,
-                    "startForeground: $e",
-                    Toast.LENGTH_LONG
-                ).show()
-            }
+    private fun show() = synchronized(buildLock) {
+        if (Build.VERSION.SDK_INT >= 34) {
+            (service as Service).startForeground(notificationId, builder.build(), FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED)
+        } else {
+            (service as Service).startForeground(notificationId, builder.build())
         }
+    }
 
     fun destroy() = synchronized(buildLock) {
         destroyed = true
