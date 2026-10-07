@@ -2,24 +2,26 @@
 
 @author 雾晚
 
-> 2026-10-06 更新：用户取消高斯模糊。preview.5 移除窗口模糊、监听及强度设置，恢复原 Material 弹窗；最低版本按用户确认仍为 Android 12（API 31）。已有强度 KV 不再读取，升级不清理其他偏好。下文 UI 模糊实现与验证是 preview.4 历史记录，不能作为当前功能说明。路由、精简和后台优化设计仍待后续实施。
+> 截至 2026-10-06（tag `v3.0.7-preview.5`）：preview.5 移除窗口模糊、监听及强度设置，恢复原 Material 弹窗；最低版本仍为 Android 12（API 31）。`dialogBlurStrength` 不再读取，升级时不主动清除此旧 KV。下文模糊实现、测试和 preview.4 执行结果均为历史记录，不能作为当前功能或当前测试覆盖说明。路由、精简和后台优化设计仍待后续实施。
 
-## 基线与首批范围
+## 当时基线与首批范围
 
-实际实现基线是 origin/main `b7795ab3653d80a8014ed1011bc7514ca03221f0`（preview.3），比指定 preview.2 新。保留已完成的输入法按钮移除及普通路由迁移，合并进入 preview.4。原用户工作区不覆盖。
+本轮迭代记录的基线是 origin/main `b7795ab3653d80a8014ed1011bc7514ca03221f0`（preview.3），比当时指定的 preview.2 新。输入法按钮移除及普通路由迁移合并进入 preview.4；这不是当前仓库基线（当前为 preview.5）。原用户工作区不覆盖。
 
-当前：XML / ViewBinding / Fragment / Material Components 1.8.0，原基线 minSdk21，本次按用户最新要求提高到31、target/compileSdk35，JDK 17、Gradle 8.10.2，sing-box v1.15.0-alpha.10。没有 Compose 架构。正式构建已经 R8 + shrinkResources，不重复打开、不改变包名/签名/核心/Room/用户路由默认值。
+本轮起始于 preview.3：当时 minSdk 为 21；preview.4 将最低版本提高到 Android 12（API 31），截至 preview.5 仍为 31。该时期使用 XML / ViewBinding / Fragment / Material Components 1.8.0、target/compileSdk 35、JDK 17、Gradle 8.10.2 和 sing-box v1.15.0-alpha.10；没有 Compose 架构。正式构建使用 R8 与资源压缩。本段记录历史实现范围，不代表当前源码对所有依赖和默认值均未变更。
 
-本次按用户允许的分步开发实施**第一阶段：默认启用、仅强度调节的系统高斯弹窗背景模糊**。其余模块是下一阶段设计和源码差异清单，不能理解为已经全部实现。
+preview.4 曾按分步开发实施**第一阶段：默认启用、仅强度调节的系统高斯弹窗背景模糊**；该功能已在 preview.5 撤销。其余模块仍是下一阶段设计和源码差异清单，不能理解为已经全部实现。
 
-| 模块 | 当前证据 | 本次 / 下一阶段 | 风险与验证 |
+| 模块 | 源码状态（v3.0.7-preview.5） | preview.4 记录 / 下一阶段 | 风险与验证 |
 |---|---|---|---|
-| UI 模糊 | UiChrome / GlassPalette 已有静态材质；bg_dialog 是语义 Surface；bg_dialog_glass 是固定深色旧资源 | 已新增0–25 高斯模糊强度（默认12，无关闭开关）；复用原 Material 内容与 dim；不将 Widget drawable 套到 App | API31+ 需系统支持；能力回调关闭时退回原外观；监听随窗口移除 |
+| UI 模糊 | 现有弹窗恢复原 Material 外观；静态材质不等于窗口背景模糊 | preview.4 曾添加0–25强度设置（默认12），preview.5 已移除窗口模糊与设置 | 历史实现细节见下节；系统窗口模糊不是当前功能 |
 | 路由增强 | RuleEntity + ConfigBuilder 生成 sing-box JSON；RouteRuleEditor 已校验 CIDR、端口、动作、规则集；当前 libcore 负责 RE2 校验 | 不新造第二套执行引擎。下一阶段先加解析回归再改域名输入；分组/白黑名单先定义数据与组合语义 | DNS 和流量规则必须一致；数据迁移/原规则顺序需单独审查；绝不悄悄丢弃无效原规则 |
 | 代码精简 | Helpers.kt release 已开启 R8 / 资源压缩；多 ABI、JNI 与反射 keep 属于必要能力 | 已删除 ConfigurationFragment 未使用的 BottomSheetDialog import；其余依赖/语言/图片不凭搜索一次就删除 | 反射、Manifest、RemoteViews、JNI 和动态资源引用需跟踪；不删多语言、不盲改 keep |
-| 耗电优化 | TrafficPollPolicy 已有后台 6/15/30秒策略；DefaultNetworkListener 有首次等待、专用线程、500ms 防抖 | 保留既有实现；新模糊无截图、timer、常驻动画/线程；下一阶段做持续连接电量与帧时间采样 | 不能把降低显示刷新当作暂停核心；不降低必要心跳、不增加保活权限 |
+| 耗电优化 | TrafficPollPolicy 已有后台 6/15/30秒策略；DefaultNetworkListener 有首次等待、专用线程、500ms 防抖 | 保留既有实现；preview.4 模糊未用截图、timer、常驻动画/线程，且已随 preview.5 移除；下一阶段做持续连接电量与帧时间采样 | 不能把降低显示刷新当作暂停核心；不降低必要心跳、不增加保活权限 |
 
-## 1. UI 模糊：本次真实代码
+## 1. UI 模糊：preview.4 历史实现（preview.5 已移除）
+
+本节记录 preview.4 的实现和限制，仅用于保留历史设计依据；所列文件、代码及行为不代表当前源码。
 
 文件：`ui/DialogBlur.kt`、`ui/DialogBlurPolicy.kt`、`ui/UiChrome.kt`、`ui/ThemedActivity.kt`、`res/xml/global_preferences.xml`、`database/DataStore.kt`。
 
@@ -107,7 +109,9 @@ return false
 
 Android10–15 前台服务、VPN授权与通知类型维持已有 Manifest，不以新增宽泛权限或常驻任务规避系统限制。MIUI/HyperOS 等厂商可能额外限制后台；HarmonyOS 只有兼容 Android API 的环境才适用，本项目不能保证原生鸿蒙运行或强制绕过后台策略。
 
-## 测试清单与实际执行记录
+## 测试清单与实际执行记录（按当时版本）
+
+下列 DialogBlur 自动测试与模糊相关人工待验项属于 preview.4；preview.5 移除该功能及对应测试后，这些记录不表示当前仍有模糊实现或测试覆盖。带日期的执行结果保留其当时版本和结论。
 
 - 自动：DialogBlurPolicyTest 覆盖 API21/23/29/30 fallback、31–35 支持、默认强度12/0/关闭系统模糊/减少效果、密度/强度上下界、设置资源契约和窗口监听释放契约。
 - 自动 Android：DialogBlurTest 在实际窗口中覆盖强度0/12、按钮与背景保留、dismiss清理、重新show能力判定。它验证 API/生命周期，不代表 GPU画质或续航达标。
