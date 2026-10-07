@@ -2,8 +2,8 @@
 # @author 雾晚
 set -euo pipefail
 
-previous=previous/wanBoxForAndroid-3.0.5-x86_64.apk
-prior_preview=previous/wanBoxForAndroid-3.0.5-preview.2-x86_64-release.apk
+previous=previous/wanBoxForAndroid-3.0.6-x86_64.apk
+prior_preview=previous/wanBoxForAndroid-3.0.7-preview.2-x86_64-release.apk
 own=previous/OwnBox-3.0.0-x86_64-release.apk
 shopt -s nullglob
 new_apks=(apks/wanBoxForAndroid-*-x86_64-release.apk)
@@ -18,14 +18,13 @@ adb install "$own"
 adb shell pm list packages | tr -d '\r' | grep -Fx 'package:com.lit008834.pixel.wanboxforandroid'
 adb shell pm list packages | tr -d '\r' | grep -Fx 'package:com.ownbox.app'
 
-# @author 雾晚: verify the old signed preview can update the formal release,
-# then the new preview can update the old preview without uninstalling either app.
-# Latest formal is newer than preview. First validate formal -> new preview.
+# @author 雾晚: independently validate formal -> new preview and prior preview -> new preview.
+# Fresh baselines are installed only on this disposable emulator; OwnBox remains installed.
 adb install -r "$current"
 adb shell pm clear com.lit008834.pixel.wanboxforandroid
 adb uninstall com.lit008834.pixel.wanboxforandroid
 adb install "$prior_preview"
-adb shell dumpsys package com.lit008834.pixel.wanboxforandroid | grep -m1 -F 'versionCode=1680 '
+adb shell dumpsys package com.lit008834.pixel.wanboxforandroid | grep -m1 -F 'versionCode=1715 '
 adb install -r "$current"
 adb shell dumpsys package com.lit008834.pixel.wanboxforandroid | grep -m1 -F "versionCode=$preview_code "
 adb shell dumpsys package com.lit008834.pixel.wanboxforandroid | grep -m1 -F "versionName=$preview_name"
