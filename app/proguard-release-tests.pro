@@ -8,6 +8,7 @@
 -keep,allowobfuscation class androidx.appcompat.** { public *; }
 -keep,allowobfuscation class androidx.preference.** { public *; }
 -keep,allowobfuscation class androidx.room.** { public *; }
+-keep,allowobfuscation class androidx.arch.core.** { public *; protected *; }
 -keep,allowobfuscation class androidx.sqlite.** { public *; }
 -keep,allowobfuscation class com.google.android.material.** { public *; }
 # @author 雾晚 Shared APIs invoked only by migration/scanner/serialization tests.

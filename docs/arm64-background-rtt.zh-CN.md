@@ -44,10 +44,10 @@ Release 仪器测试先发现共享 androidx.tracing.Trace、再发现 kotlin.La
 
 ServiceNotification 在核心初始化前同步提升前台服务，失败交给既有 stopRunner 清理；通知权限变化只阻止普通更新，不跳过必须的 startForeground。Android 拒绝后台启动时给出提示，没有无界重试。
 
-现有 Manifest 声明保持，例如：
+VPN 的现有 Manifest 声明保持，例如：
 
 ```xml
-<!-- @author 雾晚：现有声明示例，未新增权限 -->
+<!-- @author 雾晚：VPN 声明示例，Root/本地代理类型说明见后文 -->
 <service android:name=".bg.VpnService"
     android:permission="android.permission.BIND_VPN_SERVICE"
     android:foregroundServiceType="systemExempted" />
@@ -106,6 +106,8 @@ val rtt = TimeUnit.NANOSECONDS.toMillis(clock() - start).coerceAtLeast(1)
 这是核心无凭据的 204 检测，不放宽 WebView、订阅或 WebDAV 明文策略。保留状态栏 URL、自定义 URL、核心、栈与协议；未关闭 UDP、强制修改 keepalive 或增加 TPROXY/eBPF。
 
 ## 验证与回滚
+
+Android 14+ 的 RootTunService/ProxyService 使用 specialUse，声明 FOREGROUND_SERVICE_SPECIAL_USE 及明确用途 subtype；ServiceNotification 按实际 VpnService 类型选择 systemExempted，其他代理服务选择 specialUse。API 31–33 保留双参数 startForeground。Root 权限不等于 Android VPN 身份，不能要求纯 Root 用户先授权 VPN 才满足 systemExempted 条件。这是前台服务声明修复，不改 TUN、VPN 授权、路由或后台启动限制；发布到 Google Play 时仍需提交对应前台服务用途审核。ForegroundServicePolicyTest 覆盖 API 分支、类型/Manifest 一致性和 VPN 绑定权限。依据：[官方前台服务类型](https://developer.android.com/develop/background-work/services/fgs/service-types#special-use)。
 
 ### 桌面快捷方式直接执行
 

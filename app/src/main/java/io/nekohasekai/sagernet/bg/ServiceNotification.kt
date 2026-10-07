@@ -7,7 +7,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED
 import android.os.Build
 import android.text.format.Formatter
 import io.nekohasekai.sagernet.ktx.Logs
@@ -222,7 +221,8 @@ class ServiceNotification(
 
     private fun show() = synchronized(buildLock) {
         if (Build.VERSION.SDK_INT >= 34) {
-            (service as Service).startForeground(notificationId, builder.build(), FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED)
+            val type = ForegroundServicePolicy.type(service is VpnService)
+            (service as Service).startForeground(notificationId, builder.build(), type)
         } else {
             (service as Service).startForeground(notificationId, builder.build())
         }
