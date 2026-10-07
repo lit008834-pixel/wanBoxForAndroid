@@ -10,6 +10,19 @@
 -keep,allowobfuscation class androidx.room.** { public *; }
 -keep,allowobfuscation class androidx.sqlite.** { public *; }
 -keep,allowobfuscation class com.google.android.material.** { public *; }
+# @author 雾晚 Shared APIs invoked only by migration/scanner/serialization tests.
+-keep,allowobfuscation class com.google.gson.Gson { public *; }
+-keep,allowobfuscation class com.google.gson.GsonBuilder { public *; }
+-keep,allowobfuscation class com.google.zxing.qrcode.QRCodeWriter { public *; }
+-keep,allowobfuscation class com.google.zxing.Result { public *; }
+-keep,allowobfuscation class com.king.zxing.util.CodeUtils { public *; }
+-keep,allowobfuscation class okhttp3.OkHttpClient {
+    public boolean followRedirects();
+}
+-keep,allowobfuscation class io.nekohasekai.sagernet.fmt.v2ray.V2RayFmtKt {
+    public static java.lang.String toV2rayN(io.nekohasekai.sagernet.fmt.v2ray.VMessBean);
+    public static io.nekohasekai.sagernet.fmt.v2ray.VMessBean parseV2RayN(java.lang.String);
+}
 
 -keep,allowobfuscation class io.nekohasekai.sagernet.database.BackupRestore { public *; }
 -keep,allowobfuscation class io.nekohasekai.sagernet.database.BackupRestore$* { public *; }
