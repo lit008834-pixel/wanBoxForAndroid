@@ -5,9 +5,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.os.Build
 import io.nekohasekai.sagernet.bg.SubscriptionUpdater
-import io.nekohasekai.sagernet.database.DataStore
 import io.nekohasekai.sagernet.ktx.app
 import io.nekohasekai.sagernet.ktx.runOnDefaultDispatcher
 
@@ -23,20 +21,13 @@ class BootReceiver : BroadcastReceiver() {
     }
 
     override fun onReceive(context: Context, intent: Intent) {
+        // @author 雾晚: ignore explicit broadcasts outside the registered boot/update actions.
+        if (intent.action !in setOf(Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_LOCKED_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED)) return
         runOnDefaultDispatcher {
             SubscriptionUpdater.reconfigureUpdater()
         }
 
-        if (!DataStore.persistAcrossReboot) {   // sanity check
-            enabled = false
-            return
-        }
-
-        val doStart = when (intent.action) {
-            Intent.ACTION_LOCKED_BOOT_COMPLETED -> false // DataStore.directBootAware
-            else -> Build.VERSION.SDK_INT < 24 || SagerNet.user.isUserUnlocked
-        } && DataStore.selectedProxy > 0
-
-        if (doStart) SagerNet.startService()
+        // @author 雾晚: module service.sh owns boot and the committed snapshot.
+        // Android boot only schedules UI-side subscription updates.
     }
 }

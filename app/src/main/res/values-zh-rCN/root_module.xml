@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- @author 雾晚 -->
+<resources>
+    <string name="root_module_mode">Root 模块（Magisk / KernelSU）</string>
+    <string name="root_module_action_failed">模块操作失败。请授予 Root 权限，安装并启用配套 wanBox 模块后重试。无效配置会保留上一份有效快照。</string>
+    <string name="root_module_managed_network">网络由独立模块管理；此 Android Service 选项不适用，原保存值仍保留。</string>
+    <string name="root_tun_settings">Root TUN 设置</string>
+</resources>

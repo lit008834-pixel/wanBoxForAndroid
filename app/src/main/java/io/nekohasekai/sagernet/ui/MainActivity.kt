@@ -156,9 +156,7 @@ class MainActivity : ThemedActivity(),
 
         binding.fab.setOnClickListener {
             if (DataStore.hapticFeedback) it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
-            if (DataStore.serviceState.canStop) SagerNet.stopService() else connect.launch(
-                null
-            )
+            if (DataStore.serviceState.canStop) SagerNet.stopService() else SagerNet.startService()
         }
         binding.stats.setOnClickListener {
             if (DataStore.hapticFeedback) it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
@@ -698,9 +696,7 @@ class MainActivity : ThemedActivity(),
         connection.connect(this, this)
     }
 
-    private val connect = registerForActivityResult(VpnRequestActivity.StartService()) {
-        if (it) snackbar(R.string.vpn_permission_denied).show()
-    }
+    // @author 雾晚: connection is controlled by the independent module, without VPN authorization.
 
     // may NOT called when app is in background
     // ONLY do UI update here, write DB in bg process
@@ -766,11 +762,15 @@ class MainActivity : ThemedActivity(),
     override fun onStart() {
         if (SagerNet.databaseFailure != null) { super.onStart(); return }
         connection.updateConnectionId(SagerConnection.CONNECTION_ID_MAIN_ACTIVITY_FOREGROUND)
+        connection.connect(this, this)
         super.onStart()
     }
 
     override fun onStop() {
-        if (SagerNet.databaseFailure == null) connection.updateConnectionId(SagerConnection.CONNECTION_ID_MAIN_ACTIVITY_BACKGROUND)
+        if (SagerNet.databaseFailure == null) {
+            connection.updateConnectionId(SagerConnection.CONNECTION_ID_MAIN_ACTIVITY_BACKGROUND)
+            connection.disconnect(this) // Module owns the core; no App polling while UI is hidden.
+        }
         super.onStop()
     }
 

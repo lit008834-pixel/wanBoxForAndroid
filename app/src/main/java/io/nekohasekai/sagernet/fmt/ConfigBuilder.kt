@@ -3,7 +3,7 @@ package io.nekohasekai.sagernet.fmt
 
 import android.widget.Toast
 import io.nekohasekai.sagernet.*
-import io.nekohasekai.sagernet.bg.VpnService
+import io.nekohasekai.sagernet.bg.TunAddresses
 import io.nekohasekai.sagernet.database.DataStore
 import io.nekohasekai.sagernet.database.ProxyEntity
 import io.nekohasekai.sagernet.database.ProxyEntity.Companion.TYPE_CONFIG
@@ -413,8 +413,8 @@ fun buildConfig(
     val hostResolvers = HashMap<String, MutableSet<String>>()
     val nonCustomFinalHosts = hashSetOf<String>()
     val groupCache = HashMap<Long, ProxyGroup?>()
-    val isRootTun = DataStore.serviceMode == Key.MODE_ROOT
-    val isVPN = DataStore.serviceMode == Key.MODE_VPN || isRootTun
+    val isRootTun = !forTest
+    val useTun = !forTest
     val bind = if (!forTest && DataStore.allowAccess) "0.0.0.0" else LOCALHOST
     val remoteDns = DataStore.remoteDns.split("\n")
         .mapNotNull { dns -> dns.trim().takeIf { it.isNotBlank() && !it.startsWith("#") } }
@@ -747,7 +747,7 @@ fun buildConfig(
         inbounds = mutableListOf()
 
         if (!forTest) {
-            if (isVPN) inbounds.add(Inbound_TunOptions().apply {
+            if (useTun) inbounds.add(Inbound_TunOptions().apply {
                 type = "tun"
                 tag = "tun-in"
                 interface_name = "tun0"
@@ -785,11 +785,11 @@ fun buildConfig(
                 // inet4_address/inet6_address 与 endpoint_independent_nat 已于 1.12 移除（构造函数硬报错），
                 // address 为合并后的新字段。
                 address = when (ipv6Mode) {
-                    IPv6Mode.DISABLE -> listOf(VpnService.PRIVATE_VLAN4_CLIENT + "/30")
-                    IPv6Mode.ONLY -> listOf(VpnService.PRIVATE_VLAN6_CLIENT + "/126")
+                    IPv6Mode.DISABLE -> listOf(TunAddresses.PRIVATE_VLAN4_CLIENT + "/30")
+                    IPv6Mode.ONLY -> listOf(TunAddresses.PRIVATE_VLAN6_CLIENT + "/126")
                     else -> listOf(
-                        VpnService.PRIVATE_VLAN4_CLIENT + "/30",
-                        VpnService.PRIVATE_VLAN6_CLIENT + "/126"
+                        TunAddresses.PRIVATE_VLAN4_CLIENT + "/30",
+                        TunAddresses.PRIVATE_VLAN6_CLIENT + "/126"
                     )
                 }
             })
@@ -813,7 +813,7 @@ fun buildConfig(
         // init routing object
         route = RouteOptions().apply {
             auto_detect_interface = true
-            override_android_vpn = !isRootTun
+            override_android_vpn = false
             find_process = true
             rules = mutableListOf()
             rule_set = mutableListOf()
@@ -1366,7 +1366,7 @@ fun buildConfig(
                     PackageCache.awaitLoadSync()
                 }
                 val uidList = rule.packages.map {
-                    if (!isVPN) {
+                    if (!useTun) {
                         Toast.makeText(
                             SagerNet.application,
                             SagerNet.application.getString(R.string.route_need_vpn, rule.displayName()),

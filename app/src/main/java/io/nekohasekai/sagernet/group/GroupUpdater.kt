@@ -48,15 +48,17 @@ abstract class GroupUpdater {
             GroupManager.postReload(groupId)
         }
         val ipv6First = ipv6Mode >= IPv6Mode.PREFER
+        val owner = Any()
+        io.nekohasekai.sagernet.utils.DefaultNetworkListener.start(owner) { SagerNet.underlyingNetwork = it }
+        try {
         SubscriptionResolutionRunner.run(candidates, resolve = { profile ->
             val underlyingNetwork = SagerNet.underlyingNetwork
             val results = if (
                 underlyingNetwork != null &&
                 DataStore.enableFakeDns &&
-                DataStore.serviceState.started &&
-                DataStore.serviceMode == Key.MODE_VPN
+                DataStore.serviceMode == Key.MODE_ROOT
             ) {
-                // Preserve the VPN FakeDNS bypass; Root and ordinary DNS keep their existing path.
+                // Root may run while App serviceState is stopped; resolve nodes on the physical network.
                 underlyingNetwork.getAllByName(profile.serverAddress).filterNotNull()
             } else {
                 InetAddress.getAllByName(profile.serverAddress).filterNotNull()
@@ -74,6 +76,7 @@ abstract class GroupUpdater {
                 GroupManager.postReload(groupId)
             }
         })
+        } finally { withContext(NonCancellable) { io.nekohasekai.sagernet.utils.DefaultNetworkListener.stop(owner) } }
     }
 
     protected fun rewriteAddress(

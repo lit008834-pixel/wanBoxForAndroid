@@ -11,7 +11,6 @@ import io.nekohasekai.sagernet.R
 import io.nekohasekai.sagernet.SagerNet
 import io.nekohasekai.sagernet.TunImplementation
 import io.nekohasekai.sagernet.bg.BaseService
-import io.nekohasekai.sagernet.bg.VpnService
 import io.nekohasekai.sagernet.database.preference.OnPreferenceDataStoreChangeListener
 import io.nekohasekai.sagernet.database.preference.PublicDatabase
 import io.nekohasekai.sagernet.database.preference.RoomPreferenceDataStore
@@ -46,7 +45,6 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     var selectedGroup by configurationStore.long(Key.PROFILE_GROUP) { currentGroupId() } // "ungrouped" group id = 1
 
     // only in bg process
-    var vpnService: VpnService? = null
     var baseService: BaseService.Interface? = null
 
     // main
@@ -118,7 +116,10 @@ object DataStore : OnPreferenceDataStoreChangeListener {
     val useSystemTheme: Boolean get() = false
     var nightTheme by configurationStore.stringToInt(Key.NIGHT_THEME)
     var appLanguage by configurationStore.string(Key.APP_LANGUAGE) { "" }
-    var serviceMode by configurationStore.string(Key.SERVICE_MODE) { Key.MODE_VPN }
+    // @author 雾晚: retain the historical key in backups, normalize all old modes to Root.
+    var serviceMode: String
+        get() = Key.MODE_ROOT
+        set(@Suppress("UNUSED_PARAMETER") value) { configurationStore.putString(Key.SERVICE_MODE, Key.MODE_ROOT) }
 
     var trafficSniffing by configurationStore.stringToInt(Key.TRAFFIC_SNIFFING) { 1 }
     var resolveDestination by configurationStore.boolean(Key.RESOLVE_DESTINATION)
@@ -165,14 +166,14 @@ object DataStore : OnPreferenceDataStoreChangeListener {
 
     // 仅在 TUN 模式下真正生效；系统代理模式必须保留 mixed 入站
     val mixedInboundDisabled: Boolean
-        get() = disableMixedInbound && serviceMode != Key.MODE_PROXY
+        get() = disableMixedInbound
 
     // 混合入站账密由用户设置决定：用户名留空即不启用认证（本机回环免密直连）
     var mixedUsername by configurationStore.string(Key.MIXED_USERNAME) { "" }
     var mixedPassword by configurationStore.string(Key.MIXED_PASSWORD) { "" }
 
     val mixedInboundNeedsAuth: Boolean
-        get() = serviceMode != Key.MODE_PROXY && !mixedInboundDisabled && mixedUsername.isNotBlank()
+        get() = !mixedInboundDisabled && mixedUsername.isNotBlank()
 
     val mixedInboundUser: String get() = if (mixedInboundAuthed) mixedUsername else ""
     val mixedInboundPass: String get() = if (mixedInboundAuthed) mixedPassword else ""

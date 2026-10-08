@@ -8,14 +8,13 @@
         app:key="categoryMode"
         app:title="@string/mode_and_inbound_settings">
 
-        <moe.matsuri.nb4a.ui.SimpleMenuPreference
-            app:defaultValue="vpn"
-            app:entries="@array/service_modes"
-            app:entryValues="@array/service_mode_values"
+        <Preference
             app:icon="@drawable/ic_device_developer_mode"
             app:key="serviceMode"
+            app:persistent="false"
+            app:selectable="false"
             app:title="@string/service_mode"
-            app:useSimpleSummaryProvider="true" />
+            app:summary="@string/root_module_mode" />
 
         <SwitchPreference
             app:defaultValue="false"

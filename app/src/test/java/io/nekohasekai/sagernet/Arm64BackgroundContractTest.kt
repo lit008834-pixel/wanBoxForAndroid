@@ -30,7 +30,7 @@ class Arm64BackgroundContractTest {
         val tcp = source("bg/proto/TcpPing.kt")
         assertTrue(tcp.contains("DnsResolver.getInstance().query(network"))
         assertTrue(tcp.contains("signal.cancel()")); assertTrue(tcp.contains("network?.bindSocket(socket)"))
-        assertTrue(tcp.contains("protect(socket) == false")); assertFalse(tcp.contains("UrlTest().doTest"))
+        assertFalse(tcp.contains("vpnService")); assertFalse(tcp.contains("UrlTest().doTest"))
         val batch = source("ui/ConfigurationFragment.kt").substringAfter("fun tcpPingTest()").substringBefore("inner class GroupPagerAdapter")
         assertTrue(batch.contains("TcpPing.supports(it)"))
         assertTrue(batch.contains("repeat(DataStore.connectionTestConcurrent.coerceIn(1, 4))"))

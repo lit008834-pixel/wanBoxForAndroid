@@ -54,16 +54,14 @@ class NativeInterface : BoxPlatformInterface, NB4AInterface {
 
     //  libbox interface
 
+    // @author 雾晚: App cores are probe-only; TUN is owned by the Root module.
     override fun autoDetectInterfaceControl(fd: Int) {
-        DataStore.vpnService?.protect(fd)
+        val network = SagerNet.underlyingNetwork ?: return
+        // fromFd duplicates the descriptor; closing it never closes the core-owned socket.
+        android.os.ParcelFileDescriptor.fromFd(fd).use { network.bindSocket(it.fileDescriptor) }
     }
-
-    override fun openTun(singTunOptionsJson: String, tunPlatformOptionsJson: String): Long {
-        if (DataStore.vpnService == null) {
-            throw Exception("no VpnService")
-        }
-        return DataStore.vpnService!!.startVpn(singTunOptionsJson, tunPlatformOptionsJson).toLong()
-    }
+    override fun openTun(singTunOptionsJson: String, tunPlatformOptionsJson: String): Long =
+        error("TUN can only be opened by the Root module")
 
     override fun useProcFS(): Boolean {
         return Build.VERSION.SDK_INT < Build.VERSION_CODES.Q
@@ -119,6 +117,7 @@ class NativeInterface : BoxPlatformInterface, NB4AInterface {
         // 首次回调及 Go updateDefaultInterface 完成后才返回（Go 线程短暂阻塞，可接受）。
         runBlocking {
             DefaultNetworkListener.start(listener) { network ->
+                SagerNet.underlyingNetwork = network
                 checkDefaultInterfaceUpdate(listener, network)
             }
         }

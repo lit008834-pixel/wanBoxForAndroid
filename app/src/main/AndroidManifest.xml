@@ -309,10 +309,6 @@
 
 
         <activity
-            android:name="io.nekohasekai.sagernet.ui.VpnRequestActivity"
-            android:excludeFromRecents="true"
-            android:taskAffinity="" />
-        <activity
             android:name="io.nekohasekai.sagernet.ui.profile.ConfigEditActivity"
             android:configChanges="uiMode" />
         <activity
@@ -463,40 +459,11 @@
             android:configChanges="uiMode"
             android:theme="@style/Theme.SagerNet" />
 
-        <service
-            android:name="io.nekohasekai.sagernet.bg.ProxyService"
-            android:exported="false"
-            android:foregroundServiceType="specialUse"
-            android:process=":bg"
-            tools:ignore="ForegroundServicePermission">
-            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="User-started local network proxy kept active until the user disconnects." />
-        </service>
-
-        <service
-            android:name="io.nekohasekai.sagernet.bg.VpnService"
-            android:exported="false"
-            android:foregroundServiceType="systemExempted"
-            android:label="@string/app_name"
-            android:permission="android.permission.BIND_VPN_SERVICE"
-            android:process=":bg"
-            tools:ignore="ForegroundServicePermission">
-
-            <intent-filter>
-                <action android:name="android.net.VpnService" />
-            </intent-filter>
-        </service>
-
-        <!-- @author 雾晚: privileged TUN uses its own foreground service and no VpnService. -->
+        <!-- @author 雾晚: management observer; core lifetime belongs to module. -->
         <service
             android:name="io.nekohasekai.sagernet.bg.RootTunService"
             android:exported="false"
-            android:foregroundServiceType="specialUse"
-            android:process=":bg"
-            tools:ignore="ForegroundServicePermission">
-            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="User-started Root-assisted network tunneling without Android VpnService, kept active until the user disconnects." />
-        </service>
+            android:process=":bg" />
 
         <service
             android:name="io.nekohasekai.sagernet.bg.TileService"

@@ -44,7 +44,7 @@ class InputMethodDirectConfigTest {
             assertEquals(2, SagerDatabase.rulesDao.allRules().size)
             DataStore.globalMode = false
             DataStore.enableDnsRouting = true
-            for (mode in listOf(Key.MODE_VPN, Key.MODE_ROOT)) for (fakeIp in listOf(false, true)) {
+            for (mode in listOf("vpn", Key.MODE_ROOT)) for (fakeIp in listOf(false, true)) {
                     DataStore.serviceMode = mode; DataStore.enableFakeDns = fakeIp
                     val result = buildConfig(proxy).config
                     val config = JSONObject(result)

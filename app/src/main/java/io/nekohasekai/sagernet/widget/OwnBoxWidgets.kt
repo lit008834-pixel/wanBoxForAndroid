@@ -28,12 +28,7 @@ object OwnBoxWidgetHelper {
     var lastSpeedDisplayData: SpeedDisplayData? = null
 
     fun handleToggle(context: Context) {
-        if (DataStore.serviceState.canStop) {
-            SagerNet.stopService()
-        } else {
-            SagerNet.startService()
-        }
-        updateAllWidgets(context)
+        SagerNet.toggleService()
     }
 
     fun updateAllWidgets(context: Context, speedData: SpeedDisplayData? = null) {

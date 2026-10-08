@@ -50,11 +50,9 @@ class ServicePowerLocksTest {
     }
     @Test fun allModesWireTheSameOwnerAndSleepDoesNotPauseCore() {
         val folder = java.io.File("src/main/java/io/nekohasekai/sagernet/bg")
-        listOf("VpnService", "RootTunService", "ProxyService").forEach {
-            val source = java.io.File(folder, "$it.kt").readText()
-            assertTrue(source.contains("override val powerLocks = ServicePowerLocks()"))
-            assertTrue(source.contains("powerLocks.acquire(\"cpu\")"))
-        }
+        val observer = java.io.File(folder, "RootTunService.kt").readText()
+        assertTrue(observer.contains("override fun acquireWakeLock() = Unit"))
+        assertFalse(observer.contains("powerLocks.acquire"))
         val base = java.io.File(folder, "BaseService.kt").readText()
         assertTrue(base.contains("powerLocks.releaseAll()")); assertTrue(base.contains("DataStore.acquireWakeLock"))
         assertFalse(base.lineSequence().any { !it.trim().startsWith("//") && it.contains("box?.sleep()") })

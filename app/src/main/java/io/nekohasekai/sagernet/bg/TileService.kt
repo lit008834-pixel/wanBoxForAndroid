@@ -20,7 +20,6 @@ import io.nekohasekai.sagernet.database.DataStore
 import io.nekohasekai.sagernet.ktx.onMainDispatcher
 import io.nekohasekai.sagernet.ktx.runOnDefaultDispatcher
 import io.nekohasekai.sagernet.database.SagerDatabase
-import io.nekohasekai.sagernet.ui.VpnRequestActivity
 import io.nekohasekai.sagernet.utils.CustomIconManager
 import android.service.quicksettings.TileService as BaseTileService
 
@@ -105,45 +104,7 @@ class TileService : BaseTileService(), SagerConnection.Callback {
         val now = SystemClock.elapsedRealtime()
         if (now - lastTapTime < 700L) return
         lastTapTime = now
-        val state = connection.service?.let { BaseService.State.values()[it.state] }
-            ?: DataStore.serviceState
-        when {
-            state.canStop -> SagerNet.stopService()
-            state == BaseService.State.Stopping -> Unit
-            DataStore.serviceMode == Key.MODE_ROOT -> runOnDefaultDispatcher {
-                if (RootAccess.available()) {
-                    SagerNet.startService()
-                } else {
-                    DataStore.serviceMode = Key.MODE_VPN
-                    onMainDispatcher {
-                        Toast.makeText(this@TileService, R.string.root_unavailable_fallback, Toast.LENGTH_LONG).show()
-                        if (android.net.VpnService.prepare(this@TileService) == null) {
-                            SagerNet.startService()
-                        } else {
-                            requestVpnPermission()
-                        }
-                    }
-                }
-            }
-            DataStore.serviceMode == Key.MODE_VPN && android.net.VpnService.prepare(this) != null ->
-                requestVpnPermission()
-            else -> SagerNet.startService()
-        }
-    }
-
-    @Suppress("DEPRECATION")
-    private fun requestVpnPermission() {
-        val launch = Intent(this, VpnRequestActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            val pending = PendingIntent.getActivity(
-                this, 0, launch, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            startActivityAndCollapse(pending)
-        } else {
-            startActivityAndCollapse(launch)
-        }
+        SagerNet.toggleService()
     }
 
     private fun updateTile(serviceState: BaseService.State, profileName: String?) {

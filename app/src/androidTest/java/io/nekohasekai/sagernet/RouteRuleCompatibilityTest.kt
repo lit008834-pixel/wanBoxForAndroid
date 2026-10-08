@@ -90,7 +90,7 @@ class RouteRuleCompatibilityTest {
                 packages = setOf(InstrumentationRegistry.getInstrumentation().context.packageName), outbound = selectedTargetId)
             BackupRestore.apply(BackupRestore.Plan(null, null, rules, null), false, true, false)
             DataStore.globalMode = false
-            for (mode in listOf(Key.MODE_VPN, Key.MODE_ROOT)) for (fakeDns in listOf(false, true)) {
+            for (mode in listOf("vpn", Key.MODE_ROOT)) for (fakeDns in listOf(false, true)) {
                 DataStore.enableFakeDns = fakeDns
                 DataStore.serviceMode = mode
                 val root = JSONObject(io.nekohasekai.sagernet.fmt.buildConfig(proxy).config)

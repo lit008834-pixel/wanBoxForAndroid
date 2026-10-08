@@ -2,6 +2,7 @@
 package io.nekohasekai.sagernet
 
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
 import org.junit.Test
 import java.io.File
 
@@ -16,8 +17,9 @@ class NetworkLifecyclePreservationTest {
         assertTrue(updater.contains("SubscriptionResolutionRunner.run(candidates"))
         assertTrue(updater.contains("val underlyingNetwork = SagerNet.underlyingNetwork"))
         assertTrue(updater.contains("DataStore.enableFakeDns"))
-        assertTrue(updater.contains("DataStore.serviceState.started"))
-        assertTrue(updater.contains("DataStore.serviceMode == Key.MODE_VPN"))
+        assertFalse(updater.contains("DataStore.serviceState.started"))
+        assertTrue(updater.contains("DefaultNetworkListener.stop(owner)"))
+        assertTrue(updater.contains("DataStore.serviceMode == Key.MODE_ROOT"))
         assertTrue(updater.contains("underlyingNetwork.getAllByName(profile.serverAddress)"))
         assertTrue(updater.contains("InetAddress.getAllByName(profile.serverAddress)"))
         assertTrue(updater.contains("it !is NaiveBean && !it.serverAddress.isIpAddress()"))
@@ -44,6 +46,6 @@ class NetworkLifecyclePreservationTest {
         assertTrue(service.contains("DefaultNetworkListener.stop(this)"))
         assertTrue(service.contains("current.service as? RootTunService"))
         assertTrue(service.contains("service.urlTest(target, timeout)"))
-        assertTrue(source("bg/VpnService.kt").contains("setUnderlyingNetworks"))
+        assertTrue(source("bg/RootTunService.kt").contains("RootModuleClient.call(\"status\")"))
     }
 }

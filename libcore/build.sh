@@ -55,7 +55,7 @@ for target in "armeabi-v7a:arm:armv7a-linux-androideabi21-clang" \
   CGO_ENABLED=1 GOOS=android GOARCH="$arch" CC="$NDK_BIN/$compiler" \
     go build -buildmode=pie -trimpath \
       -ldflags="-s -w -X github.com/sagernet/sing-box/constant.Version=$SINGBOX_VERSION" \
-      -tags='with_conntrack,with_gvisor,with_quic,with_wireguard,with_utls,with_clash_api' \
+      -tags='rootmodule,with_conntrack,with_gvisor,with_quic,with_wireguard,with_utls,with_clash_api' \
       -o "$output" ./cmd/rootbox || exit 1
   test -s "$output" || exit 1
 done

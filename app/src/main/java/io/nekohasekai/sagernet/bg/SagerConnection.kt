@@ -21,13 +21,7 @@ class SagerConnection(
 ) : ServiceConnection, IBinder.DeathRecipient {
 
     companion object {
-        val serviceClass
-            get() = when (DataStore.serviceMode) {
-                Key.MODE_PROXY -> ProxyService::class
-                Key.MODE_VPN -> VpnService::class
-                Key.MODE_ROOT -> RootTunService::class
-                else -> throw UnknownError()
-            }.java
+        val serviceClass get() = RootTunService::class.java
 
         const val CONNECTION_ID_SHORTCUT = 0
         const val CONNECTION_ID_TILE = 1
@@ -174,7 +168,7 @@ class SagerConnection(
         }
     }
 
-    // @author 雾晚: switch the Binder target when :bg changes Root mode to VPN.
+    // @author 雾晚: retain Binder reconnection for the management observer.
     fun rebindIfServiceChanged(context: Context) {
         if (!connectionActive || boundServiceClass == serviceClass) return
         val savedCallback = callback

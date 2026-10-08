@@ -681,10 +681,10 @@ object ThroneDesktopBackupImporter {
         // Tun mode on desktop ≈ VPN service mode; system proxy ≈ proxy mode
         // Official note: system proxy / tun switch may not be in backup; still map if present
         s["tun_mode_enabled"]?.toBooleanStrictOrNull()?.let { tunOn ->
-            if (tunOn) putStr(Key.SERVICE_MODE, Key.MODE_VPN)
+            if (tunOn) putStr(Key.SERVICE_MODE, Key.MODE_ROOT)
         }
         s["system_proxy_enabled"]?.toBooleanStrictOrNull()?.let { spOn ->
-            if (spOn) putStr(Key.SERVICE_MODE, Key.MODE_PROXY)
+            if (spOn) putStr(Key.SERVICE_MODE, Key.MODE_ROOT)
         }
 
         s["test_url"]?.takeIf { it.isNotBlank() }?.let { putStr(Key.CONNECTION_TEST_URL, it) }

@@ -28,6 +28,7 @@ import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
 import java.io.File
+import kotlinx.coroutines.launch
 import libcore.Libcore
 
 class SettingsPreferenceFragment : PreferenceFragmentCompat(), OnPreferenceDataStoreChangeListener {
@@ -73,8 +74,8 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(), OnPreferenceDataS
                 .setPackage(SagerNet.application.packageName))
         }
         if (key == Key.MTU && DataStore.serviceState.started) {
-            // The value has been persisted. Rebuild the VPN tunnel without recreating MainActivity.
-            SagerNet.restartService()
+            // The persisted MTU needs a new module snapshot, without recreating MainActivity.
+            SagerNet.reloadService()
         }
         if (key == Key.PROFILE_CARD_STYLE) {
             runOnMainDispatcher {
@@ -128,7 +129,23 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(), OnPreferenceDataS
         }
         val mixedPort = findPreference<EditTextPreference>(Key.MIXED_PORT)!!
         val disableMixedInbound = findPreference<SwitchPreference>(Key.DISABLE_MIXED_INBOUND)!!
-        val serviceMode = findPreference<SimpleMenuPreference>(Key.SERVICE_MODE)!!
+        val autoStart = findPreference<SwitchPreference>(Key.PERSIST_ACROSS_REBOOT)!!
+        autoStart.setOnPreferenceChangeListener { _, value ->
+            SagerNet.application.applicationScope.launch {
+                try {
+                    io.nekohasekai.sagernet.bg.RootModuleClient.setAutoStart(value as Boolean)
+                    DataStore.configurationStore.putBoolean(Key.PERSIST_ACROSS_REBOOT, value)
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { autoStart.isChecked = value }
+                } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+                  catch (e: Exception) {
+                    Handler(Looper.getMainLooper()).post { Toast.makeText(SagerNet.application,
+                        SagerNet.application.getString(R.string.root_module_action_failed) + " (" + io.nekohasekai.sagernet.bg.RootModuleClient.safeError(e) + ")", Toast.LENGTH_LONG).show() }
+                }
+            }
+            false // Persist only after the module accepted the same value.
+        }
+        val serviceMode = findPreference<Preference>(Key.SERVICE_MODE)!!
+        serviceMode.summary = getString(R.string.root_module_mode)
         val mixedAuthConfig = findPreference<Preference>(Key.MIXED_AUTH_CONFIG)!!
         val httpProxyBypass = findPreference<EditTextPreference>(Key.HTTP_PROXY_BYPASS)!!
         val dnsHosts = findPreference<EditTextPreference>(Key.DNS_HOSTS)!!
@@ -217,9 +234,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(), OnPreferenceDataS
         }
 
         val metedNetwork = findPreference<Preference>(Key.METERED_NETWORK)!!
-        if (Build.VERSION.SDK_INT < 28) {
-            metedNetwork.remove()
-        }
+        metedNetwork.remove() // Android VPN-only; retain the stored value in backups.
         isProxyApps = findPreference(Key.PROXY_APPS)!!
         isProxyApps.setOnPreferenceChangeListener { _, newValue ->
             startActivity(Intent(activity, AppManagerActivity::class.java))
@@ -234,24 +249,6 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(), OnPreferenceDataS
         speedInterval.setOnPreferenceChangeListener { _, newValue ->
             profileTrafficStatistics.isEnabled = newValue.toString() != "0"
             needReload()
-            true
-        }
-
-        serviceMode.setOnPreferenceChangeListener { _, newValue ->
-            if (DataStore.serviceState.started) SagerNet.stopService()
-            // @author 雾晚: reject Root TUN immediately when the root manager denies access.
-            if (newValue == Key.MODE_ROOT) runOnDefaultDispatcher {
-                if (!io.nekohasekai.sagernet.bg.RootAccess.available() &&
-                    DataStore.serviceMode == Key.MODE_ROOT) {
-                    DataStore.serviceMode = Key.MODE_VPN
-                    onMainDispatcher {
-                        serviceMode.value = Key.MODE_VPN
-                        context?.let {
-                            Toast.makeText(it, R.string.root_unavailable_fallback, Toast.LENGTH_LONG).show()
-                        }
-                    }
-                }
-            }
             true
         }
 
@@ -294,13 +291,6 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(), OnPreferenceDataS
         updateMixedPortState()
         disableMixedInbound.setOnPreferenceChangeListener { _, newValue ->
             val disabled = newValue as Boolean
-            if (disabled && DataStore.serviceMode == Key.MODE_PROXY) {
-                Toast.makeText(
-                    requireContext(),
-                    getString(R.string.disable_mixed_inbound_proxy_toast, DataStore.mixedPort),
-                    Toast.LENGTH_LONG
-                ).show()
-            }
             updateMixedPortState(disabled)
             needReload()
             true
@@ -358,11 +348,15 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(), OnPreferenceDataS
 
         resolveDestination.onPreferenceChangeListener = reloadListener
         tunImplementation.onPreferenceChangeListener = reloadListener
-        acquireWakeLock.onPreferenceChangeListener = reloadListener
+        // Preserve existing keys/values; an independent native module has no Android wake/broadcast owner.
+        for (key in listOf(Key.ACQUIRE_WAKE_LOCK, Key.WAKE_RESET_CONNECTIONS, Key.NETWORK_CHANGE_RESET_CONNECTIONS)) {
+            findPreference<Preference>(key)?.apply { isEnabled = false; summary = getString(R.string.root_module_managed_network) }
+        }
         val performancePriorityMode = findPreference<SwitchPreference>(Key.PERFORMANCE_PRIORITY_MODE)
         performancePriorityMode?.setOnPreferenceChangeListener { _, newValue ->
             val enabled = newValue as Boolean
             SagerNet.updatePerformancePriorityMode(enabled)
+            needReload()
             true
         }
         hideFromRecentApps.setOnPreferenceChangeListener { _, newValue ->

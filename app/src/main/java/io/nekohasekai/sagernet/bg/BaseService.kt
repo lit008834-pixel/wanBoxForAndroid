@@ -150,7 +150,7 @@ class BaseService {
         override val coroutineContext = Dispatchers.Main.immediate + Job()
 
         override fun getState(): Int = (data?.state ?: State.Idle).ordinal
-        override fun getProfileName(): String = data?.proxy?.displayProfileName ?: "Idle"
+        override fun getProfileName(): String = data?.service?.currentProfileName() ?: "Idle"
 
         override fun registerCallback(cb: ISagerNetServiceCallback, id: Int) {
             if (id == SagerConnection.CONNECTION_ID_RESTART_BG) {
@@ -244,6 +244,7 @@ class BaseService {
     interface Interface {
         val data: Data
         val tag: String
+        fun currentProfileName(): String = data.proxy?.displayProfileName ?: "Idle"
         fun createNotification(profileName: String): ServiceNotification
 
         fun onBind(intent: Intent): IBinder? =
@@ -410,7 +411,6 @@ class BaseService {
                 return
             }
             DataStore.baseService = null
-            DataStore.vpnService = null
             DataStore.mixedInboundAuthed = false
             if (!restart) {
                 data.cacheRecoveryAttempts = 0
@@ -542,13 +542,11 @@ class BaseService {
                     SagerNet.underlyingNetwork = null
                     upstreamInterfaceName = null
                     NativeInterface.clearInterfaceCache()
-                    DataStore.vpnService?.updateUnderlyingNetwork()
                     return@start
                 }
                 SagerNet.connectivity.getLinkProperties(network)?.also { link ->
                     val oldNetwork = SagerNet.underlyingNetwork
                     SagerNet.underlyingNetwork = network
-                    DataStore.vpnService?.updateUnderlyingNetwork()
                     val oldName = upstreamInterfaceName
                     if (oldName != link.interfaceName || oldNetwork != network) {
                         Logs.d("Network changed: $oldName -> ${link.interfaceName} (network $oldNetwork -> $network)")

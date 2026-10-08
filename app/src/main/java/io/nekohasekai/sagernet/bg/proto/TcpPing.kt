@@ -29,6 +29,14 @@ class TcpPing {
         }
     }
     suspend fun doTest(profile: ProxyEntity): Int {
+        val owner = Any()
+        io.nekohasekai.sagernet.utils.DefaultNetworkListener.start(owner) { SagerNet.underlyingNetwork = it }
+        try { return measureOnPhysicalNetwork(profile) }
+        finally { kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+            io.nekohasekai.sagernet.utils.DefaultNetworkListener.stop(owner)
+        } }
+    }
+    private suspend fun measureOnPhysicalNetwork(profile: ProxyEntity): Int {
         val bean = profile.requireBean()
         if (!supports(profile)) {
             throw UnsupportedOperationException(SagerNet.application.getString(R.string.tcp_rtt_udp_unavailable))
@@ -58,9 +66,8 @@ class TcpPing {
                     })
             }
         }, bind = { socket ->
-            // @author 雾晚: Network.bindSocket materializes the descriptor before protect.
+            // @author 雾晚: bind to the physical network without Android VpnService.
             network?.bindSocket(socket)
-            if (DataStore.vpnService?.protect(socket) == false) throw IOException("VPN socket protect failed")
             if (SagerNet.underlyingNetwork != network) throw IOException("Network changed during TCP test")
         })
     }

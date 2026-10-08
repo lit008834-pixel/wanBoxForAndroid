@@ -20,7 +20,6 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
 import go.Seq
 import io.nekohasekai.sagernet.bg.SagerConnection
-import io.nekohasekai.sagernet.bg.RootAccess
 import io.nekohasekai.sagernet.database.DataStore
 import io.nekohasekai.sagernet.ktx.Logs
 import io.nekohasekai.sagernet.ktx.isOss
@@ -104,18 +103,7 @@ class SagerNet : Application(),
                 nativeInterface, nativeInterface, LocalResolverImpl
             )
 
-            if (isBgProcess) {
-                // 常驻注册默认网络监听：预热 DefaultNetworkListener 的 network 缓存，
-                // 使本进程 box 的接口监视器 Start 即同步拿到默认接口
-                // （主进程已在下方 isMainProcess 分支做同样的事；
-                //  竞态背景见 NativeInterface.startDefaultInterfaceMonitor 批注）。
-                runOnDefaultDispatcher {
-                    DefaultNetworkListener.start(this@SagerNet) {
-                        underlyingNetwork = it
-                    }
-                    updateNotificationChannels()
-                }
-            }
+            if (isBgProcess) runOnDefaultDispatcher { updateNotificationChannels() }
 
             // fix multi process issue in Android 9+
             JavaUtil.handleWebviewDir(this)
@@ -138,13 +126,7 @@ class SagerNet : Application(),
             AppLocale.apply()
             AppIconManager.init(this)
             DataStore.migrateSubscriptionUserAgents()
-            runOnDefaultDispatcher {
-                DefaultNetworkListener.start(this) {
-                    underlyingNetwork = it
-                }
-
-                updateNotificationChannels()
-            }
+            runOnDefaultDispatcher { updateNotificationChannels() }
         }
 
         if (BuildConfig.DEBUG) {
@@ -251,45 +233,39 @@ class SagerNet : Application(),
             }
         }
 
-        fun startService() {
-            // @author 雾晚: verify privilege before creating a root foreground service.
-            if (DataStore.serviceMode == Key.MODE_ROOT) {
-                application.applicationScope.launch {
-                    if (RootAccess.available()) {
-                        launchForegroundService()
-                    } else {
-                        RootAccess.fallbackToVpn(application)
+        // @author 雾晚: short management operations; no Android service owns the core.
+        private fun moduleCommand(work: suspend () -> Unit) {
+            application.applicationScope.launch {
+                try { work() }
+                catch (e: kotlinx.coroutines.CancellationException) { throw e }
+                catch (error: Exception) {
+                    android.os.Handler(android.os.Looper.getMainLooper()).post {
+                        android.widget.Toast.makeText(application, application.getString(R.string.root_module_action_failed) +
+                            " (" + io.nekohasekai.sagernet.bg.RootModuleClient.safeError(error) + ")",
+                            android.widget.Toast.LENGTH_LONG).show()
                     }
                 }
-            } else {
-                launchForegroundService()
             }
         }
-
-        // @author 雾晚: Android can reject background starts; do not crash or retry indefinitely.
-        private fun launchForegroundService() {
-            try {
-                ContextCompat.startForegroundService(application, Intent(application, SagerConnection.serviceClass))
-            } catch (e: IllegalStateException) { reportStartRejected() }
-              catch (e: SecurityException) { reportStartRejected() }
-        }
-
-        private fun reportStartRejected() {
-            Logs.w("Foreground service start rejected by Android")
-            android.os.Handler(android.os.Looper.getMainLooper()).post {
-                android.widget.Toast.makeText(application, R.string.service_start_rejected,
-                    android.widget.Toast.LENGTH_LONG).show()
+        fun toggleService(profileId: Long = -1L) = moduleCommand {
+            val client = io.nekohasekai.sagernet.bg.RootModuleClient
+            val status = client.call("status")
+            if (status.state.canStop && (profileId == -1L || profileId == status.profileId)) client.stop()
+            else {
+                if (profileId >= 0L) DataStore.selectedProxy = profileId
+                client.startOrReload()
             }
+            DataStore.serviceState = client.call("status").state
+            io.nekohasekai.sagernet.widget.OwnBoxWidgetHelper.updateAllWidgets(application)
         }
-
-        fun reloadService() =
-            application.sendBroadcast(Intent(Action.RELOAD).setPackage(application.packageName))
-
-        fun restartService() =
-            application.sendBroadcast(Intent(Action.RESTART).setPackage(application.packageName))
-
-        fun stopService() =
-            application.sendBroadcast(Intent(Action.CLOSE).setPackage(application.packageName))
+        fun enableService() = moduleCommand {
+            val client = io.nekohasekai.sagernet.bg.RootModuleClient
+            if (!client.call("status").state.canStop) client.startOrReload()
+        }
+        fun startService() = moduleCommand { io.nekohasekai.sagernet.bg.RootModuleClient.startOrReload() }
+        fun reloadService() = moduleCommand { io.nekohasekai.sagernet.bg.RootModuleClient.startOrReload() }
+        fun restartService() = moduleCommand { io.nekohasekai.sagernet.bg.RootModuleClient.call("restart") }
+        fun stopService() = moduleCommand { io.nekohasekai.sagernet.bg.RootModuleClient.stop() }
 
         fun updatePerformancePriorityMode(enabled: Boolean) {
             DataStore.performancePriorityMode = enabled

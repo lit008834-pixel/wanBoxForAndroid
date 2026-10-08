@@ -22,10 +22,9 @@ class ConnectedLatencyWiringTest {
     }
     @Test fun rootReadinessGuardsBothMixedProbeAndIsolatedFallback() {
         val root = source("bg/RootTunService").substringAfter("fun urlTest(").substringBefore("override suspend fun startProcesses")
-        assertTrue(root.contains("readyFile.isFile"))
-        assertTrue(root.contains("rootProcess === process"))
-        assertTrue(root.contains("ConnectedUrlTest.processAlive(process)"))
-        assertTrue(root.contains("ConnectedUrlTest.guardedRoot(::ready)"))
+        assertTrue(root.contains("RootModuleClient.call(\"status\")"))
+        assertTrue(root.contains("if (!before.connected)"))
+        assertTrue(root.contains("after.runningRevision == before.runningRevision"))
         assertTrue(root.contains("TestInstance(profile, url, timeoutMs).doTest()"))
         assertTrue(root.contains("ProxyUrlProbe.measure("))
         assertFalse(root.contains("proxy?.box"))

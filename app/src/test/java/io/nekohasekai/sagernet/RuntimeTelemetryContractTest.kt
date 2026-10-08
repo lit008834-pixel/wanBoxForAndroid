@@ -47,6 +47,7 @@ class RuntimeTelemetryContractTest {
         assertTrue(bridge.contains("UserId: uid, PackageNames: packageNames"))
         // Root continues to use its standalone core; this does not add app-process ownership.
         val root = source("bg/RootTunService.kt")
-        assertTrue(root.contains("proxy.launchExternalOnly()"))
+        assertTrue(root.contains("RootModuleClient.call(\"status\")"))
+        assertFalse(root.contains("launchExternalOnly"))
     }
 }

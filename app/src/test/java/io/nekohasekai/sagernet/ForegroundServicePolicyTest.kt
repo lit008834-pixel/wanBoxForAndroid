@@ -22,24 +22,16 @@ class ForegroundServicePolicyTest {
         assertTrue(show.indexOf("if (Build.VERSION.SDK_INT >= 34)") < show.indexOf("ForegroundServicePolicy.type"))
         assertTrue(show.contains("startForeground(notificationId, builder.build())"))
     }
-    @Test fun rootAndLocalProxyDeclareSpecialUseWithoutChangingVpnAuthorization() {
-        val namespace = "http://schemas.android.com/apk/res/android"
-        val manifest = DocumentBuilderFactory.newInstance().apply { isNamespaceAware = true }
-            .newDocumentBuilder().parse(File("src/main/AndroidManifest.xml"))
-        val services = manifest.getElementsByTagName("service")
-        fun service(name: String) = (0 until services.length).map { services.item(it) as org.w3c.dom.Element }
-            .single { it.getAttributeNS(namespace, "name").endsWith(".$name") }
-        for (name in listOf("RootTunService", "ProxyService")) {
-            val element = service(name)
-            assertEquals("specialUse", element.getAttributeNS(namespace, "foregroundServiceType"))
-            val property = element.getElementsByTagName("property").item(0) as org.w3c.dom.Element
-            assertEquals("android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE", property.getAttributeNS(namespace, "name"))
-            assertTrue(property.getAttributeNS(namespace, "value").isNotBlank())
-        }
-        assertEquals("systemExempted", service("VpnService").getAttributeNS(namespace, "foregroundServiceType"))
-        assertEquals("android.permission.BIND_VPN_SERVICE", service("VpnService").getAttributeNS(namespace, "permission"))
-        assertTrue(File("src/main/AndroidManifest.xml").readText().contains("android.permission.FOREGROUND_SERVICE_SPECIAL_USE"))
-        val notification = File("src/main/java/io/nekohasekai/sagernet/bg/ServiceNotification.kt").readText()
-        assertTrue(notification.contains("ForegroundServicePolicy.type(service is VpnService)"))
+    @Test fun observerDoesNotRegisterVpnOrOwnForegroundRuntime() {
+        val manifest = File("src/main/AndroidManifest.xml").readText()
+        assertFalse(manifest.contains("android.permission.BIND_VPN_SERVICE"))
+        assertFalse(manifest.contains("android.net.VpnService"))
+        assertFalse(manifest.contains("sagernet.bg.ProxyService"))
+        val root = manifest.substringAfter("sagernet.bg.RootTunService").substringBefore("/>")
+        assertFalse(root.contains("foregroundServiceType"))
+        val source = File("src/main/java/io/nekohasekai/sagernet/bg/RootTunService.kt").readText()
+        val destroy = source.substringAfter("override fun onDestroy()")
+        assertFalse(destroy.contains("stopRunner")); assertFalse(destroy.contains("RootModuleClient.stop"))
+        assertTrue(destroy.contains("data.serviceScope.cancel()"))
     }
 }

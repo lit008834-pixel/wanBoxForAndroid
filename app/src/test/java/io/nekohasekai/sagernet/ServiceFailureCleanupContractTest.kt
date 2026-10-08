@@ -34,7 +34,7 @@ class ServiceFailureCleanupContractTest {
             .substringBefore("fun stopRunner(")
         val box = source("main/java/io/nekohasekai/sagernet/bg/proto/BoxInstance.kt")
         val proxy = source("main/java/io/nekohasekai/sagernet/bg/proto/ProxyInstance.kt")
-        val vpn = source("main/java/io/nekohasekai/sagernet/bg/VpnService.kt")
+        val observer = source("main/java/io/nekohasekai/sagernet/bg/RootTunService.kt")
 
         assertTrue(killProcesses.contains("recordCleanupFailure(\"proxy-close\", error)"))
         assertTrue(killProcesses.contains("recordCleanupFailure(\"wake-lock-release\", error)"))
@@ -47,10 +47,9 @@ class ServiceFailureCleanupContractTest {
         assertTrue(box.contains("closeError?.let { throw it }"))
         assertTrue(proxy.contains("looper?.stop()"))
         assertTrue(proxy.indexOf("looper?.stop()") < proxy.indexOf("closeError?.let { throw it }"))
-        assertTrue(vpn.contains("override suspend fun killProcesses(): Throwable?"))
-        assertTrue(vpn.contains("super.killProcesses()?.let"))
-        assertTrue(vpn.contains("return cleanupError"))
-        assertFalse(vpn.contains("throw error"))
+        val destroy = observer.substringAfter("override fun onDestroy()")
+        assertTrue(destroy.contains("data.binder.close()"))
+        assertFalse(destroy.contains("stopRunner"))
     }
 
     @Test

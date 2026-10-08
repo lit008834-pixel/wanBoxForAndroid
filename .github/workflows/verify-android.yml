@@ -46,6 +46,12 @@ jobs:
           python3 -m unittest discover -s tools -p test_clean_subscription.py
           go -C ../sing-box run ./cmd/sing-box check -c "$GITHUB_WORKSPACE/docs/config/local-proxy.json"
           go -C ../sing-box run ./cmd/sing-box check -c "$GITHUB_WORKSPACE/docs/config/tun-fakeip.json"
+      - name: Test and package independent Root module
+        run: |
+          go -C rootmodule test -race ./...
+          go -C rootmodule vet ./...
+          python3 -m unittest discover -s rootmodule -p test_pack.py
+          ANDROID_NDK_HOME="$ANDROID_HOME/ndk/25.0.8775105" bash rootmodule/build.sh
       - name: Verify native artifact
         run: |
           test -s app/libs/libcore.aar

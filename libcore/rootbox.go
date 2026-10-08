@@ -17,16 +17,20 @@ import (
 	"github.com/sagernet/sing/service"
 )
 
-// RunRootBox starts the same configured core without Android's VpnService platform
-// interface. The caller must run this process as UID 0 and terminate it on stop.
-func RunRootBox(configPath, assetsPath, pidPath, readyPath, stopPath string, parentPID int) error {
+// RunRootBox is owned by the module supervisor, never by an Android App PID.
+// @author 雾晚
+func RunRootBox(configPath, assetsPath, pidPath, readyPath, stopPath string, supervisorPID int) error {
 	if os.Geteuid() != 0 {
 		return fmt.Errorf("Root TUN requires UID 0")
 	}
 	if err := os.Chdir(filepath.Dir(configPath)); err != nil {
 		return err
 	}
-	if err := os.WriteFile(pidPath, []byte(fmt.Sprint(os.Getpid())), 0644); err != nil {
+	SetMemoryProfile(os.Getenv("WANBOX_PERFORMANCE") == "true")
+	if supervisorPID <= 1 {
+		return fmt.Errorf("invalid supervisor PID")
+	}
+	if err := os.WriteFile(pidPath, []byte(fmt.Sprint(os.Getpid())), 0600); err != nil {
 		return err
 	}
 	defer os.Remove(pidPath)
@@ -75,7 +79,7 @@ func RunRootBox(configPath, assetsPath, pidPath, readyPath, stopPath string, par
 				if telemetry.Load() == nil {
 					lastSample = time.Now()
 				}
-				if syscall.Kill(parentPID, 0) == syscall.ESRCH {
+				if syscall.Kill(supervisorPID, 0) == syscall.ESRCH {
 					cancel()
 					return
 				}
@@ -97,6 +101,9 @@ func RunRootBox(configPath, assetsPath, pidPath, readyPath, stopPath string, par
 		return fmt.Errorf("decode root configuration: %w", err)
 	}
 	if options.Route != nil {
+		if err = validateRootGeoResources(options.Route.RuleSet, assetsPath); err != nil {
+			return err
+		}
 		if err = prepareLocalGeoRuleSets(options.Route.RuleSet); err != nil {
 			return err
 		}
@@ -115,11 +122,86 @@ func RunRootBox(configPath, assetsPath, pidPath, readyPath, stopPath string, par
 	if err = instance.Start(); err != nil {
 		return err
 	}
-	if err = os.WriteFile(readyPath, []byte("ready"), 0644); err != nil {
+	if err = os.WriteFile(readyPath, []byte("ready"), 0600); err != nil {
 		return err
 	}
 	defer os.Remove(readyPath)
 	telemetry.Store(stats)
 	<-ctx.Done()
+	return nil
+}
+
+// CheckRootConfig constructs and closes the real pinned core without Start:
+// validate schema, outbounds, rules and resources without establishing TUN.
+// @author 雾晚
+func CheckRootConfig(configPath, assetsPath string) error {
+	if os.Geteuid() != 0 {
+		return fmt.Errorf("root required")
+	}
+	if err := os.Chdir(filepath.Dir(configPath)); err != nil {
+		return err
+	}
+	externalAssetsPath = filepath.Clean(assetsPath) + string(os.PathSeparator)
+	resourcePaths = append(resourcePaths, externalAssetsPath)
+	ctx := box.Context(context.Background(), nekoboxAndroidInboundRegistry(), nekoboxAndroidOutboundRegistry(), nekoboxAndroidEndpointRegistry(), nekoboxAndroidDNSTransportRegistry(nil), nekoboxAndroidServiceRegistry(), nekoboxAndroidCertificateProviderRegistry())
+	ctx = service.ContextWithDefaultRegistry(ctx)
+	raw, err := os.ReadFile(configPath)
+	if err != nil {
+		return err
+	}
+	var options option.Options
+	if err = options.UnmarshalJSONContext(ctx, raw); err != nil {
+		return err
+	}
+	if options.Route != nil {
+		if err = validateRootGeoResources(options.Route.RuleSet, assetsPath); err != nil {
+			return err
+		}
+		if err = prepareLocalGeoRuleSets(options.Route.RuleSet); err != nil {
+			return err
+		}
+		if err = prepareRemoteRuleSets(options.Route.RuleSet); err != nil {
+			return err
+		}
+	}
+	instance, err := box.New(box.Options{Options: options, Context: ctx})
+	if err != nil {
+		return err
+	}
+	return instance.Close()
+}
+
+// @author 雾晚: strict resource checks only for standalone module snapshots.
+func validateRootGeoResources(rules []option.RuleSet, assetsPath string) error {
+	// Module snapshots must not silently turn missing/corrupt geo assets
+	// into empty rules. Keep the legacy converter for other App cores.
+	for _, rule := range rules {
+		if rule.Type != "local" {
+			continue
+		}
+		code, isIP, legacy, ok := parseGeoRuleSetPath(rule.LocalOptions.Path)
+		if !ok {
+			continue
+		}
+		name := geositeDat
+		if isIP {
+			name = geoipDat
+		}
+		if !legacy {
+			if _, e := os.Stat(filepath.Join(assetsPath, name[:len(name)-3]+"-"+code+".srs")); e == nil {
+				continue
+			}
+		}
+		var assetErr error
+		if isIP {
+			_, assetErr = loadGeoIPRules(filepath.Join(assetsPath, name), code)
+		} else {
+			_, assetErr = loadGeoSiteRules(filepath.Join(assetsPath, name), code)
+		}
+		if assetErr != nil {
+			return fmt.Errorf("invalid module geo resource")
+		}
+	}
+
 	return nil
 }

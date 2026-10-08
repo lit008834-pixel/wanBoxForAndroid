@@ -227,13 +227,13 @@ class DocsFragment : ToolbarFragment(R.layout.layout_docs) {
         )
 
         // 2. VPN 设置
-        allItems.add(DocListItem.Header("2. VPN 设置 (VPN Settings)", "控制系统虚拟网卡 (TUN) 路由分流、开机自启、局域网共享与 MTU 性能"))
+        allItems.add(DocListItem.Header("2. Root TUN 设置 (Root TUN Settings)", "控制系统虚拟网卡 (TUN) 路由分流、开机自启、局域网共享与 MTU 性能"))
         allItems.add(
             DocListItem.Item(
                 category = "VPN 设置",
                 title = "自动连接 (isAutoConnect)",
                 badge = "推荐: 开启 (日常使用)",
-                desc = "当手机开机启动完成或 APP 在后台被系统重新拉起时，自动激活 VPN 服务并连接上次选中的稳定节点。",
+                desc = "当手机开机启动完成或 APP 在后台被系统重新拉起时，由模块启动最后提交的有效快照，不需要 App 后台常驻。设置关闭时模块不自启。",
                 prosCons = "【利】全天候无感保护，重启手机无需手动点开 APP；【弊】若所选节点因欠费或被封失效，开机初期可能短暂影响部分联网。",
                 recommendation = "【最稳推荐：拥有长期稳定节点的用户推荐开启】若节点经常变动则建议手动连接。",
                 keywords = "自启 自动连接 开机 重启",
@@ -334,11 +334,11 @@ class DocsFragment : ToolbarFragment(R.layout.layout_docs) {
             DocListItem.Item(
                 category = "模式与入站设置",
                 title = "服务模式 (serviceMode)",
-                badge = "推荐: VPN 模式 (默认)",
-                desc = "选择运行模式为系统级 VPN 模式（全自动拦截系统网络）或纯本地仅代理模式（只在本地开放端口）。",
-                prosCons = "【利】VPN 模式开箱即用，所有应用全自动受益；【弊】仅代理模式需要手动在 Wi-Fi 高级设置中填入 127.0.0.1 代理，仅适合特殊开发者。",
-                recommendation = "【最稳推荐：VPN 模式】绝大多数用户的标准使用方式。",
-                keywords = "vpn 仅代理 本地模式 端口",
+                badge = "仅支持: Root 模块",
+                desc = "App 保留现有管理界面，使用 Magisk / KernelSU 模块独立运行 Root TUN；无 Root 或模块不可用时提示错误，不再回退 VPN。",
+                prosCons = "配置提交后由模块持有核心；App 关闭后无需后台服务。需先安装对应架构模块并授予 Root 权限。",
+                recommendation = "先安装配套模块、提交节点配置，再连接。Android 休眠与厂商网络限制仍可能影响联网。",
+                keywords = "root 模块 magisk kernelsu tun serviceMode",
             )
         )
         allItems.add(
@@ -613,22 +613,22 @@ class DocsFragment : ToolbarFragment(R.layout.layout_docs) {
             DocListItem.Item(
                 category = "进阶设置",
                 title = "网络切换重置连接 (networkChangeResetConnections)",
-                badge = "推荐: 开启",
-                desc = "当手机从 Wi-Fi 切换到移动数据（或从一个 Wi-Fi 漫游到另一个 Wi-Fi）时，主动断开所有已失效的死连接并即时重新握手。",
-                prosCons = "【利】彻底根除“离开 Wi-Fi 走在路上网络必定卡死转圈半天”的痛点，新网络秒级无感重连；【弊】无负面影响。",
-                recommendation = "【最稳推荐：强烈推荐开启】移动端抗网络波动、防假死断流的最关键神级设置！",
-                keywords = "网络切换 重置 假死 转圈 重连 wifi 蜂窝",
+                badge = "模块模式: 不适用",
+                desc = "此项依赖旧 Android Service 的网络/屏幕广播或 PowerManager；独立模块不使用该路径，原偏好值保留。",
+                prosCons = "默认网卡监听由模块核心负责，不新增 App 常驻监听或唤醒锁。",
+                recommendation = "请使用模块真实状态及设备切网/休眠测试判断连接情况。",
+                keywords = "模块 root 网络 唤醒 兼容",
             )
         )
         allItems.add(
             DocListItem.Item(
                 category = "进阶设置",
                 title = "唤醒时重置连接 (wakeResetConnections)",
-                badge = "推荐: 开启 (息屏易断流用户)",
-                desc = "手机在熄屏休眠较长时间后重新解锁点亮屏幕时，主动刷新可能已被运营商基站静默超时的 TCP 长连接。",
-                prosCons = "【利】解决亮屏瞬间微信等软件接收消息延迟转圈的问题；【弊】在频繁亮屏息屏时微量触发重新建链。",
-                recommendation = "【最稳推荐：开启】保障亮屏即连，消除黑屏假死。",
-                keywords = "唤醒 息屏 亮屏 休眠 假死 断流",
+                badge = "模块模式: 不适用",
+                desc = "此项依赖旧 Android Service 的网络/屏幕广播或 PowerManager；独立模块不使用该路径，原偏好值保留。",
+                prosCons = "默认网卡监听由模块核心负责，不新增 App 常驻监听或唤醒锁。",
+                recommendation = "请使用模块真实状态及设备切网/休眠测试判断连接情况。",
+                keywords = "模块 root 网络 唤醒 兼容",
             )
         )
         allItems.add(
@@ -657,11 +657,11 @@ class DocsFragment : ToolbarFragment(R.layout.layout_docs) {
             DocListItem.Item(
                 category = "进阶设置",
                 title = "后台唤醒锁 (acquireWakeLock)",
-                badge = "推荐: 保持关闭 (杀后台设备开启)",
-                desc = "在 VPN 服务运行期间向系统申请 CPU 部分唤醒锁（PARTIAL_WAKE_LOCK），阻止 CPU 深度睡眠。",
-                prosCons = "【利】彻底解决个别国产安卓魔改系统（如某些极端杀后台机型）熄屏后立刻杀死网络的问题；【弊】手机无法进入深度睡眠，略微增加待机耗电。",
-                recommendation = "【最稳推荐：平时关闭】仅在熄屏后经常出现网络中断、收不到通知且已被系统杀后台时开启救急。",
-                keywords = "唤醒锁 wakelock 耗电 杀后台 保活 熄屏",
+                badge = "模块模式: 不适用",
+                desc = "此项依赖旧 Android Service 的网络/屏幕广播或 PowerManager；独立模块不使用该路径，原偏好值保留。",
+                prosCons = "默认网卡监听由模块核心负责，不新增 App 常驻监听或唤醒锁。",
+                recommendation = "请使用模块真实状态及设备切网/休眠测试判断连接情况。",
+                keywords = "模块 root 网络 唤醒 兼容",
             )
         )
         allItems.add(

@@ -31,7 +31,6 @@ jobs:
           # @author 雾晚: share the verified cache for exactly the same core inputs.
           key: native-audit-${{ hashFiles('libcore/**', 'buildScript/lib/**', 'buildScript/init/**', 'nb4a.properties') }}
       - name: Install Golang
-        if: steps.cache.outputs.cache-hit != 'true'
         uses: actions/setup-go@v5
         with:
           go-version: ^1.25
@@ -55,6 +54,20 @@ jobs:
         with:
           name: root-tun-executables
           path: app/executableSo
+          if-no-files-found: error
+      - name: Verify and package Root module
+        run: |
+          go -C rootmodule test -race ./...
+          go -C rootmodule vet ./...
+          python3 -m unittest discover -s rootmodule -p test_pack.py
+          (cd libcore && go test -tags=with_clash_api,with_gvisor,with_quic,with_wireguard,with_utls .)
+          (cd libcore && go test ./internal/... ./protocol/urltest ./protocol/loadbalance)
+          ANDROID_NDK_HOME="$ANDROID_HOME/ndk/25.0.8775105" bash rootmodule/build.sh
+      - name: Upload Root module
+        uses: actions/upload-artifact@v4
+        with:
+          name: root-module
+          path: rootmodule/build/wanbox-root-module-arm64-v8a.zip
           if-no-files-found: error
   build:
     name: Build OSS APK
@@ -99,6 +112,8 @@ jobs:
           echo "ndk.dir=${ANDROID_HOME}/ndk/25.0.8775105" >> local.properties
           export LOCAL_PROPERTIES="${{ secrets.LOCAL_PROPERTIES }}"
           ./run init action gradle
+          ./gradlew app:testPreviewDebugUnitTest app:compilePreviewDebugAndroidTestKotlin
+          python3 tools/check_android_security.py
           ./gradlew app:assemblePreviewRelease
           APK_DIR=app/build/outputs/apk/preview/release
           find app/build/outputs/apk -type f -name '*.apk' -print
@@ -224,6 +239,16 @@ jobs:
           CODE=$(grep '^PRE_VERSION_CODE=' nb4a.properties | cut -d= -f2 | tr -d '\r')
           CODE=$((CODE * 5))
           cp PREVIEW_NOTES.md "$RUNNER_TEMP/preview-notes.md"
+      - name: Download Root module
+        uses: actions/download-artifact@v4
+        with:
+          name: root-module
+          path: apks
+      - name: Verify module and combined checksums
+        run: |
+          test -s apks/wanbox-root-module-arm64-v8a.zip
+          python3 -m zipfile -t apks/wanbox-root-module-arm64-v8a.zip
+          (cd apks && sha256sum *.apk *.zip > SHA256SUMS && sha256sum --check SHA256SUMS)
       - name: Publish to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:

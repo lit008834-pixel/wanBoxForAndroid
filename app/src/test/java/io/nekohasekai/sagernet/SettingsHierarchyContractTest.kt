@@ -25,6 +25,11 @@ class SettingsHierarchyContractTest {
         assertEquals(old.keySet(), actual.keys)
         old.keys().forEach { key ->
             val before = old.getJSONObject(key); val node = actual.getValue(key)
+            if (key == "serviceMode") {
+                assertEquals("Preference", node.tagName)
+                assertEquals("false", node.getAttributeNS("http://schemas.android.com/apk/res-auto", "selectable"))
+                return@forEach
+            }
             assertEquals(key, before.getString("type"), node.tagName)
             val attributes = before.getJSONObject("attributes")
             attributes.keys().forEach { attribute ->

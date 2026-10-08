@@ -221,7 +221,7 @@ class ServiceNotification(
 
     private fun show() = synchronized(buildLock) {
         if (Build.VERSION.SDK_INT >= 34) {
-            val type = ForegroundServicePolicy.type(service is VpnService)
+            val type = ForegroundServicePolicy.type(false)
             (service as Service).startForeground(notificationId, builder.build(), type)
         } else {
             (service as Service).startForeground(notificationId, builder.build())

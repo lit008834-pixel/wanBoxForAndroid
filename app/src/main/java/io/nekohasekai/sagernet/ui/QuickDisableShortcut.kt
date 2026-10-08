@@ -44,10 +44,7 @@ class QuickDisableShortcut : Activity(), SagerConnection.Callback {
     }
 
     override fun onServiceConnected(service: ISagerNetService) {
-        val state = BaseService.State.values().getOrNull(service.state) ?: return
-        if (state.canStop) {
-            SagerNet.stopService()
-        }
+        SagerNet.stopService()
         finish()
     }
 
