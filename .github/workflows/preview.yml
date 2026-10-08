@@ -153,6 +153,11 @@ jobs:
           mkdir -p internal-apks
           cp "$APK_DIR"/*x86_64*.apk internal-apks/
           for fixture in internal-apks/*.apk; do "$APKSIGNER" verify "$fixture"; done
+          # @author 雾晚: disposable emulator fixture for real Room/portable backup roundtrip.
+          WANBOX_INTERNAL_TEST=1 ./gradlew app:assemblePreviewDebug app:assemblePreviewDebugAndroidTest -PwanboxInternalTestAbi=x86_64
+          mkdir -p internal-policy
+          cp app/build/outputs/apk/preview/debug/*x86_64*.apk internal-policy/manager.apk
+          cp app/build/outputs/apk/androidTest/preview/debug/*.apk internal-policy/tests.apk
       - uses: actions/upload-artifact@v4
         with:
           name: APKs
@@ -177,6 +182,12 @@ jobs:
           path: internal-apks/*.apk
           if-no-files-found: error
           retention-days: 1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: internal-data-policy-fixture
+          path: internal-policy/*.apk
+          if-no-files-found: error
+          retention-days: 1
 
   verify_upgrade:
     name: Verify preview updates in place
@@ -190,6 +201,10 @@ jobs:
         with:
           name: internal-upgrade-fixture
           path: apks
+      - uses: actions/download-artifact@v4
+        with:
+          name: internal-data-policy-fixture
+          path: internal-policy
       - name: Download previous wanBox releases and OwnBox
         env:
           GH_TOKEN: ${{ github.token }}
@@ -228,7 +243,15 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_7_pro
-          script: bash tools/diagnostics/verify_preview_upgrade.sh
+          script: |
+            bash tools/diagnostics/verify_preview_upgrade.sh
+            # @author 雾晚: only this disposable emulator; no real user data is touched.
+            adb uninstall com.lit008834.pixel.wanboxforandroid
+            adb install -t internal-policy/manager.apk
+            adb install -t internal-policy/tests.apk
+            adb shell am instrument -w -r -e class io.nekohasekai.sagernet.RootModuleDataUpdateTest com.lit008834.pixel.wanboxforandroiddebug.test/androidx.test.runner.AndroidJUnitRunner > policy-test-result.txt
+            cat policy-test-result.txt
+            grep -F 'OK (1 test)' policy-test-result.txt
 
   publish:
     name: Publish Preview Release
