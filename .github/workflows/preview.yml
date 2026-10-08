@@ -249,7 +249,7 @@ jobs:
             adb uninstall com.lit008834.pixel.wanboxforandroid
             adb install -t internal-policy/manager.apk
             adb install -t internal-policy/tests.apk
-            adb shell am instrument -w -r -e class io.nekohasekai.sagernet.RootModuleDataUpdateTest com.lit008834.pixel.wanboxforandroiddebug.test/androidx.test.runner.AndroidJUnitRunner > policy-test-result.txt
+            adb shell am instrument -w -r -e class io.nekohasekai.sagernet.RootModuleDataUpdateTest com.lit008834.pixel.wanboxforandroid.debug.test/androidx.test.runner.AndroidJUnitRunner > policy-test-result.txt
             cat policy-test-result.txt
             grep -F 'OK (1 test)' policy-test-result.txt
 
