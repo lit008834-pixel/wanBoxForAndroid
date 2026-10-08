@@ -379,6 +379,15 @@ class StatsBar @JvmOverloads constructor(
     private val latencyState = LatencyProbeState()
     private val lastMeasuredLatency get() = latencyState.latency
     private var activeLatencyJob: Job? = null
+    private var landingIpJob: Job? = null
+
+    // @author 雾晚: release foreground requests; resume binds fresh module state without probing latency.
+    fun onHostStopped() {
+        landingIpJob?.cancel()
+        landingIpJob = null
+        resetLatencyState()
+        LandingIpManager.clearCache()
+    }
 
     private data class ProbeKey(
         val service: Any, val mode: String, val profile: Long, val url: String, val timeout: Int
@@ -401,6 +410,7 @@ class StatsBar @JvmOverloads constructor(
 
     override fun onDetachedFromWindow() {
         latencyAttached = false
+        onHostStopped()
         resetLatencyState()
         super.onDetachedFromWindow()
     }
@@ -447,7 +457,7 @@ class StatsBar @JvmOverloads constructor(
                             statusText.text = app.getText(R.string.connection_test_fail)
                         } else if (latencyState.testing) {
                             statusText.text = app.getText(R.string.connection_test_testing)
-                        } else if (cached == null && DataStore.showLandingIp) {
+                        } else if (cached == null && DataStore.showLandingIp && LandingIpManager.isCurrentlyQuerying()) {
                             statusText.text = context.getString(R.string.landing_ip_querying)
                         } else {
                             statusText.text = app.getString(R.string.vpn_connected)
@@ -525,17 +535,19 @@ class StatsBar @JvmOverloads constructor(
             }
 
             val activity = context as? MainActivity
-            val scope = activity?.lifecycleScope ?: CoroutineScope(Dispatchers.Main)
-            scope.launch {
+            val scope = activity?.lifecycleScope ?: return@runOnUi
+            if (landingIpJob?.isActive == true && !forceRefresh) return@runOnUi
+            landingIpJob?.cancel()
+            landingIpJob = scope.launch {
                 val result = LandingIpManager.queryLandingIp(currentProfile, forceRefresh = forceRefresh) { intermediateInfo ->
                     runOnUi {
-                        if (currentState == BaseService.State.Connected && DataStore.showLandingIp) {
+                        if (currentState == BaseService.State.Connected && DataStore.showLandingIp && DataStore.selectedProxy == currentProfile) {
                             statusIpText.text = "${intermediateInfo.countryFlag} ${intermediateInfo.countryCode} ${intermediateInfo.ip}"
                             statusIpText.visibility = View.VISIBLE
                         }
                     }
                 }
-                if (currentState != BaseService.State.Connected) return@launch
+                if (currentState != BaseService.State.Connected || DataStore.selectedProxy != currentProfile) return@launch
                 if (!DataStore.showLandingIp) {
                     btnIpDetail?.visibility = View.GONE
                     updateStatusViews()

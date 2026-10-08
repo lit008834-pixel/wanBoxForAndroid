@@ -215,9 +215,7 @@ class RouteSettingsActivity(
             setPositiveButton(R.string.yes) { _, _ ->
                 runOnDefaultDispatcher {
                     ProfileManager.deleteRule(arg.ruleId)
-                    if (DataStore.serviceState.started) {
-                        runCatching { SagerNet.restartService() }
-                    }
+                    runCatching { SagerNet.restartService() }
                 }
                 requireActivity().finish()
             }
@@ -355,11 +353,9 @@ class RouteSettingsActivity(
             }
             ProfileManager.updateRule(candidate)
         }
-        if (DataStore.serviceState.started) {
-            // @author 雾晚: rebuild routing/DNS, including when the selected group is a selector.
-            runCatching { SagerNet.restartService() }.onFailure {
-                onMainDispatcher { Toast.makeText(this@RouteSettingsActivity, R.string.rr_reload_error, Toast.LENGTH_LONG).show() }
-            }
+        // @author 雾晚: rebuild routing/DNS, including when the selected group is a selector.
+        runCatching { SagerNet.restartService() }.onFailure {
+            onMainDispatcher { Toast.makeText(this@RouteSettingsActivity, R.string.rr_reload_error, Toast.LENGTH_LONG).show() }
         }
         onMainDispatcher { finish() }
         } catch (e: Exception) {

@@ -3,7 +3,8 @@
 set -euo pipefail
 
 previous=previous/wanBoxForAndroid-3.0.6-x86_64.apk
-prior_preview=previous/wanBoxForAndroid-3.0.7-preview.2-x86_64-release.apk
+prior_preview=previous/wanBox-prior-preview.apk
+prior_preview_code=${WANBOX_PRIOR_PREVIEW_CODE:?Verified prior fixture version is required}
 own=previous/OwnBox-3.0.0-x86_64-release.apk
 shopt -s nullglob
 new_apks=(apks/wanBoxForAndroid-*-x86_64-release.apk)
@@ -24,7 +25,7 @@ adb install -r "$current"
 adb shell pm clear com.lit008834.pixel.wanboxforandroid
 adb uninstall com.lit008834.pixel.wanboxforandroid
 adb install "$prior_preview"
-adb shell dumpsys package com.lit008834.pixel.wanboxforandroid | grep -m1 -F 'versionCode=1715 '
+adb shell dumpsys package com.lit008834.pixel.wanboxforandroid | grep -m1 -F "versionCode=$prior_preview_code "
 adb install -r "$current"
 adb shell dumpsys package com.lit008834.pixel.wanboxforandroid | grep -m1 -F "versionCode=$preview_code "
 adb shell dumpsys package com.lit008834.pixel.wanboxforandroid | grep -m1 -F "versionName=$preview_name"

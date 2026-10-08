@@ -71,14 +71,12 @@ class RouteFragment : ToolbarFragment(R.layout.layout_route), Toolbar.OnMenuItem
     lateinit var undoManager: UndoSnackbarManager<RuleEntity>
 
     fun autoReloadServiceIfStarted() {
-        if (DataStore.serviceState.started) {
-            runOnDefaultDispatcher {
-                try {
-                    // @author 雾晚: a selector-only reload does not apply changed routing rules.
-                    SagerNet.restartService()
-                } catch (e: Exception) {
-                    Logs.w(e)
-                }
+        runOnDefaultDispatcher {
+            try {
+                // @author 雾晚: a selector-only reload does not apply changed routing rules.
+                SagerNet.restartService()
+            } catch (e: Exception) {
+                Logs.w(e)
             }
         }
     }

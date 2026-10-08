@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -43,7 +44,11 @@ func RunRootBox(configPath, assetsPath, pidPath, readyPath, stopPath string, sup
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer cancel()
 	// @author 雾晚: reuse the existing watchdog; no new polling thread or API port.
-	var telemetry atomic.Pointer[BoxInstance]
+	type rootSampleSource struct {
+		box           *BoxInstance
+		proxy, direct []string
+	}
+	var telemetry atomic.Pointer[rootSampleSource]
 	watchdogDone := make(chan struct{})
 	defer func() { cancel(); <-watchdogDone }()
 	go func() {
@@ -71,7 +76,7 @@ func RunRootBox(configPath, assetsPath, pidPath, readyPath, stopPath string, sup
 							DirectTx int64  `json:"directTx"`
 							DirectRx int64  `json:"directRx"`
 						}{
-							core.CurrentOutboundTag(), int64(float64(core.QueryStats("proxy", "uplink")) / elapsed), int64(float64(core.QueryStats("proxy", "downlink")) / elapsed), int64(float64(core.QueryStats("bypass", "uplink")) / elapsed), int64(float64(core.QueryStats("bypass", "downlink")) / elapsed),
+							core.box.CurrentOutboundTag(), rootTrafficRate(core.proxy, "uplink", elapsed, core.box.QueryStats), rootTrafficRate(core.proxy, "downlink", elapsed, core.box.QueryStats), rootTrafficRate(core.direct, "uplink", elapsed, core.box.QueryStats), rootTrafficRate(core.direct, "downlink", elapsed, core.box.QueryStats),
 						})
 						fmt.Println("WANBOX_STATS:" + string(payload))
 					}
@@ -118,7 +123,8 @@ func RunRootBox(configPath, assetsPath, pidPath, readyPath, stopPath string, sup
 	// @author 雾晚: join the reader before closing stats/router resources.
 	defer func() { cancel(); <-watchdogDone; instance.Close() }()
 	stats := &BoxInstance{Box: instance}
-	stats.SetV2rayStats("proxy\nbypass")
+	proxyTags, directTags := rootTrafficTags(options.Outbounds, options.Endpoints)
+	stats.SetV2rayStats(strings.Join(append(append([]string{}, proxyTags...), directTags...), "\n"))
 	if err = instance.Start(); err != nil {
 		return err
 	}
@@ -126,7 +132,7 @@ func RunRootBox(configPath, assetsPath, pidPath, readyPath, stopPath string, sup
 		return err
 	}
 	defer os.Remove(readyPath)
-	telemetry.Store(stats)
+	telemetry.Store(&rootSampleSource{stats, proxyTags, directTags})
 	<-ctx.Done()
 	return nil
 }

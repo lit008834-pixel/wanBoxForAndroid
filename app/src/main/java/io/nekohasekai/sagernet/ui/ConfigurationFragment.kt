@@ -150,7 +150,6 @@ import moe.matsuri.nb4a.Protocols.getProtocolColor
 import moe.matsuri.nb4a.proxy.anytls.AnyTLSSettingsActivity
 import moe.matsuri.nb4a.proxy.config.ConfigSettingActivity
 import moe.matsuri.nb4a.proxy.shadowtls.ShadowTLSSettingsActivity
-import moe.matsuri.nb4a.ui.ConnectionTestNotification
 import okhttp3.internal.closeQuietly
 import moe.matsuri.nb4a.utils.toBytesString
 import java.util.concurrent.ConcurrentHashMap
@@ -258,7 +257,6 @@ class ConfigurationFragment @JvmOverloads constructor(
     private var speedTestJob: Job? = null
     private var speedTestRunner: SpeedTestQueueRunner<ProxyEntity>? = null
     private var speedTestDialog: AlertDialog? = null
-    private var speedTestNotification: ConnectionTestNotification? = null
     private var speedTestHidden = false
 
     fun refreshProfileState() {
@@ -971,8 +969,6 @@ class ConfigurationFragment @JvmOverloads constructor(
         if (speedTestJob != null) {
             speedTestRunner?.cancel()
             speedTestJob?.cancel()
-            speedTestNotification?.updateNotification(0, 0, true)
-            speedTestNotification = null
             speedTestDialog?.dismiss()
             speedTestDialog = null
             speedTestHidden = false
@@ -999,8 +995,6 @@ class ConfigurationFragment @JvmOverloads constructor(
         super.onResume()
         if (speedTestHidden && speedTestJob != null) {
             speedTestHidden = false
-            speedTestNotification?.updateNotification(0, 0, true)
-            speedTestNotification = null
             speedTestDialog?.show()
         }
     }
@@ -1681,10 +1675,6 @@ class ConfigurationFragment @JvmOverloads constructor(
 
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
             speedTestHidden = true
-            speedTestNotification = ConnectionTestNotification(
-                dialog.context,
-                "[$displayName] ${getString(R.string.speed_test_group)}",
-            )
             dialog.hide()
         }
         dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener {
@@ -1768,7 +1758,6 @@ class ConfigurationFragment @JvmOverloads constructor(
                     runOnMainDispatcher {
                     if (speedTestRunner !== runner) return@runOnMainDispatcher
                         val detail = formatSpeedTestSnapshot(sample)
-                        speedTestNotification?.updateNotification(index + 1, total, false, detail)
                         if (!speedTestHidden && isAdded) {
                             val completed = completedSpeedTestCount(index, total, sample.done)
                             binding.nowTesting.text = detail
@@ -1799,9 +1788,6 @@ class ConfigurationFragment @JvmOverloads constructor(
                     adapter.groupFragments.values.forEach { fragment ->
                         fragment.adapter?.clearSpeedTestLive()
                     }
-                    speedTestNotification?.updateNotification(0, 0, true)
-                    speedTestNotification?.cancel()
-                    speedTestNotification = null
                     speedTestDialog = null
                     speedTestHidden = false
                     speedTestRunner = null
@@ -1850,10 +1836,6 @@ class ConfigurationFragment @JvmOverloads constructor(
 
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
             speedTestHidden = true
-            speedTestNotification = ConnectionTestNotification(
-                dialog.context,
-                "[${profile.displayName()}] ${getString(R.string.action_test_profile_speed)}",
-            )
             dialog.hide()
         }
         dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener {
@@ -1927,7 +1909,6 @@ class ConfigurationFragment @JvmOverloads constructor(
                     runOnMainDispatcher {
                     if (speedTestRunner !== runner) return@runOnMainDispatcher
                         val detail = formatSpeedTestSnapshot(sample)
-                        speedTestNotification?.updateNotification(index + 1, total, false, detail)
                         if (!speedTestHidden && isAdded) {
                             val completed = completedSpeedTestCount(index, total, sample.done)
                             binding.nowTesting.text = detail
@@ -1966,9 +1947,6 @@ class ConfigurationFragment @JvmOverloads constructor(
                     if (speedTestDialog === dialog) {
                         speedTestDialog = null
                     }
-                    speedTestNotification?.updateNotification(0, 0, true)
-                    speedTestNotification?.cancel()
-                    speedTestNotification = null
                     speedTestHidden = false
                     speedTestRunner = null
                     speedTestJob = null
@@ -2031,7 +2009,6 @@ class ConfigurationFragment @JvmOverloads constructor(
         lateinit var minimize: () -> Unit
 
         val dialogStatus = AtomicInteger(0) // 1: hidden 2: cancelled
-        var notification: ConnectionTestNotification? = null
 
         val results: MutableSet<ProxyEntity> = ConcurrentHashMap.newKeySet()
         var proxyN = 0
@@ -2045,11 +2022,6 @@ class ConfigurationFragment @JvmOverloads constructor(
                 val context = context ?: return@runOnMainDispatcher
                 val progress = finishedN.addAndGet(1)
                 val status = dialogStatus.get()
-                notification?.updateNotification(
-                    progress,
-                    proxyN,
-                    progress >= proxyN || status == 2
-                )
                 if (status >= 1) return@runOnMainDispatcher
                 if (!isAdded) return@runOnMainDispatcher
 
@@ -2239,10 +2211,6 @@ class ConfigurationFragment @JvmOverloads constructor(
         }
         test.minimize = {
             test.dialogStatus.set(1)
-            test.notification = ConnectionTestNotification(
-                dialog.context,
-                "[$displayName] ${getString(R.string.connection_test)}"
-            )
             dialog.hide()
         }
     }
@@ -2330,10 +2298,6 @@ class ConfigurationFragment @JvmOverloads constructor(
         }
         test.minimize = {
             test.dialogStatus.set(1)
-            test.notification = ConnectionTestNotification(
-                dialog.context,
-                "[$displayName] TCP RTT"
-            )
             dialog.hide()
         }
     }

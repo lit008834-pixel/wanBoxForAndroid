@@ -24,7 +24,8 @@ class Arm64BackgroundContractTest {
         assertTrue(updater.contains("setRequiresBatteryNotLow(true)"))
         assertTrue(updater.substringAfter("if (subscriptions.isEmpty())").substringBefore("val plan").contains("cancelUniqueWork"))
         assertFalse(updater.substringAfter("val plan").contains("cancelUniqueWork"))
-        assertTrue(updater.contains("finally { nm.cancel(2) }"))
+        assertTrue(updater.contains("GroupUpdater.executeUpdate(profile, false)"))
+        assertFalse(updater.contains("NotificationCompat"))
     }
     @Test fun tcpPathPreservesCancellationAndDoesNotRewriteChannelHealthOrUdpResults() {
         val tcp = source("bg/proto/TcpPing.kt")

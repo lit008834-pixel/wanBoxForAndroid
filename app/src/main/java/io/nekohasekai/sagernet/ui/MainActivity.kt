@@ -1,14 +1,12 @@
 // @author 雾晚
 package io.nekohasekai.sagernet.ui
 
-import android.Manifest.permission.POST_NOTIFICATIONS
 import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.content.Context
 import android.content.BroadcastReceiver
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.net.Uri
@@ -25,8 +23,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
 import androidx.annotation.IdRes
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import androidx.preference.PreferenceDataStore
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -203,18 +199,6 @@ class MainActivity : ThemedActivity(),
         }
 
         refreshNavMenu(DataStore.enableClashAPI)
-
-        // sdk 33 notification
-        if (Build.VERSION.SDK_INT >= 33) {
-            val checkPermission =
-                ContextCompat.checkSelfPermission(this@MainActivity, POST_NOTIFICATIONS)
-            if (checkPermission != PackageManager.PERMISSION_GRANTED) {
-                //动态申请
-                ActivityCompat.requestPermissions(
-                    this@MainActivity, arrayOf(POST_NOTIFICATIONS), 0
-                )
-            }
-        }
 
         val isPreRelease = isPreview && (BuildConfig.PRE_VERSION_NAME.contains("preview", true) || BuildConfig.PRE_VERSION_NAME.contains("beta", true) || BuildConfig.PRE_VERSION_NAME.contains("alpha", true))
         if (isPreRelease && DataStore.previewHintDismissedVersion != BuildConfig.PRE_VERSION_NAME) {
@@ -783,6 +767,7 @@ class MainActivity : ThemedActivity(),
 
     override fun onStop() {
         if (SagerNet.databaseFailure == null) {
+            binding.stats.onHostStopped()
             connection.updateConnectionId(SagerConnection.CONNECTION_ID_MAIN_ACTIVITY_BACKGROUND)
             connection.disconnect(this) // Module owns the core; no App polling while UI is hidden.
         }

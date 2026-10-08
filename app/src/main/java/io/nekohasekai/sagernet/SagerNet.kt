@@ -15,8 +15,6 @@ import android.os.Build
 import android.os.PowerManager
 import android.os.StrictMode
 import android.os.UserManager
-import androidx.annotation.RequiresApi
-import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
 import go.Seq
 import io.nekohasekai.sagernet.bg.SagerConnection
@@ -103,7 +101,7 @@ class SagerNet : Application(),
                 nativeInterface, nativeInterface, LocalResolverImpl
             )
 
-            if (isBgProcess) runOnDefaultDispatcher { updateNotificationChannels() }
+            if (isBgProcess) runOnDefaultDispatcher { clearLegacyNotifications() }
 
             // fix multi process issue in Android 9+
             JavaUtil.handleWebviewDir(this)
@@ -126,7 +124,7 @@ class SagerNet : Application(),
             AppLocale.apply()
             AppIconManager.init(this)
             DataStore.migrateSubscriptionUserAgents()
-            runOnDefaultDispatcher { updateNotificationChannels() }
+            runOnDefaultDispatcher { clearLegacyNotifications() }
         }
 
         if (BuildConfig.DEBUG) {
@@ -144,7 +142,7 @@ class SagerNet : Application(),
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        updateNotificationChannels()
+        clearLegacyNotifications()
     }
 
     override fun getWorkManagerConfiguration(): WorkConfiguration {
@@ -205,31 +203,11 @@ class SagerNet : Application(),
             false
         }
 
-        fun updateNotificationChannels() {
-            if (Build.VERSION.SDK_INT >= 26) @RequiresApi(26) {
-                notification.createNotificationChannels(
-                    listOf(
-                        NotificationChannel(
-                            "service-vpn",
-                            application.getText(R.string.service_vpn),
-                            if (Build.VERSION.SDK_INT >= 28) NotificationManager.IMPORTANCE_MIN
-                            else NotificationManager.IMPORTANCE_LOW
-                        ),   // #1355
-                        NotificationChannel(
-                            "service-proxy",
-                            application.getText(R.string.service_proxy),
-                            NotificationManager.IMPORTANCE_LOW
-                        ), NotificationChannel(
-                            "service-subscription",
-                            application.getText(R.string.service_subscription),
-                            NotificationManager.IMPORTANCE_DEFAULT
-                        ), NotificationChannel(
-                            "connection-test",
-                            application.getText(R.string.connection_test),
-                            NotificationManager.IMPORTANCE_DEFAULT
-                        )
-                    )
-                )
+        /** The module owns the core; the manager no longer posts tray notifications. @author 雾晚 */
+        fun clearLegacyNotifications() {
+            notification.cancelAll()
+            for (channel in listOf("service-vpn", "service-proxy", "service-subscription", "connection-test")) {
+                notification.deleteNotificationChannel(channel)
             }
         }
 
@@ -264,7 +242,10 @@ class SagerNet : Application(),
         }
         fun startService() = moduleCommand { io.nekohasekai.sagernet.bg.RootModuleClient.startOrReload() }
         fun reloadService() = moduleCommand { io.nekohasekai.sagernet.bg.RootModuleClient.startOrReload() }
-        fun restartService() = moduleCommand { io.nekohasekai.sagernet.bg.RootModuleClient.call("restart") }
+        // @author 雾晚: restart from newly generated App rules/settings, not the old module snapshot.
+        fun restartService() = moduleCommand {
+            io.nekohasekai.sagernet.bg.RootModuleClient.startOrReload(onlyIfRunning = true)
+        }
         fun stopService() = moduleCommand { io.nekohasekai.sagernet.bg.RootModuleClient.stop() }
 
         fun updatePerformancePriorityMode(enabled: Boolean) {

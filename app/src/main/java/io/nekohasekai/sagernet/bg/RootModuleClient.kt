@@ -104,11 +104,14 @@ object RootModuleClient {
         } finally { process.destroy() }
     }
     fun safeError(error: Exception): String = error.message?.takeIf { it.matches(Regex("[a-z_]{1,80}")) } ?: "module_operation_failed"
-    suspend fun startOrReload() {
+    suspend fun startOrReload(onlyIfRunning: Boolean = false) {
         RootModuleDataUpdate.applyInstallerSelection()
-        if (!changes.tryLock()) throw IOException("module_busy")
+        if (onlyIfRunning) changes.lock()
+        else if (!changes.tryLock()) throw IOException("module_busy")
         try {
         val before = call("status")
+        // @author 雾晚: rule edits use module truth, never a stale UI/Binder state.
+        if (onlyIfRunning && !before.state.canStop) return
         if (RootModuleDataUpdate.pending()) throw IOException("data_update_pending")
         if (before.phase == "disabled") throw IOException("module_disabled_or_missing")
         val profile = SagerDatabase.proxyDao.getById(DataStore.selectedProxy) ?: throw IOException("profile_missing")

@@ -2,8 +2,6 @@
 package io.nekohasekai.sagernet.bg
 
 import android.content.Context
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
 import androidx.work.Data
 import androidx.work.ExistingPeriodicWorkPolicy.UPDATE
 import androidx.work.PeriodicWorkRequest
@@ -16,7 +14,6 @@ import androidx.work.Constraints
 import androidx.work.NetworkType
 import io.nekohasekai.sagernet.utils.awaitCancellable
 import kotlinx.coroutines.CancellationException
-import io.nekohasekai.sagernet.R
 import io.nekohasekai.sagernet.database.DataStore
 import io.nekohasekai.sagernet.database.SagerDatabase
 import io.nekohasekai.sagernet.group.GroupUpdater
@@ -85,15 +82,6 @@ object SubscriptionUpdater {
         appContext: Context, params: WorkerParameters
     ) : RemoteCoroutineWorker(appContext, params) {
 
-        val nm = NotificationManagerCompat.from(applicationContext)
-
-        val notification = NotificationCompat.Builder(applicationContext, "service-subscription")
-            .setWhen(0)
-            .setTicker(applicationContext.getString(R.string.forward_success))
-            .setContentTitle(applicationContext.getString(R.string.subscription_update))
-            .setSmallIcon(R.drawable.ic_throne_tile)
-            .setCategory(NotificationCompat.CATEGORY_SERVICE)
-
         override suspend fun doRemoteWork(): Result {
             Logs.d("SubscriptionUpdater: work started, serviceState=${DataStore.serviceState}")
             var subscriptions =
@@ -103,30 +91,17 @@ object SubscriptionUpdater {
                 subscriptions = subscriptions.filter { !it.subscription!!.updateWhenConnectedOnly }
             }
 
-            try {
-                for (profile in subscriptions) {
-                    val subscription = profile.subscription!!
+            for (profile in subscriptions) {
+                val subscription = profile.subscription!!
 
-                    if ((System.currentTimeMillis() / 1000 - subscription.lastUpdated.toLong()) < subscription.autoUpdateDelay.toLong().coerceAtLeast(15) * 60) {
-                        Logs.d("work: not updating " + profile.displayName())
-                        continue
-                    }
-                    Logs.d("work: updating " + profile.displayName())
-
-                    notification.setContentText(
-                        applicationContext.getString(
-                            R.string.subscription_update_message, profile.displayName()
-                        )
-                    )
-                    if (nm.areNotificationsEnabled()) {
-                        try { nm.notify(2, notification.build()) }
-                        catch (_: SecurityException) { /* Permission can be revoked during an update. */ }
-                    }
-
-                    GroupUpdater.executeUpdate(profile, false)
+                if ((System.currentTimeMillis() / 1000 - subscription.lastUpdated.toLong()) < subscription.autoUpdateDelay.toLong().coerceAtLeast(15) * 60) {
+                    Logs.d("work: not updating " + profile.displayName())
+                    continue
                 }
+                Logs.d("work: updating " + profile.displayName())
 
-            } finally { nm.cancel(2) }
+                GroupUpdater.executeUpdate(profile, false)
+            }
             return Result.success()
         }
     }

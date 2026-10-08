@@ -22,13 +22,18 @@ class RootTunService : Service(), BaseService.Interface {
     override fun acquireWakeLock() = Unit
     override fun currentProfileName() = snapshot?.profileName ?: ""
     override fun onBind(intent: Intent): android.os.IBinder? {
-        if (observer == null) observer = data.serviceScope.launch {
+        if (observer?.isActive != true) observer = data.serviceScope.launch {
             val networkOwner = Any()
-            try {
-                io.nekohasekai.sagernet.utils.DefaultNetworkListener.start(networkOwner) { network ->
-                    SagerNet.underlyingNetwork = network
+            RootModuleObservation.run(network = {
+                try {
+                    io.nekohasekai.sagernet.utils.DefaultNetworkListener.start(networkOwner) { network ->
+                        SagerNet.underlyingNetwork = network
+                    }
+                    awaitCancellation()
+                } finally {
+                    withContext(NonCancellable) { io.nekohasekai.sagernet.utils.DefaultNetworkListener.stop(networkOwner) }
                 }
-                while (isActive) {
+            }, sample = {
                 try {
                     val status = RootModuleClient.call("status")
                     val changedError = snapshot?.error != status.error
@@ -44,11 +49,7 @@ class RootTunService : Service(), BaseService.Interface {
                     snapshot = null; DataStore.currentProfile = 0; DataStore.mixedInboundAuthed = false
                     data.changeState(BaseService.State.Stopped)
                 }
-                delay(2_000) // Bound UI/tile only, never an App background watchdog.
-                }
-            } finally {
-                withContext(NonCancellable) { io.nekohasekai.sagernet.utils.DefaultNetworkListener.stop(networkOwner) }
-            }
+            }) // Bound UI/tile only, never an App background watchdog.
         }
         return super<BaseService.Interface>.onBind(intent)
     }

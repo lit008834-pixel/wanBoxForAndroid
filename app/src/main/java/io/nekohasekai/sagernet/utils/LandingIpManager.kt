@@ -2,15 +2,15 @@ package io.nekohasekai.sagernet.utils
 
 import io.nekohasekai.sagernet.database.DataStore
 import io.nekohasekai.sagernet.ktx.USER_AGENT
-import io.nekohasekai.sagernet.ktx.tryProxyOutbound
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import libcore.Libcore
-import moe.matsuri.nb4a.utils.Util
 import org.json.JSONObject
 import java.util.Locale
 
@@ -46,30 +46,15 @@ data class LandingIpInfo(
 
 object LandingIpManager {
 
-    private const val CACHE_TTL_MS = 60_000L // 60 秒自动过期，确保节点切换与出网变动实时精准
-
-    @Volatile
-    private var currentCache: LandingIpInfo? = null
-
-    @Volatile
-    var cachedProfileId: Long = -1L
-        private set
-
-    @Volatile
-    private var isQuerying: Boolean = false
-
-    fun clearCache() {
-        currentCache = null
-        cachedProfileId = -1L
-    }
-
-    fun getCachedInfo(): LandingIpInfo? = currentCache
-
+    // @author 雾晚: one query owner, monotonic TTL, and invalidation across background/reload.
+    private val cache = LandingIpCache()
+    private val queries = Mutex()
+    @Volatile private var isQuerying = false
+    val cachedProfileId: Long get() = cache.profileId()
+    fun clearCache() = cache.clear()
+    fun getCachedInfo(): LandingIpInfo? = cache.get(DataStore.selectedProxy)
     fun isCurrentlyQuerying(): Boolean = isQuerying
-
-    fun updateCachedDuration(duration: Long) {
-        currentCache = currentCache?.copy(durationMs = duration)
-    }
+    fun updateCachedDuration(duration: Long) = cache.duration(duration)
 
     fun countryCodeToFlagEmoji(countryCode: String?): String {
         if (countryCode == null || countryCode.length != 2) return "🌐"
@@ -137,28 +122,9 @@ object LandingIpManager {
         return "$flag $region (点击重试)"
     }
 
-    private fun createHttpClient(): libcore.HTTPClient {
-        return Libcore.newHttpClient().apply {
-            modernTLS()
-            val mixedPort = DataStore.mixedPort
-            if (mixedPort > 0) {
-                trySocks5(mixedPort.toInt(), "", "")
-            } else {
-                tryProxyOutbound()
-            }
-        }
-    }
-
-    private fun fetchIpWhoIs(ua: String, startTime: Long): LandingIpInfo? {
-        var client: libcore.HTTPClient? = null
+    private suspend fun fetchIpWhoIs(client: LandingIpHttp, ua: String, startTime: Long): LandingIpInfo? {
         try {
-            client = createHttpClient()
-            val req = client.newRequest().apply {
-                setURL("https://ipwho.is/")
-                setUserAgent(ua)
-            }
-            val resp = req.execute()
-            val body = Util.getStringBox(resp.contentString)
+            val body = client.text("https://ipwho.is/", ua)
             val json = JSONObject(body)
             if (json.optBoolean("success", false)) {
                 val ip = json.optString("ip").trim()
@@ -190,23 +156,14 @@ object LandingIpManager {
                     )
                 }
             }
-        } catch (_: Throwable) {
-        } finally {
-            runCatching { client?.close() }
-        }
+        } catch (e: CancellationException) { throw e }
+          catch (_: Exception) { }
         return null
     }
 
-    private fun fetchIpSb(ua: String, startTime: Long): LandingIpInfo? {
-        var client: libcore.HTTPClient? = null
+    private suspend fun fetchIpSb(client: LandingIpHttp, ua: String, startTime: Long): LandingIpInfo? {
         try {
-            client = createHttpClient()
-            val req = client.newRequest().apply {
-                setURL("https://api.ip.sb/geoip")
-                setUserAgent(ua)
-            }
-            val resp = req.execute()
-            val body = Util.getStringBox(resp.contentString)
+            val body = client.text("https://api.ip.sb/geoip", ua)
             val json = JSONObject(body)
             val ip = json.optString("ip").trim()
             if (ip.isNotBlank()) {
@@ -235,23 +192,14 @@ object LandingIpManager {
                     durationMs = cost,
                 )
             }
-        } catch (_: Throwable) {
-        } finally {
-            runCatching { client?.close() }
-        }
+        } catch (e: CancellationException) { throw e }
+          catch (_: Exception) { }
         return null
     }
 
-    private fun fetchIpApi(ua: String, startTime: Long): LandingIpInfo? {
-        var client: libcore.HTTPClient? = null
+    private suspend fun fetchIpApi(client: LandingIpHttp, ua: String, startTime: Long): LandingIpInfo? {
         try {
-            client = createHttpClient()
-            val req = client.newRequest().apply {
-                setURL("http://ip-api.com/json/?fields=status,message,country,countryCode,regionName,city,isp,org,as,query")
-                setUserAgent(ua)
-            }
-            val resp = req.execute()
-            val body = Util.getStringBox(resp.contentString)
+            val body = client.text("http://ip-api.com/json/?fields=status,message,country,countryCode,regionName,city,isp,org,as,query", ua)
             val json = JSONObject(body)
             if (json.optString("status") == "success") {
                 val ip = json.optString("query").trim()
@@ -279,23 +227,14 @@ object LandingIpManager {
                     durationMs = cost,
                 )
             }
-        } catch (_: Throwable) {
-        } finally {
-            runCatching { client?.close() }
-        }
+        } catch (e: CancellationException) { throw e }
+          catch (_: Exception) { }
         return null
     }
 
-    private fun fetchCloudflare(ua: String, startTime: Long): LandingIpInfo? {
-        var client: libcore.HTTPClient? = null
+    private suspend fun fetchCloudflare(client: LandingIpHttp, ua: String, startTime: Long): LandingIpInfo? {
         try {
-            client = createHttpClient()
-            val req = client.newRequest().apply {
-                setURL("https://cloudflare.com/cdn-cgi/trace")
-                setUserAgent(ua)
-            }
-            val resp = req.execute()
-            val body = Util.getStringBox(resp.contentString)
+            val body = client.text("https://cloudflare.com/cdn-cgi/trace", ua)
             var cfIp = ""
             var cfLoc = ""
             var cfColo = ""
@@ -324,23 +263,14 @@ object LandingIpManager {
                     durationMs = cost,
                 )
             }
-        } catch (_: Throwable) {
-        } finally {
-            runCatching { client?.close() }
-        }
+        } catch (e: CancellationException) { throw e }
+          catch (_: Exception) { }
         return null
     }
 
-    private fun fetchIpify(ua: String, startTime: Long): LandingIpInfo? {
-        var client: libcore.HTTPClient? = null
+    private suspend fun fetchIpify(client: LandingIpHttp, ua: String, startTime: Long): LandingIpInfo? {
         try {
-            client = createHttpClient()
-            val req = client.newRequest().apply {
-                setURL("https://api.ipify.org?format=json")
-                setUserAgent(ua)
-            }
-            val resp = req.execute()
-            val body = Util.getStringBox(resp.contentString)
+            val body = client.text("https://api.ipify.org?format=json", ua)
             val json = JSONObject(body)
             val ip = json.optString("ip").trim()
             if (ip.isNotBlank()) {
@@ -358,10 +288,8 @@ object LandingIpManager {
                     durationMs = cost,
                 )
             }
-        } catch (_: Throwable) {
-        } finally {
-            runCatching { client?.close() }
-        }
+        } catch (e: CancellationException) { throw e }
+          catch (_: Exception) { }
         return null
     }
 
@@ -371,107 +299,103 @@ object LandingIpManager {
         onUpdate: ((LandingIpInfo) -> Unit)? = null,
     ): Result<LandingIpInfo> = withContext(Dispatchers.IO) {
         if (!DataStore.serviceState.connected) {
-            return@withContext Result.failure(IllegalStateException("VPN not connected"))
+            return@withContext Result.failure(IllegalStateException("service_not_connected"))
         }
 
-        val now = System.currentTimeMillis()
-        if (forceRefresh) {
-            currentCache = null
-            cachedProfileId = -1L
-        } else {
-            val cache = currentCache
-            if (cache != null && cachedProfileId == profileId && (now - cache.queryTimestamp < CACHE_TTL_MS)) {
-                return@withContext Result.success(cache)
+        queries.withLock {
+            if (forceRefresh) clearCache()
+            cache.get(profileId)?.let { return@withContext Result.success(it) }
+            if (DataStore.mixedInboundDisabled || DataStore.mixedPort <= 0) {
+                return@withContext Result.failure(IllegalStateException("mixed_inbound_required_for_ip_query"))
             }
-        }
+            val ticket = cache.ticket(profileId)
+            fun publish(info: LandingIpInfo) {
+                if (DataStore.serviceState.connected && DataStore.selectedProxy == profileId && cache.put(ticket, info)) onUpdate?.invoke(info)
+            }
+            isQuerying = true
+            val startTime = System.currentTimeMillis()
+            val ua = USER_AGENT.takeIf { it.isNotBlank() }
+                ?: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
 
-        if (isQuerying && !forceRefresh) {
-            currentCache?.let { return@withContext Result.success(it) }
-        }
+            try {
+                LandingIpHttp(DataStore.mixedPort,
+                    DataStore.mixedUsername.takeIf { DataStore.mixedInboundNeedsAuth }, DataStore.mixedPassword).use { client ->
+                coroutineScope {
+                    val resultChannel = Channel<LandingIpInfo>(Channel.UNLIMITED)
 
-        isQuerying = true
-        val startTime = System.currentTimeMillis()
-        val ua = USER_AGENT.takeIf { it.isNotBlank() }
-            ?: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
+                    // @author 雾晚: async calls share a bounded owner and are cancelled after the winner.
+                    val jobs = mutableListOf<kotlinx.coroutines.Job>()
+                    jobs += launch {
+                        val info = withTimeoutOrNull(1800L) { fetchCloudflare(client, ua, startTime) }
+                        if (info != null) resultChannel.send(info)
+                    }
 
-        try {
-            coroutineScope {
-                val resultChannel = Channel<LandingIpInfo>(Channel.UNLIMITED)
+                    jobs += launch {
+                        val info = withTimeoutOrNull(2000L) { fetchIpify(client, ua, startTime) }
+                        if (info != null) resultChannel.send(info)
+                    }
 
-                // 并发启动 5 大出网探测源，超时限制严格控制在 2.5s 以内，绝不堵塞主线程
-                launch {
-                    val info = withTimeoutOrNull(1800L) { fetchCloudflare(ua, startTime) }
-                    if (info != null) resultChannel.send(info)
-                }
+                    jobs += launch {
+                        val info = withTimeoutOrNull(2500L) { fetchIpWhoIs(client, ua, startTime) }
+                        if (info != null) resultChannel.send(info)
+                    }
 
-                launch {
-                    val info = withTimeoutOrNull(2000L) { fetchIpify(ua, startTime) }
-                    if (info != null) resultChannel.send(info)
-                }
+                    jobs += launch {
+                        val info = withTimeoutOrNull(2500L) { fetchIpSb(client, ua, startTime) }
+                        if (info != null) resultChannel.send(info)
+                    }
 
-                launch {
-                    val info = withTimeoutOrNull(2500L) { fetchIpWhoIs(ua, startTime) }
-                    if (info != null) resultChannel.send(info)
-                }
+                    jobs += launch {
+                        val info = withTimeoutOrNull(2500L) { fetchIpApi(client, ua, startTime) }
+                        if (info != null) resultChannel.send(info)
+                    }
 
-                launch {
-                    val info = withTimeoutOrNull(2500L) { fetchIpSb(ua, startTime) }
-                    if (info != null) resultChannel.send(info)
-                }
-
-                launch {
-                    val info = withTimeoutOrNull(2500L) { fetchIpApi(ua, startTime) }
-                    if (info != null) resultChannel.send(info)
-                }
-
-                var winningInfo: LandingIpInfo? = null
-                val deadline = System.currentTimeMillis() + 2800L
-                while (System.currentTimeMillis() < deadline) {
-                    val remaining = (deadline - System.currentTimeMillis()).coerceAtLeast(1L)
-                    val received = withTimeoutOrNull(remaining) { resultChannel.receiveCatching().getOrNull() }
-                    if (received != null) {
-                        val isDetailed = received.isp.isNotBlank() && received.isp != "Cloudflare Edge"
-                        if (isDetailed) {
-                            winningInfo = received
-                            currentCache = received
-                            cachedProfileId = profileId
-                            onUpdate?.invoke(received)
-                            break
-                        } else {
-                            if (winningInfo == null) {
+                    try {
+                    var winningInfo: LandingIpInfo? = null
+                    val deadline = System.currentTimeMillis() + 2800L
+                    while (System.currentTimeMillis() < deadline) {
+                        val remaining = (deadline - System.currentTimeMillis()).coerceAtLeast(1L)
+                        val received = withTimeoutOrNull(remaining) { resultChannel.receiveCatching().getOrNull() }
+                        if (received != null) {
+                            val isDetailed = received.isp.isNotBlank() && received.isp != "Cloudflare Edge"
+                            if (isDetailed) {
                                 winningInfo = received
-                                currentCache = received
-                                cachedProfileId = profileId
-                                onUpdate?.invoke(received)
+                                publish(received)
+                                break
+                            } else {
+                                if (winningInfo == null) {
+                                    winningInfo = received
+                                    publish(received)
+                                }
+                                // 毫秒级等待是否有更高精度全量详细信息返回（如运营商/城市）
+                                val detailedRemaining = 600L.coerceAtMost(deadline - System.currentTimeMillis())
+                                val second = withTimeoutOrNull(detailedRemaining) { resultChannel.receiveCatching().getOrNull() }
+                                if (second != null && second.isp.isNotBlank() && second.isp != "Cloudflare Edge") {
+                                    winningInfo = second
+                                    publish(second)
+                                }
+                                break
                             }
-                            // 毫秒级等待是否有更高精度全量详细信息返回（如运营商/城市）
-                            val detailedRemaining = 600L.coerceAtMost(deadline - System.currentTimeMillis())
-                            val second = withTimeoutOrNull(detailedRemaining) { resultChannel.receiveCatching().getOrNull() }
-                            if (second != null && second.isp.isNotBlank() && second.isp != "Cloudflare Edge") {
-                                winningInfo = second
-                                currentCache = second
-                                cachedProfileId = profileId
-                                onUpdate?.invoke(second)
-                            }
+                        } else {
                             break
                         }
-                    } else {
-                        break
                     }
-                }
 
-                if (winningInfo != null) {
-                    currentCache = winningInfo
-                    cachedProfileId = profileId
-                    Result.success(winningInfo)
-                } else {
-                    Result.failure(Exception("无法获取落地 IP 信息"))
+                    if (winningInfo != null) {
+                        if (DataStore.serviceState.connected && DataStore.selectedProxy == profileId && cache.put(ticket, winningInfo)) Result.success(winningInfo)
+                        else Result.failure(IllegalStateException("landing_ip_query_retired"))
+                    } else {
+                        Result.failure(Exception("无法获取落地 IP 信息"))
+                    }
+                    } finally { jobs.forEach { it.cancel() }; resultChannel.close() }
                 }
+                }
+            } catch (e: CancellationException) { throw e }
+              catch (e: Exception) {
+                Result.failure(e)
+            } finally {
+                isQuerying = false
             }
-        } catch (e: Throwable) {
-            Result.failure(e)
-        } finally {
-            isQuerying = false
         }
     }
 }
