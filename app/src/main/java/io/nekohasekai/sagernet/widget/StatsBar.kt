@@ -539,9 +539,10 @@ class StatsBar @JvmOverloads constructor(
             if (landingIpJob?.isActive == true && !forceRefresh) return@runOnUi
             landingIpJob?.cancel()
             landingIpJob = scope.launch {
+                val queryJob = coroutineContext[Job]
                 val result = LandingIpManager.queryLandingIp(currentProfile, forceRefresh = forceRefresh) { intermediateInfo ->
                     runOnUi {
-                        if (currentState == BaseService.State.Connected && DataStore.showLandingIp && DataStore.selectedProxy == currentProfile) {
+                        if (queryJob?.isActive == true && currentState == BaseService.State.Connected && DataStore.showLandingIp && DataStore.selectedProxy == currentProfile) {
                             statusIpText.text = "${intermediateInfo.countryFlag} ${intermediateInfo.countryCode} ${intermediateInfo.ip}"
                             statusIpText.visibility = View.VISIBLE
                         }

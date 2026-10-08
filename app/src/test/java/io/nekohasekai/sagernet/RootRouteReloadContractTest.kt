@@ -28,6 +28,8 @@ class RootRouteReloadContractTest {
         val stats = source("widget/StatsBar.kt")
         val cancel = stats.substringAfter("fun onHostStopped()").substringBefore("private data class ProbeKey")
         assertTrue(cancel.contains("landingIpJob?.cancel()")); assertTrue(cancel.contains("LandingIpManager.clearCache()"))
+        assertTrue(stats.contains("val queryJob = coroutineContext[Job]"))
+        assertTrue(stats.contains("queryJob?.isActive == true && currentState"))
         assertFalse(cancel.contains("testConnection("))
         assertFalse(source("utils/LandingIpManager.kt").contains("req.execute()"))
     }
