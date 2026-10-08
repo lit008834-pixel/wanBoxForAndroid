@@ -288,6 +288,13 @@ jobs:
       - name: Get Version
         run: |
           VERSION=$(grep '^PRE_VERSION_NAME=' nb4a.properties | cut -d'=' -f2 | tr -d '\r\n')
+          # @author 雾晚: a new preview must never overwrite an already published tag.
+          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" > "$RUNNER_TEMP/preview-existing-tag.txt"; then
+            echo "Preview tag v$VERSION already exists; refusing to replace it."
+            exit 1
+          else
+            test "$?" -eq 2
+          fi
           echo "PREVIEW_TAG=v$VERSION" >> "$GITHUB_ENV"
       - name: Download Artifacts
         uses: actions/download-artifact@v4
