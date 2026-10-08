@@ -9,6 +9,14 @@ import java.io.IOException
 
 /** Protocol + Android integration regression checks; not Magisk device tests. @author 雾晚 */
 class RootModuleContractTest {
+    @Test fun managerDoesNotShipUnusedStandaloneCoreAndModuleStillPackagesIt() {
+        val build = File("build.gradle.kts").readText()
+        assertTrue(build.contains("excludes += \"**/librootbox.so\""))
+        assertTrue(build.contains("useLegacyPackaging = true"))
+        val client = source("bg/RootModuleClient.kt")
+        assertFalse(client.contains("librootbox.so"))
+        assertTrue(File("../rootmodule/pack.py").readText().contains("files['bin/rootbox'], files['bin/wanboxctl'] = core, cli"))
+    }
     private fun source(path: String) = File("src/main/java/io/nekohasekai/sagernet/$path").readText()
     @Test fun installerSelectionBlocksStaleConnectedStatsAndKeepsLegacyResponses() {
         val selected = RootModuleClient.parseResponse("""{"schemaVersion":1,"ok":true,"state":{"phase":"connected","installData":{"id":"0123456789abcdef0123456789abcdef","mode":"nodes"},"stats":{"tx":999}}}""")

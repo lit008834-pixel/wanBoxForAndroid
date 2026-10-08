@@ -45,7 +45,7 @@ rm -f "$4" "$3"
 	var identity ProcessIdentity
 	for time.Now().Before(deadline) {
 		state := r.Status()
-		if state.Phase == "connected" {
+		if state.Phase == "connected" && len(state.Stats) > 0 {
 			identity = state.Core
 			break
 		}

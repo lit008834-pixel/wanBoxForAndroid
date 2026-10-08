@@ -51,6 +51,9 @@ android {
         jniLibs {
             // @author 雾晚: compressed APK and extracted Root PIE in nativeLibraryDir.
             useLegacyPackaging = true
+            // @author 雾晚: the standalone core belongs to the module, not the manager APK.
+            // Keep executableSo outputs for module packaging and all JNI/plugin libraries.
+            excludes += "**/librootbox.so"
         }
     }
     androidResources {

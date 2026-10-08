@@ -16,6 +16,7 @@
 |`internal/worker/worker.go`：单个到期计时器、取消释放|`rootmodule/supervisor.go`：启动 ready 检查在连接后仍每 100ms 运行|修复：成功写入 connected 后停止并禁用两个启动计时器；退出、取消、模块禁用监督继续生效|
 |`internal/module/config_transaction.go`：校验、事务、明确运行状态|`rootmodule/runtime.go`：相同配置的不同 expectedRevision 生成新目录并重启|修复：先验证冲突、取消、边界，再逐字段比较内容；相同内容直接返回真实状态；真实变化保留原校验、原子提交和失败回滚|
 |`internal/logfile/logfile.go`：有界事件与写入|监督器每 5 秒保存相同 idle 统计；现有日志 40 条、读取上限 64KiB|修复相同统计写盘；保留已有日志上限、敏感错误脱敏和故障停止机制|
+|按模块/管理器职责保留二进制|`buildSrc/Helpers.kt` 将独立 rootbox 输出加入 APK；`RootModuleClient.kt` 已无该副本调用|移除管理 APK 的 `librootbox.so` 重复副本；原 APK 中该条目压缩后为 14,454,383 字节。保留 App JNI/插件、独立构建输出、模块包中的完整核心；用真实 APK 校验防止副本恢复|
 |生命周期锁、进程身份、有限重试|`process_unix.go`、`runtime.go`、`supervisor.go` 已有锁、PID/start/exe 校验、清理与最多三次重试|已有等效安全能力，不复制替换；补充真实子进程保持 PID 和取消回收回归|
 |`internal/fetch/fetch.go`、`internal/subscription/update.go`：ETag/304、Catalog 增量|wanBox `RawUpdater.kt` 使用不同持久化、备份与订阅解析契约|暂缓：持久化验证器和 304 恢复需独立兼容设计。此次没有加入临时内存 ETag，也没有声称完成增量订阅|
 |selector 快速切换|wanBox 配置生成按节点生成不同核心图及插件资源|暂缓：相同配置不重启已修复；不同节点仍经既有事务重载。不能用 API 名称推断所有节点已载入 selector|
@@ -28,6 +29,8 @@
 启动探测停止后没有常驻 ready 检查；子进程 Wait、取消和已有 10 秒模块禁用检查仍在。真实状态查询仍检查 PID 和 ready 文件。统计刷新仍为至多每 5 秒一次；首次零流量、变化流量、故障清空保留，重复内容不重写。状态写入失败仍取消监督器，避免返回假成功。
 
 保留 UI、安装器选择、两种模块包、模块 ID、包名、签名、版本、核心 pin、用户数据、Root TUN 与 auto_redirect。没有恢复 VPN，没有新增常驻 App/Worker、资源缓存或网络轮询，没有修改路由/DNS/协议默认值。
+
+`app/build.gradle.kts` 仅排除 APK 中独立核心的精确文件名；没有删除源码、AAR、JNI、协议、证书、规则集或外部插件。模块打包仍读取 `app/executableSo/arm64-v8a/librootbox.so`，它不是 APK 中的条目。其他三个 ABI 的原生构建和内部模拟器 JNI 保持；公开 APK/模块仍仅 ARM64。
 
 ## 验证与构建
 
@@ -45,12 +48,16 @@
 |`python -m unittest discover -s rootmodule -p 'test_*.py'`|7 项中 3 项通过、4 项 POSIX 脚本用例跳过；Actions Linux 执行完整用例|
 |`python -m unittest discover -s tools/diagnostics -p test_sample_root_runtime.py`|3 项通过|
 |`:app:tasks --all`|确认 Preview 单测、Debug assemble 与 lint 任务存在|
-|`:app:testPreviewDebugUnitTest :app:assemblePreviewDebug :app:lintPreviewDebug`|单测与 APK 构建完成（缓存结果 225 项、0 失败）；lint 报 195 个既有 Android 源码错误，命令最终退出失败。相对 preview.10 的 app/libcore/版本配置没有修改，不通过忽略错误或新增 baseline 隐藏这些问题|
+|`:app:testPreviewDebugUnitTest :app:assemblePreviewDebug :app:lintPreviewDebug`|初次单测与 APK 构建完成；lint 报 195 个既有 Android 源码错误，命令最终退出失败。错误位于未修改的业务/XML 文件，不通过忽略错误或新增 baseline 隐藏这些问题|
+|`:app:testPreviewDebugUnitTest --rerun-tasks`；移除重复核心后再执行单测与 Debug assemble|强制执行原 225 项通过；新增打包契约后 226 项通过，Debug APK 仅含保留的 libgojni，构建通过|
+|`python -m unittest discover -s tools -p test_verify_apk_abi.py`|2 项通过，覆盖 JNI/插件保留，以及重复独立核心、错误 ABI、缺 JNI 和非压缩打包拒绝|
 |NDK r27d / Android 31 ARM64 CLI 编译、实际 `pack.py` 打包|通过；使用已构建 preview.10 的真实 rootbox，本地 ARM64 PIE CLI 及官方打包器，产物不提交 Git|
 |`git diff --check`|通过|
 |ADB 设备清单|为空；未执行 Root 真机网络、Doze、吞吐及电池测试|
 
 Preview Actions 是当前版本原有的构建/升级验证门禁；未使用旧 `verify-android.yml` 的已删除 v3.0.3 下载基线来判定本次变更。lint 结果作为独立已知问题报告，不冒充全部检查通过。
+
+首轮 [Actions 37780199705](https://github.com/lit008834-pixel/wanBoxForAndroid/actions/runs/37780199705) 验证运行优化提交 `8b8f8d6`：Go race、7 项打包/安装脚本测试、3 项采样测试、libcore 测试、签名校验、Android 单测及模拟器升级/数据策略均通过；发布 job 跳过。Android 依赖下载曾失败，同提交重试后通过。在产物检查发现重复 APK 核心后，追加精确打包排除及回归测试，再对最终提交完整运行同一门禁，结果见最终交付。
 
 ## 设备回归与度量
 
