@@ -487,12 +487,27 @@ func (r *Runtime) withDataLock(fn func() error) error {
 func (r *Runtime) Apply(ctx context.Context, s Snapshot) (State, error) {
 	var out State
 	e := r.withLock(func() error {
-		old, _, e := r.Current()
+		old, current, e := r.Current()
 		if e != nil {
 			return e
 		}
 		if s.ExpectedRevision != old {
 			return errors.New("revision_conflict")
+		}
+		if e = ctx.Err(); e != nil {
+			return e
+		}
+		if e = CheckSnapshot(s); e != nil {
+			return e
+		}
+		// ExpectedRevision guards concurrency; it is not configuration content.
+		// Compare bytes directly rather than marshal two potentially large snapshots.
+		if old != "" && identicalSnapshotContent(current, s) {
+			if e = ctx.Err(); e != nil {
+				return e
+			}
+			out = r.Status()
+			return nil
 		}
 		rev, e := r.Stage(ctx, s)
 		if e != nil {

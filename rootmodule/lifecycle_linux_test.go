@@ -28,7 +28,10 @@ func TestSupervisorCancelReapsCoreAndAppPIDIsNotOwner(t *testing.T) {
 trap 'rm -f "$4" "$3"; exit 0' TERM INT
 echo $$ > "$3"
 echo ready > "$4"
-while [ ! -e "$5" ]; do sleep 0.1; done
+while [ ! -e "$5" ]; do
+  echo 'WANBOX_STATS:{"tag":"proxy","tx":0,"rx":0,"directTx":0,"directRx":0}'
+  sleep 0.1
+done
 rm -f "$4" "$3"
 `
 	if e := os.WriteFile(filepath.Join(r.ModuleDir, "bin", "rootbox"), []byte(script), 0700); e != nil {
@@ -53,6 +56,17 @@ rm -f "$4" "$3"
 	}
 	if !SameProcess(identity) {
 		t.Fatal("unverified core")
+	}
+	// Pass the five-second statistics throttle: identical idle samples must not
+	// rewrite the persisted state, while the child remains connected and alive.
+	before, e := os.Stat(r.path("state.json"))
+	if e != nil {
+		t.Fatal(e)
+	}
+	time.Sleep(5500 * time.Millisecond)
+	after, e := os.Stat(r.path("state.json"))
+	if e != nil || !after.ModTime().Equal(before.ModTime()) || !SameProcess(identity) {
+		t.Fatal("idle samples rewrote state or stopped the child", e)
 	}
 	cancel()
 	select {
@@ -139,6 +153,17 @@ rm -f "$4" "$3"
 		t.Fatal(e)
 	}
 	defer r.Stop(context.Background())
+	// Re-applying an unchanged connected snapshot must preserve the real child PID.
+	before := r.Status()
+	s.ExpectedRevision = initial.Revision
+	unchanged, e := r.Apply(context.Background(), s)
+	if e != nil || unchanged.Core != before.Core || unchanged.Supervisor != before.Supervisor ||
+		unchanged.Phase != "connected" || unchanged.RunningRevision != initial.Revision {
+		t.Fatal("unchanged apply interrupted running core", e)
+	}
+	if _, e = os.Stat(r.path("previous")); !os.IsNotExist(e) {
+		t.Fatal("unchanged apply replaced rollback pointer", e)
+	}
 	s.ExpectedRevision = initial.Revision
 	s.Config = json.RawMessage(`{"fail_start":true}`)
 	if _, e = r.Apply(context.Background(), s); e == nil || e.Error() != "new_core_failed_rolled_back" {

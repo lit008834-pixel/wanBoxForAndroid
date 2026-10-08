@@ -263,8 +263,9 @@ func (r *Runtime) runGeneration(ctx context.Context, rev string, snapshot Snapsh
 			last = time.Now()
 			b, _ := json.Marshal(stats)
 			mu.Lock()
-			s.Stats = b
-			persist()
+			if replaceStats(s, b) {
+				persist()
+			}
 			mu.Unlock()
 		}
 		if scanner.Err() != nil {
@@ -277,11 +278,9 @@ func (r *Runtime) runGeneration(ctx context.Context, rev string, snapshot Snapsh
 	}()
 	wait := make(chan error, 1)
 	go func() { wait <- cmd.Wait() }()
-	readyTick := time.NewTicker(100 * time.Millisecond)
-	defer readyTick.Stop()
+	probe := newStartupProbe(100*time.Millisecond, 60*time.Second)
+	defer probe.stop()
 	startupFailed := false
-	startup := time.NewTimer(60 * time.Second)
-	defer startup.Stop()
 	for {
 		select {
 		case err := <-wait:
@@ -305,10 +304,10 @@ func (r *Runtime) runGeneration(ctx context.Context, rev string, snapshot Snapsh
 			case <-time.After(20 * time.Second):
 				return errors.New("cleanup_timeout_no_restart")
 			}
-		case <-startup.C:
+		case <-probe.deadline:
 			startupFailed = true
 			cancel()
-		case <-readyTick.C:
+		case <-probe.tick:
 			if _, e = os.Stat(r.path("runtime", "ready")); e == nil {
 				mu.Lock()
 				if s.Phase != "connected" {
@@ -318,7 +317,7 @@ func (r *Runtime) runGeneration(ctx context.Context, rev string, snapshot Snapsh
 						startupFailed = true
 						cancel()
 					}
-					startup.Stop()
+					probe.stop()
 				}
 				mu.Unlock()
 			}
