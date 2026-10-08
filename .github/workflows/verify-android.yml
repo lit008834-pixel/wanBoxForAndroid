@@ -37,7 +37,9 @@ jobs:
         run: |
           (cd libcore && go test -tags=with_clash_api,with_gvisor,with_quic,with_wireguard,with_utls .)
           (cd libcore && go test ./internal/... ./protocol/urltest ./protocol/loadbalance)
-          (cd libcore && go test -race ./protocol/loadbalance)
+          (cd libcore && go test -race ./protocol/urltest ./protocol/loadbalance)
+          # @author 雾晚: real SCM_RIGHTS ownership, panic, truncation and repeated requests.
+          (cd libcore && go test -race protect.go protect_test.go)
           # @author 雾晚: exercise the Android/Linux append writer under concurrent rotation.
           (cd libcore && go test -race log.go log_test.go)
           (cd libcore && go test -race tun_source.go tun_source_test.go)

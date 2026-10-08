@@ -1,22 +1,12 @@
-# wanBox 3.0.7-preview.6
+# wanBox 3.0.7-preview.7
 
 作者：@author 雾晚
 
-- 仅发布 arm64-v8a，最低系统为 Android 12。
-- 精简 R8 保留规则和语言资源，合并完全相同的启动器图片，保留压缩原生库及 Root 加载方式。
-- 修复通知权限变化影响连接、前台服务提升失败被忽略、启动时熄屏仍刷新通知的问题。
-- Android 14+ 的 Root/本地代理前台服务使用符合用途的 specialUse 类型，避免未取得系统 VPN 身份时被拒绝启动；VPN 类型与授权保持原样。
-- 自动订阅更新保留任务周期，按各订阅自己的更新时间安排；联网且电量不低时执行，取消和异常均清理通知。
-- TCP RTT 测试最多 4 个并发，排除 DNS/TLS 时间；增加网络隔离的限量 DNS 缓存、3–8 秒自适应连接超时及取消关闭连接。
-- UDP/QUIC 及无独立 TCP 端点的配置跳过 TCP RTT，不标成不可用；请使用通道测试验证。
-- 新建 URLTest 分组默认使用 http://connectivitycheck.gstatic.com/generate_204，间隔 600 秒、容差 100ms，不中断已有连接。已有显式设置保留。
-- 状态栏仍显示真实代理通道检测。TCP RTT 不代表代理通道可用性，不保证固定几十毫秒。
-- WebDAV 复用安全 HTTP 客户端及连接池，保留 HTTPS、禁止跳转和输入大小限制。
-- 取消开关、启用、停用及节点桌面快捷方式的应用内二次确认；系统发布的快捷方式直接执行，保留 VPN/Root 授权，并阻止普通外部应用直接调用控制入口。
-- 保持包名、签名、用户数据格式、协议及核心版本不变，可覆盖安装上一预览版。
+- 修复桌面应用图标退回 Android 默认图标：解除自适应图标前景的循环引用，恢复原有猫耳图标，保留启动入口及历史图标别名。
+- 修复 VPN 跨进程 socket 保护接口接收的文件描述符副本未释放的问题；正常完成和回调异常均释放副本，拒绝不完整或多描述符请求，不关闭发送端原始 socket。
+- 核验官方 sing-box v1.15.0-alpha.10 与 Android/Root 集成。核心版本保持不变；已包含的 GSO、UDP 和连接中断修复不重复移植，不宣称网速提升。
+- 新增启动器资源循环回归测试、安装后图标加载/绘制测试与 SCM_RIGHTS 生命周期测试；保留现有网络监听、Root/VPN 分派、测速与路由行为。
+- 预览版本 3.0.7-preview.7，Android versionCode=1740。最低 Android 12，公开 APK 为 arm64-v8a；四种原生 ABI 的编译流程保持。
+- 包名、签名、正式版本、用户数据格式和核心依赖 pin 不变，可覆盖安装已有预览版。
 
-## 兼容性与升级
-
-- 预览 versionName 为 3.0.7-preview.6；PRE_VERSION_CODE=347，Android versionCode=1735。
-- 最低 Android 12，包名 com.lit008834.pixel.wanboxforandroid；sing-box v1.15.0-alpha.10。
-- 公开 Release 仅提供 arm64-v8a APK 和 SHA256SUMS；模拟器测试包不公开。
+审计依据与验证范围见 [alpha.10 集成审计](https://github.com/lit008834-pixel/wanBoxForAndroid/blob/v3.0.7-preview.7/docs/alpha10-integration-audit.zh-CN.md)。
