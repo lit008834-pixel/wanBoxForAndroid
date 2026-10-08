@@ -50,7 +50,7 @@ jobs:
         run: |
           go -C rootmodule test -race ./...
           go -C rootmodule vet ./...
-          python3 -m unittest discover -s rootmodule -p test_pack.py
+          python3 -m unittest discover -s rootmodule -p 'test_*.py'
           ANDROID_NDK_HOME="$ANDROID_HOME/ndk/25.0.8775105" bash rootmodule/build.sh
       - name: Verify native artifact
         run: |

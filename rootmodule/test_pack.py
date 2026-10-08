@@ -41,6 +41,9 @@ class PackageTest(unittest.TestCase):
         self.assertIn('__internal schedule-install "$$"', installer)
         self.assertNotIn('__internal activate', installer)
         self.assertIn('install-manager', installer)
+        self.assertIn('"$WANBOX_DATA_MODE"', installer)
+        self.assertIn('"$WANBOX_APK_MODE" = install', installer)
+        self.assertIn('wanbox_install_options || abort', installer)
 
     def test_actual_packager_preserves_scripts_licenses_and_non_applied_example(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -54,7 +57,7 @@ class PackageTest(unittest.TestCase):
                 '--abi', 'arm64-v8a', '--core', str(core), '--cli', str(cli), '--output', str(output)], check=True)
             with zipfile.ZipFile(output) as z:
                 self.assertIsNone(z.testzip())
-                for name in ('LICENSE', 'LIBCORE-LICENSE', 'README.md', 'example.snapshot.json', 'bin/rootbox', 'bin/wanboxctl'):
+                for name in ('LICENSE', 'LIBCORE-LICENSE', 'README.md', 'installer-options.sh', 'example.snapshot.json', 'bin/rootbox', 'bin/wanboxctl'):
                     self.assertIn(name, z.namelist())
                 for name in ('service.sh', 'customize.sh', 'uninstall.sh'):
                     self.assertNotIn(b'\r', z.read(name))

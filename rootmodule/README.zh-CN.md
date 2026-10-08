@@ -71,7 +71,7 @@ App 的 RootTunService 仅在绑定时观察模块。页面隐藏后解绑并停
 ```text
 go -C rootmodule test -count=1 -v ./...
 go -C rootmodule vet ./...
-python -m unittest discover -s rootmodule -p test_pack.py
+python -m unittest discover -s rootmodule -p "test_*.py"
 (cd libcore && go test ./internal/...)
 go -C ../sing-box run ./cmd/sing-box check -c docs/config/local-proxy.json
 go -C ../sing-box run ./cmd/sing-box check -c docs/config/tun-fakeip.json
@@ -90,9 +90,9 @@ git diff --check
 
 `pack.py` 生成不带 APK包及 manifest；`bundle_manager.py` 在 CI 已验证原签名/包名/版本/ABI 后加入同一公开 APK，生成带管理 APK包。仅后者执行 Android package shell 安装，失败不回滚模块，也不删除旧 App 数据。
 
-管理 App 的「模块更新数据」提供默认保留全部、全新安装、仅保留节点/订阅。后两项是用户确认的更新前准备：先用真实 PortableBackup 导出全部数据到私有持久文件，再通过 root CLI `data prepare` 停止并归档模块配置。Room 的现有跨数据库事务写入完整空计划或保留节点/分组计划，最后 `data finish`。路由/其他偏好不保留；不改 Room schema，不 root 操作 App SQLite，不执行 pm clear、不删除内置资源和备份。
+数据方式现改为安装器选择：音量上循环、音量下确认，默认保留全部；全新安装或仅保留节点/订阅需再次确认。带 APK 包另可选择安装/覆盖更新或跳过，不带 APK 包不操作管理 App。已删除 App 的「模块更新数据」按钮。详情见 [安装器选项](install-options.zh-CN.md)。安装器保存带包指纹和令牌的已确认意图，配套新版 App 首次打开时用 PortableBackup 导出全部数据，再通过 `data prepare` 停止并归档模块配置，Room 事务写入完整空计划或保留节点/分组计划，最后 `data finish` 和令牌确认。路由/其他偏好不保留；不改 Room schema，不 root 操作 App SQLite，不执行 pm clear、不删除内置资源和备份。
 
-App AtomicFile 日志和模块固定路径日志持久化步骤。中断时 App 从备份重复同一计划，模块完成剩余 rename；未完成时 CLI 的连接、配置提交、升级受阻。两个存储域不伪称同一 SQLite 原子事务；恢复机制提供可重入完成及完整备份。模块 `data rollback` 只用于未完成事务的管理员恢复，使用前应先恢复对应 App 完整备份。归档保留敏感凭据且不自动删除，用户可从 App 页面分享完整备份再用已有导入入口恢复。
+App AtomicFile 日志和模块固定路径日志持久化步骤。中断时 App 从备份重复同一计划，模块完成剩余 rename；未完成时 CLI 的连接、配置提交、升级受阻。热更新和标准开机共用请求令牌，完成记录防止同一暂存包在重启后再次重置数据。两个存储域不伪称同一 SQLite 原子事务；恢复机制提供可重入完成及完整备份。模块 `data rollback` 只用于未完成事务的管理员恢复，使用前应先恢复对应 App 完整备份。归档保留敏感凭据且不自动删除，可用 Root 文件管理器复制 App 私有备份，再用已有工具页导入入口恢复。
 
 新增测试覆盖代码切换/损坏拒绝/新核心不兼容/启动失败回滚、禁用和卸载标志、数据准备重入/连接阻断/归档恢复。启动失败测试用注入的生命周期故障，不能替代 Android Root 真机。Android 节点保留与清空使用真实序列化/Room 的仪器测试另行编译，执行结果以设备/CI 记录为准。
 

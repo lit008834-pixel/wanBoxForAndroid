@@ -16,12 +16,6 @@
             app:title="@string/service_mode"
             app:summary="@string/root_module_mode" />
 
-        <Preference
-            app:key="rootModuleUpdateData"
-            app:persistent="false"
-            app:title="@string/root_module_update_data"
-            app:summary="@string/root_module_update_data_summary" />
-
         <SwitchPreference
             app:defaultValue="false"
             app:icon="@drawable/ic_baseline_block_24"

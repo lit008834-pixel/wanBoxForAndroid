@@ -53,17 +53,18 @@ type ProcessIdentity struct {
 	Executable string `json:"executable"`
 }
 type State struct {
-	SchemaVersion   int             `json:"schemaVersion"`
-	Phase           string          `json:"phase"`
-	Revision        string          `json:"revision"`
-	RunningRevision string          `json:"runningRevision"`
-	ProfileID       int64           `json:"profileId"`
-	ProfileName     string          `json:"profileName"`
-	Supervisor      ProcessIdentity `json:"supervisor"`
-	Core            ProcessIdentity `json:"core"`
-	Error           string          `json:"error,omitempty"`
-	Stats           json.RawMessage `json:"stats,omitempty"`
-	Events          []Event         `json:"events,omitempty"`
+	SchemaVersion   int                   `json:"schemaVersion"`
+	Phase           string                `json:"phase"`
+	Revision        string                `json:"revision"`
+	RunningRevision string                `json:"runningRevision"`
+	ProfileID       int64                 `json:"profileId"`
+	ProfileName     string                `json:"profileName"`
+	Supervisor      ProcessIdentity       `json:"supervisor"`
+	Core            ProcessIdentity       `json:"core"`
+	Error           string                `json:"error,omitempty"`
+	Stats           json.RawMessage       `json:"stats,omitempty"`
+	Events          []Event               `json:"events,omitempty"`
+	InstallData     *InstallDataSelection `json:"installData,omitempty"`
 }
 type Event struct {
 	Time int64  `json:"time"`
@@ -437,6 +438,13 @@ func (r *Runtime) Status() State {
 	if s.Phase != "connected" {
 		s.Stats = nil
 	}
+	selection, selectionError := r.installSelection()
+	s.InstallData = selection
+	if selectionError != nil {
+		s.Error = "install_data_selection_invalid"
+	} else if selection != nil {
+		s.Error = "install_data_update_pending"
+	}
 	return s
 }
 func (r *Runtime) Enabled() bool {
@@ -452,6 +460,11 @@ func (r *Runtime) Enabled() bool {
 }
 func (r *Runtime) withLock(fn func() error) error {
 	return r.withDataLock(func() error {
+		if _, e := os.Lstat(r.path("install-data.json")); e == nil {
+			return errors.New("install_data_update_pending")
+		} else if !os.IsNotExist(e) {
+			return e
+		}
 		if _, e := os.Lstat(r.path("data-reset.json")); e == nil {
 			return errors.New("data_update_pending")
 		} else if !os.IsNotExist(e) {
@@ -536,6 +549,11 @@ func (r *Runtime) Stop(ctx context.Context) error {
 	return r.withLock(func() error { return r.stop(ctx) })
 }
 func (r *Runtime) start(ctx context.Context) error {
+	if _, e := os.Lstat(r.path("install-data.json")); e == nil {
+		return errors.New("install_data_update_pending")
+	} else if !os.IsNotExist(e) {
+		return e
+	}
 	if e := ctx.Err(); e != nil {
 		return e
 	}
@@ -707,6 +725,9 @@ func (r *Runtime) Boot(ctx context.Context, bootReady func() bool) error {
 			return errors.New("boot_timeout")
 		case <-ticker.C:
 		}
+	}
+	if e := r.consumeBootInstallChoice(); e != nil {
+		return e
 	}
 	return r.withLock(func() error {
 		if !r.Enabled() {

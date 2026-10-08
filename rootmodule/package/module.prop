@@ -1,6 +1,6 @@
 id=wanbox
 name=wanBox Root TUN
-version=3.0.7-preview.9
-versionCode=350
+version=3.0.7-preview.10
+versionCode=351
 author=雾晚
 description=wanBox 独立 Root TUN 运行模块；需配套管理 App 提交有效配置。

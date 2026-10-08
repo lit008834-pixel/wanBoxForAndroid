@@ -64,7 +64,7 @@ jobs:
         run: |
           go -C rootmodule test -race ./...
           go -C rootmodule vet ./...
-          python3 -m unittest discover -s rootmodule -p test_pack.py
+          python3 -m unittest discover -s rootmodule -p 'test_*.py'
           (cd libcore && go test -tags=with_clash_api,with_gvisor,with_quic,with_wireguard,with_utls .)
           (cd libcore && go test ./internal/... ./protocol/urltest ./protocol/loadbalance)
           ANDROID_NDK_HOME="$ANDROID_HOME/ndk/25.0.8775105" bash rootmodule/build.sh

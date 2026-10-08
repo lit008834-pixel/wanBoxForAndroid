@@ -52,6 +52,13 @@ func stagingDirectory(dir string) error {
 // manager still owns staging until its process exits and writes the update flag.
 // No code switch or network stop takes place inside customize.sh. @author 雾晚
 func (r *Runtime) ScheduleInstall(ctx context.Context, installerPID int) error {
+	return r.ScheduleInstallMode(ctx, installerPID, "preserve")
+}
+
+func (r *Runtime) ScheduleInstallMode(ctx context.Context, installerPID int, mode string) error {
+	if !validInstallMode(mode) {
+		return errors.New("arguments_invalid")
+	}
 	if e := stagingDirectory(r.ModuleDir); e != nil {
 		return e
 	}
@@ -79,8 +86,11 @@ func (r *Runtime) ScheduleInstall(ctx context.Context, installerPID int) error {
 		if e = ctx.Err(); e != nil {
 			return e
 		}
+		if e = r.writeInstallChoice(mode, digest); e != nil {
+			return e
+		}
 		cmd := exec.Command(filepath.Join(r.ModuleDir, "bin", "wanboxctl"), "__internal", "finish-install",
-			strconv.Itoa(installer.PID), installer.Start, digest)
+			strconv.Itoa(installer.PID), installer.Start, digest, mode)
 		null, e := os.OpenFile(os.DevNull, os.O_RDWR, 0)
 		if e != nil {
 			return errors.New("install_completion_start_failed")
@@ -154,19 +164,37 @@ func waitInstaller(ctx context.Context, alive func() bool, marker func() (bool, 
 // activation; successful switching retires staging to prevent a second update.
 // @author 雾晚
 func (r *Runtime) FinishInstall(ctx context.Context, installerPID int, installerStart, digest string) error {
+	return r.FinishInstallMode(ctx, installerPID, installerStart, digest, "preserve")
+}
+
+func (r *Runtime) FinishInstallMode(ctx context.Context, installerPID int, installerStart, digest, mode string) error {
+	if !validInstallMode(mode) {
+		return errors.New("arguments_invalid")
+	}
 	if e := stagingDirectory(r.ModuleDir); e != nil {
 		return e
 	}
-	return r.completeInstall(ctx, func(waiting context.Context) error {
+	choice, e := r.readInstallChoice()
+	if e != nil {
+		return e
+	}
+	if choice == nil || choice.Mode != mode || choice.Digest != digest {
+		return errors.New("install_choice_changed")
+	}
+	return r.completeInstallMode(ctx, func(waiting context.Context) error {
 		return waitInstaller(waiting, func() bool {
 			identity, err := Identity(installerPID)
 			return err == nil && identity.Start == installerStart
 		}, func() (bool, error) { return updateMarker(installedModule) }, time.Second, 3*time.Second)
-	}, installedModule, digest)
+	}, installedModule, digest, mode)
 }
 
 // Testable orchestration; only FinishInstall supplies production paths/identity.
 func (r *Runtime) completeInstall(ctx context.Context, wait func(context.Context) error, target, digest string) error {
+	return r.completeInstallMode(ctx, wait, target, digest, "preserve")
+}
+
+func (r *Runtime) completeInstallMode(ctx context.Context, wait func(context.Context) error, target, digest, mode string) error {
 	waiting, cancel := context.WithTimeout(ctx, time.Minute)
 	e := wait(waiting)
 	cancel()
@@ -181,7 +209,7 @@ func (r *Runtime) completeInstall(ctx context.Context, wait func(context.Context
 	}
 	operation, stop := context.WithTimeout(ctx, 2*time.Minute)
 	defer stop()
-	if e = r.activate(operation, target, true); e != nil {
+	if e = r.activateMode(operation, target, true, mode); e != nil {
 		r.installEvent("module_hot_update_deferred")
 		return e
 	}

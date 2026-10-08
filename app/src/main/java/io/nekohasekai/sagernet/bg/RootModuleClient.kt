@@ -27,10 +27,12 @@ object RootModuleClient {
     private val commands = setOf("status", "module", "logs", "start", "stop", "restart", "reload",
         "config apply", "config validate", "autostart on", "autostart off", "data prepare", "data finish", "data rollback")
     private val changes = Mutex()
+    data class InstallSelection(val id: String, val mode: Int)
     data class Status(val phase: String, val revision: String, val runningRevision: String,
-        val profileId: Long, val profileName: String, val stats: RootNotificationSample?, val error: String = "") {
-        val connected get() = phase == "connected"
-        val state get() = when (phase) {
+        val profileId: Long, val profileName: String, val stats: RootNotificationSample?, val error: String = "",
+        val installData: InstallSelection? = null) {
+        val connected get() = phase == "connected" && installData == null
+        val state get() = if (installData != null) BaseService.State.Stopped else when (phase) {
             "connected" -> BaseService.State.Connected
             "starting" -> BaseService.State.Connecting
             else -> BaseService.State.Stopped
@@ -46,14 +48,26 @@ object RootModuleClient {
         val state = json.getAsJsonObject("state") ?: throw IOException("module_status_invalid")
         val phase = state["phase"]?.asString ?: throw IOException("module_status_invalid")
         if (phase !in setOf("connected", "starting", "stopped", "failed", "disabled", "cleanup_required")) throw IOException("module_status_invalid")
-        val stats = state["stats"]?.takeIf { it.isJsonObject && phase == "connected" }
+        val selection = state["installData"]?.takeUnless { it.isJsonNull }?.let {
+            if (!it.isJsonObject) throw IOException("install_data_selection_invalid")
+            val entry = it.asJsonObject
+            val id = entry["id"]?.asString.orEmpty()
+            if (!id.matches(Regex("[a-f0-9]{32}"))) throw IOException("install_data_selection_invalid")
+            val mode = when (entry["mode"]?.asString) {
+                "fresh" -> RootModuleDataUpdate.CLEAN
+                "nodes" -> RootModuleDataUpdate.NODES_ONLY
+                else -> throw IOException("install_data_selection_invalid")
+            }
+            InstallSelection(id, mode)
+        }
+        val stats = state["stats"]?.takeIf { it.isJsonObject && phase == "connected" && selection == null }
             ?.let { RootNotificationSample.parse(RootNotificationSample.PREFIX + it.toString()) }
         return Status(phase, state["revision"]?.asString.orEmpty(), state["runningRevision"]?.asString.orEmpty(),
             state["profileId"]?.asLong ?: 0, state["profileName"]?.asString.orEmpty(), stats,
-            state["error"]?.asString.orEmpty().takeIf { it.matches(Regex("[a-z_]{1,80}")) }.orEmpty())
+            state["error"]?.asString.orEmpty().takeIf { it.matches(Regex("[a-z_]{1,80}")) }.orEmpty(), selection)
     }
     suspend fun call(command: String, input: File? = null): Status = withContext(Dispatchers.IO) {
-        require(command in commands)
+        require(command in commands || command.matches(Regex("data selection-finish [a-f0-9]{32}")))
         require((command == "config apply" || command == "config validate") == (input != null))
         val process = try { ProcessBuilder("su", "-c", "exec $CLI $command").start() }
             catch (_: IOException) { throw IOException("root_required") }
@@ -91,6 +105,7 @@ object RootModuleClient {
     }
     fun safeError(error: Exception): String = error.message?.takeIf { it.matches(Regex("[a-z_]{1,80}")) } ?: "module_operation_failed"
     suspend fun startOrReload() {
+        RootModuleDataUpdate.applyInstallerSelection()
         if (!changes.tryLock()) throw IOException("module_busy")
         try {
         val before = call("status")
@@ -110,6 +125,10 @@ object RootModuleClient {
         } finally { changes.unlock() }
     }
     suspend fun stop() = changes.withLock { call("stop") }
+    internal suspend fun finishInstallerSelection(id: String) {
+        require(id.matches(Regex("[a-f0-9]{32}")))
+        call("data selection-finish $id")
+    }
     internal suspend fun <T> dataUpdate(action: suspend () -> T): T = changes.withLock { action() }
     suspend fun setAutoStart(enabled: Boolean) = changes.withLock { call("autostart ${if (enabled) "on" else "off"}") }
 }

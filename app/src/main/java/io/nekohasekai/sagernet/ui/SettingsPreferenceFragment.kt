@@ -37,70 +37,6 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(), OnPreferenceDataS
 
     private lateinit var globalCustomConfig: EditConfigPreference
 
-    private var moduleDataBusy = false
-    private fun showModuleUpdateData() {
-        val update = io.nekohasekai.sagernet.bg.RootModuleDataUpdate
-        if (moduleDataBusy) return
-        fun perform(mode: Int) {
-            moduleDataBusy = true
-            SagerNet.application.applicationScope.launch {
-                try {
-                    update.prepare(mode)
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        Toast.makeText(SagerNet.application, R.string.root_module_data_done, Toast.LENGTH_LONG).show()
-                        if (isAdded) triggerFullRestart(requireContext())
-                    }
-                } catch (e: Exception) {
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        Toast.makeText(SagerNet.application, R.string.root_module_data_retry, Toast.LENGTH_LONG).show()
-                    }
-                } finally { moduleDataBusy = false }
-            }
-        }
-        if (update.pending()) {
-            MaterialAlertDialogBuilder(requireContext()).setTitle(R.string.root_module_update_data)
-                .setMessage(R.string.root_module_data_retry)
-                .setPositiveButton(R.string.root_module_data_continue) { _, _ -> perform(update.KEEP_ALL) }
-                .setNegativeButton(android.R.string.cancel, null).show()
-            return
-        }
-        val choices = arrayOf(getString(R.string.root_module_keep_all), getString(R.string.root_module_clean),
-            getString(R.string.root_module_nodes_only), getString(R.string.root_module_share_backup))
-        MaterialAlertDialogBuilder(requireContext()).setTitle(R.string.root_module_update_data)
-            .setItems(choices) { _, which ->
-                when (which) {
-                    0 -> Toast.makeText(requireContext(), R.string.root_module_keep_all_hint, Toast.LENGTH_LONG).show()
-                    3 -> {
-                        val backup = update.latestBackup()
-                        if (backup == null) Toast.makeText(requireContext(), R.string.root_module_no_backup, Toast.LENGTH_LONG).show()
-                        else SagerNet.application.applicationScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                            try {
-                                val copy = File(SagerNet.application.cacheDir, backup.name)
-                                backup.copyTo(copy, overwrite = true)
-                                val uri = androidx.core.content.FileProvider.getUriForFile(SagerNet.application,
-                                    SagerNet.application.packageName + ".cache", copy)
-                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                    if (isAdded) startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND)
-                                        .setType("application/json").putExtra(Intent.EXTRA_STREAM, uri)
-                                        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                        .apply { clipData = android.content.ClipData.newRawUri("backup", uri) },
-                                        getString(R.string.root_module_share_backup)))
-                                }
-                            } catch (_: Exception) {
-                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                    Toast.makeText(SagerNet.application, R.string.backup_invalid_or_unreadable, Toast.LENGTH_LONG).show()
-                                }
-                            }
-                        }
-                    }
-                    else -> MaterialAlertDialogBuilder(requireContext()).setTitle(choices[which])
-                        .setMessage(if (which == 1) R.string.root_module_clean_confirm else R.string.root_module_nodes_confirm)
-                        .setPositiveButton(android.R.string.ok) { _, _ -> perform(which) }
-                        .setNegativeButton(android.R.string.cancel, null).show()
-                }
-            }.setNegativeButton(android.R.string.cancel, null).show()
-    }
-
     private fun tintPreferenceIcons(group: PreferenceGroup, color: Int) {
         for (i in 0 until group.preferenceCount) {
             val pref = group.getPreference(i)
@@ -206,10 +142,6 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(), OnPreferenceDataS
         }
         val serviceMode = findPreference<Preference>(Key.SERVICE_MODE)!!
         serviceMode.summary = getString(R.string.root_module_mode)
-        findPreference<Preference>("rootModuleUpdateData")!!.setOnPreferenceClickListener {
-            showModuleUpdateData()
-            true
-        }
         val mixedAuthConfig = findPreference<Preference>(Key.MIXED_AUTH_CONFIG)!!
         val dnsHosts = findPreference<EditTextPreference>(Key.DNS_HOSTS)!!
         val strictRoute = findPreference<SwitchPreference>(Key.STRICT_ROUTE)!!

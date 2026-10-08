@@ -10,6 +10,22 @@ import java.io.IOException
 /** Protocol + Android integration regression checks; not Magisk device tests. @author 雾晚 */
 class RootModuleContractTest {
     private fun source(path: String) = File("src/main/java/io/nekohasekai/sagernet/$path").readText()
+    @Test fun installerSelectionBlocksStaleConnectedStatsAndKeepsLegacyResponses() {
+        val selected = RootModuleClient.parseResponse("""{"schemaVersion":1,"ok":true,"state":{"phase":"connected","installData":{"id":"0123456789abcdef0123456789abcdef","mode":"nodes"},"stats":{"tx":999}}}""")
+        assertFalse(selected.connected);assertNull(selected.stats)
+        assertEquals(io.nekohasekai.sagernet.bg.BaseService.State.Stopped,selected.state)
+        assertEquals(io.nekohasekai.sagernet.bg.RootModuleDataUpdate.NODES_ONLY,selected.installData!!.mode)
+        val old = RootModuleClient.parseResponse("""{"schemaVersion":1,"ok":true,"state":{"phase":"connected"}}""")
+        assertTrue(old.connected);assertNull(old.installData)
+    }
+    @Test fun malformedOrUnsupportedInstallerSelectionCannotClearData() {
+        for (choice in listOf("""{"id":"../unsafe","mode":"fresh"}""", """{"id":"0123456789abcdef0123456789abcdef","mode":"erase_all"}""", """{"mode":"nodes"}""")) {
+            try {
+                RootModuleClient.parseResponse("""{"schemaVersion":1,"ok":true,"state":{"phase":"stopped","installData":$choice}}""")
+                fail("accepted malformed selection")
+            } catch (_: IOException) {}
+        }
+    }
     @Test fun staleStoppedStatsAreNotAcceptedAsCurrentSuccess() {
         val parsed = RootModuleClient.parseResponse("""{"schemaVersion":1,"ok":true,"state":{"phase":"stopped","stats":{"tx":999},"revision":"new"}}""")
         assertFalse(parsed.connected); assertNull(parsed.stats)

@@ -10,6 +10,16 @@ import java.io.File
 
 /** Data selection tests; full serializer/Room roundtrip is an instrumented test. @author 雾晚 */
 class RootModuleDataPolicyTest {
+    @Test fun installerAcknowledgementFollowsRoomAndModuleCommitAndAppMenuIsRemoved() {
+        val source = File("src/main/java/io/nekohasekai/sagernet/bg/RootModuleDataUpdate.kt").readText()
+        assertTrue(source.indexOf("RootModuleClient.call(\"data finish\")") < source.indexOf("RootModuleClient.finishInstallerSelection(selectedId)"))
+        assertTrue(source.indexOf("RootModuleClient.finishInstallerSelection(selectedId)") < source.indexOf("journal.delete()"))
+        assertTrue(source.contains("selected.id != installerId || selected.mode != mode"))
+        val settings = File("src/main/java/io/nekohasekai/sagernet/ui/SettingsPreferenceFragment.kt").readText()
+        assertFalse(settings.contains("showModuleUpdateData"));assertFalse(settings.contains("rootModuleUpdateData"))
+        val activity = File("src/main/java/io/nekohasekai/sagernet/ui/MainActivity.kt").readText()
+        assertTrue(activity.contains("RootModuleDataUpdate.applyInstallerSelection()"))
+    }
     @Test fun defaultKeepsAllAndNodesOnlyPreservesIdentityAndGroups() {
         val profiles = listOf(ProxyEntity(id=71,groupId=72))
         val groups = listOf(ProxyGroup(id=72,name="fixture"))

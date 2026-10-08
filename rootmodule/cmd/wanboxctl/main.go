@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -19,6 +20,19 @@ import (
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer cancel()
+	args := os.Args[1:]
+	if len(args) == 3 && args[0] == "__internal" && args[1] == "volume-key" {
+		seconds, e := strconv.Atoi(args[2])
+		if os.Geteuid() != 0 || e != nil || strconv.Itoa(seconds) != args[2] {
+			os.Exit(1)
+		}
+		key, e := module.ReadVolumeKey(ctx, seconds)
+		if e != nil {
+			os.Exit(1)
+		}
+		fmt.Fprintln(os.Stdout, key)
+		return
+	}
 	exe, e := os.Executable()
 	if e != nil {
 		os.Exit(1)
@@ -43,6 +57,26 @@ func main() {
 	}
 }
 func run(ctx context.Context, r *module.Runtime, args []string) error {
+	if len(args) == 3 && args[0] == "data" && args[1] == "selection-finish" {
+		return r.FinishInstallSelection(args[2])
+	}
+	if len(args) == 4 && args[0] == "__internal" && args[1] == "schedule-install" {
+		pid, e := strconv.Atoi(args[2])
+		if e != nil || pid <= 1 || strconv.Itoa(pid) != args[2] {
+			return errors.New("arguments_invalid")
+		}
+		return r.ScheduleInstallMode(ctx, pid, args[3])
+	}
+	if len(args) == 6 && args[0] == "__internal" && args[1] == "finish-install" {
+		pid, e := strconv.Atoi(args[2])
+		if e != nil || pid <= 1 || strconv.Itoa(pid) != args[2] || len(args[4]) != 64 || strings.Trim(args[4], "0123456789abcdef") != "" {
+			return errors.New("arguments_invalid")
+		}
+		if _, e = strconv.ParseUint(args[3], 10, 64); e != nil {
+			return errors.New("arguments_invalid")
+		}
+		return r.FinishInstallMode(ctx, pid, args[3], args[4], args[5])
+	}
 	if (len(args) == 3 || len(args) == 5) && args[0] == "__internal" {
 		pid, e := strconv.Atoi(args[2])
 		if e != nil || pid <= 1 || strconv.Itoa(pid) != args[2] {

@@ -28,7 +28,7 @@ type PackageManifest struct {
 }
 
 var packageFiles = map[string]bool{
-	"module.prop": true, "customize.sh": true, "service.sh": true, "uninstall.sh": true,
+	"module.prop": true, "customize.sh": true, "installer-options.sh": true, "service.sh": true, "uninstall.sh": true,
 	"README.md": true, "example.snapshot.json": true, "LICENSE": true, "LIBCORE-LICENSE": true,
 	"bin/rootbox": true, "bin/wanboxctl": true, "manager.apk": true,
 }
@@ -125,6 +125,13 @@ func (r *Runtime) Activate(ctx context.Context, target string) error {
 }
 
 func (r *Runtime) activate(ctx context.Context, target string, managerFinished bool) error {
+	return r.activateMode(ctx, target, managerFinished, "preserve")
+}
+
+func (r *Runtime) activateMode(ctx context.Context, target string, managerFinished bool, mode string) error {
+	if !validInstallMode(mode) {
+		return errors.New("arguments_invalid")
+	}
 	return r.withLock(func() error {
 		if filepath.Clean(target) == filepath.Clean(r.ModuleDir) {
 			return errors.New("install_requires_staging")
@@ -132,6 +139,13 @@ func (r *Runtime) activate(ctx context.Context, target string, managerFinished b
 		manifest, e := packageManifest(r.ModuleDir)
 		if e != nil {
 			return e
+		}
+		choice, e := r.readInstallChoice()
+		if e != nil {
+			return e
+		}
+		if choice != nil && choice.Mode != mode {
+			return errors.New("install_choice_changed")
 		}
 		parent := filepath.Dir(target)
 		// Do not chmod the manager's global modules directory.
@@ -187,7 +201,7 @@ func (r *Runtime) activate(ctx context.Context, target string, managerFinished b
 		if e != nil {
 			return e
 		}
-		if snapshot.SchemaVersion != 0 {
+		if snapshot.SchemaVersion != 0 && mode == "preserve" {
 			check := New(r.Root, stage)
 			// Recreate a private validation generation: do not modify a running one's resources.
 			if r.installValidate != nil {
@@ -271,7 +285,17 @@ func (r *Runtime) activate(ctx context.Context, target string, managerFinished b
 		if e = syncDir(parent); e != nil {
 			return rollback()
 		}
-		if wasRunning && !disabled {
+		if mode != "preserve" {
+			if choice != nil {
+				e = r.queueInstallSelectionID(mode, choice.ID)
+			} else {
+				e = r.queueInstallSelection(mode)
+			}
+			if e != nil {
+				return rollback()
+			}
+		}
+		if wasRunning && !disabled && mode == "preserve" {
 			if e = start(ctx); e != nil {
 				return rollback()
 			}

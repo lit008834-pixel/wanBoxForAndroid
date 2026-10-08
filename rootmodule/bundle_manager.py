@@ -8,7 +8,7 @@ import pathlib
 import zipfile
 from pack import manifest
 
-ALLOWED = {'module.prop', 'service.sh', 'customize.sh', 'uninstall.sh', 'README.md',
+ALLOWED = {'module.prop', 'service.sh', 'customize.sh', 'installer-options.sh', 'uninstall.sh', 'README.md',
  'example.snapshot.json', 'LICENSE', 'LIBCORE-LICENSE', 'bin/rootbox', 'bin/wanboxctl', 'package-manifest.json'}
 
 def bundle(source, apk, output):

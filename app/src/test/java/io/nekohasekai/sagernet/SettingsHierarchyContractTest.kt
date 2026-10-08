@@ -24,10 +24,8 @@ class SettingsHierarchyContractTest {
             if (key.isNotEmpty()) { assertNull("Duplicate key $key", actual.put(key, element)) }
         }
         // @author 雾晚: input-method routing is an ordinary rule, not a separate preference.
-        assertEquals((old.keySet() - moduleInapplicable) + "rootModuleUpdateData", actual.keys)
-        assertEquals("Preference", actual.getValue("rootModuleUpdateData").tagName)
-        assertEquals("false", actual.getValue("rootModuleUpdateData")
-            .getAttributeNS("http://schemas.android.com/apk/res-auto", "persistent"))
+        assertEquals(old.keySet() - moduleInapplicable, actual.keys)
+        assertFalse(actual.containsKey("rootModuleUpdateData"))
         old.keys().forEach { key ->
             if (key in moduleInapplicable) return@forEach
             val before = old.getJSONObject(key); val node = actual.getValue(key)

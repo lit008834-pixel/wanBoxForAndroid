@@ -20,6 +20,10 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import androidx.activity.addCallback
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 import androidx.annotation.IdRes
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -85,6 +89,7 @@ class MainActivity : ThemedActivity(),
     lateinit var binding: LayoutMainBinding
     lateinit var navigation: NavigationView
     private var currentMainFragment: ToolbarFragment? = null
+    private var installerDataJob: Job? = null
     private val serviceModeReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action == Action.SERVICE_MODE_CHANGED) connection.rebindIfServiceChanged(this@MainActivity)
@@ -764,6 +769,16 @@ class MainActivity : ThemedActivity(),
         connection.updateConnectionId(SagerConnection.CONNECTION_ID_MAIN_ACTIVITY_FOREGROUND)
         connection.connect(this, this)
         super.onStart()
+        if (installerDataJob?.isActive != true) installerDataJob = lifecycleScope.launch {
+            try {
+                if (io.nekohasekai.sagernet.bg.RootModuleDataUpdate.applyInstallerSelection() && !isFinishing)
+                    recreate()
+            } catch (error: CancellationException) { throw error }
+              catch (_: Exception) {
+                android.widget.Toast.makeText(this@MainActivity, R.string.root_module_data_retry,
+                    android.widget.Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     override fun onStop() {
