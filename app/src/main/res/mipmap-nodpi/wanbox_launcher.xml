@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- @author 雾晚: the base and adaptive launcher share one independent bitmap. -->
+<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
+    android:src="@drawable/wanbox_launcher_art" />

@@ -16,7 +16,7 @@ class LauncherResourceTest {
             setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
         }.newDocumentBuilder()
         resources.walkTopDown().filter { it.isFile }.forEach { file ->
-            val type = file.parentFile.name.substringBefore('-')
+            val type = file.parentFile!!.name.substringBefore('-')
             if (type == "drawable" || type == "mipmap") {
                 val key = "$type/${file.nameWithoutExtension}"
                 val targets = edges.getOrPut(key) { mutableSetOf() }

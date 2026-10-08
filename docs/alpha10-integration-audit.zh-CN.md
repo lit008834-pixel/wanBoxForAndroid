@@ -22,7 +22,7 @@
 | 系统 DNS、接口缓存 | `platform_box.go` 提供系统 DNS 地址；`dns_android.go` 走 Android 网络句柄；DefaultNetworkListener 等首次处理、专用线程、500ms 防抖和旧 onLost 保护；interface_monitor 按实际接口变化更新 | 保留本地等价行为；未发现足以修改的设备复现依据 |
 | [协议输入校验 2ac9c920](https://github.com/SagerNet/sing-box/commit/2ac9c920a9a89753b00c236fe27c7bd575717ecd) | 目标核心已包含；wanBox 配置/订阅/备份边界不变 | 不复制桌面/服务端无关功能 |
 | wanBox VPN protect 桥接 | `protect.go` 接收 SCM_RIGHTS 后只关 Unix 连接，没有关内核复制给接收端的 FD | 最小修复：同步回调借用副本，所有退出路径释放；限定单 FD、处理截断。不改变发送端 ownership、保护重试或 Root 路由 |
-| wanBox 应用图标 | `mipmap/wanbox_launcher` → `drawable/wanbox_launcher_art` 别名 → 同一 mipmap；API26+ 选中 adaptive XML 后成环 | 恢复原有独立 PNG，删除成环别名；不新增图标切换功能，不改默认图案/Manifest/磁贴 |
+| wanBox 应用图标 | `mipmap/wanbox_launcher` → `drawable/wanbox_launcher_art` 别名 → 同一 mipmap；API26+ 选中 adaptive XML 后成环 | 将完全相同的原图移到独立 drawable PNG，基础 mipmap 用 bitmap XML 引用它，删除成环别名；不重复存放 PNG，不改默认图案/Manifest/磁贴 |
 
 核心已同步，无需重复移植。实际代码改动集中于 wanBox 的资源引用和接收端文件描述符生命周期。
 
@@ -37,10 +37,11 @@
 ## 验证记录
 
 1. 修改前运行 `app:testOssDebugUnitTest --tests '*LauncherResourceTest'`：失败，断言直接给出上述资源循环；不是凭截图猜测。
-2. 本地确认 `app:tasks --all`；运行 OSS/Preview 单测、Debug 编译和 AndroidTest 编译。完整结果以 PR/Actions 报告为准。
+2. 本地确认 `app:tasks --all`；OSS/Preview 各 212 项单测通过，`app:assembleOssDebug app:assemblePreviewDebug app:assembleOssDebugAndroidTest` 通过。
 3. 本地 `go test ./internal/...` 首次因未生成 go.sum 无法解析依赖；`go test -mod=mod ./internal/...` 补全模块解析后三个包通过。go.sum 为现有构建流程生成的忽略文件，不提交。
 4. CI 按 verify-android.yml 运行 `./run lib core`、完整带标签 libcore 测试、internal/URLTest/loadbalance、相应 race、日志/TUN/SCM_RIGHTS 测试、两份配置的官方核心校验、四 ABI native artifact 检查。
 5. 安装后 LauncherIconTest 在 Debug 与 R8 Release 的 API35 模拟器上加载 PackageManager 图标与日夜资源，核对原始前景像素并绘制，防止仅 XML 能编译却实际回退。既有 UI/数据库/安全/快捷方式测试继续运行。
 6. `git diff --check` 与最终 APK 包名/versionCode/证书/ABI 校验；发布需通过保留的正式版及预览版签名覆盖安装检查。
+7. 官方源码 `go test ./option ./common/sniff ./dns/transport` 三包通过，官方源码工作树未修改。`app:lintPreviewDebug` 最终为 180 项已有项目错误，第一项为 AssetsActivity MissingSuperCall；本次修复中发现的新增重复 PNG 已消除，保留一份原始图案，未屏蔽检查或设置忽略错误。
 
 本机当前无 ADB 设备，Windows 未配置 Linux 子系统；Linux/Android 专用测试由 CI 执行。MIUI 桌面缓存刷新、Root 真机、UDP checksum/分片抓包、屏幕关闭后的唤醒锁、吞吐/DNS/空闲 CPU/电量基准未实测。无性能数字或吞吐提升承诺；用户可覆盖安装后检查原桌面入口，桌面若保留旧缓存需等待系统刷新或重新添加入口。
