@@ -164,6 +164,11 @@ func (r *Runtime) Activate(ctx context.Context, target string) error {
 				return e
 			}
 		}
+		for _, dir := range []string{filepath.Join(stage, "bin"), stage} {
+			if e = syncDir(dir); e != nil {
+				return e
+			}
+		}
 		old := New(r.Root, target)
 		_, snapshot, e := old.Current()
 		if e != nil {
@@ -200,9 +205,6 @@ func (r *Runtime) Activate(ctx context.Context, target string) error {
 		if r.installStart != nil {
 			start = r.installStart
 		}
-		if e = old.stop(ctx); e != nil {
-			return e
-		}
 		backup, e := os.MkdirTemp(parent, ".wanbox-previous-")
 		if e != nil {
 			return e
@@ -210,9 +212,15 @@ func (r *Runtime) Activate(ctx context.Context, target string) error {
 		if e = os.Remove(backup); e != nil {
 			return e
 		}
+		if e = old.stop(ctx); e != nil {
+			return e
+		}
 		hadOld := false
 		if _, e = os.Stat(target); e == nil {
 			if e = os.Rename(target, backup); e != nil {
+				if wasRunning {
+					_ = start(context.Background())
+				}
 				return errors.New("module_replace_failed")
 			}
 			hadOld = true
@@ -257,7 +265,9 @@ func (r *Runtime) Activate(ctx context.Context, target string) error {
 		}
 		if hadOld {
 			if e = os.RemoveAll(backup); e != nil {
-				return errors.New("module_backup_cleanup_failed")
+				// The new module is already running; retaining the private old-code
+				// directory is safer than reporting a failed update or deleting data.
+				r.recordEvent("module_backup_retained")
 			}
 		}
 		r.recordEvent("module_updated")
