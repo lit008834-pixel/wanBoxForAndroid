@@ -195,7 +195,8 @@ class StatsBar @JvmOverloads constructor(
         latencyAttached = true
         initViews()
         updateThemeColors()
-        if (currentState == BaseService.State.Connected) testConnection(silent = true)
+        // @author 雾晚: reopening only renders state; latency probes require a user action.
+        updateStatusViews()
     }
 
     fun onIpDetailClicked() {
@@ -491,7 +492,6 @@ class StatsBar @JvmOverloads constructor(
                 if (DataStore.showLandingIp) {
                     refreshLandingIp(forceRefresh = false)
                 }
-                testConnection(silent = true)
             } else {
                 btnIpDetail?.visibility = View.GONE
                 resetLatencyState()
@@ -545,9 +545,6 @@ class StatsBar @JvmOverloads constructor(
                 result.onSuccess { info ->
                     btnIpDetail?.visibility = View.VISIBLE
                     updateStatusViews()
-                    if (lastMeasuredLatency <= 0) {
-                        testConnection(silent = true)
-                    }
                 }.onFailure { err ->
                     Logs.w(err)
                     btnIpDetail?.visibility = View.VISIBLE
@@ -615,8 +612,8 @@ class StatsBar @JvmOverloads constructor(
                     runOnUi {
                         latencyState.release(ticket)
                         if (activeLatencyJob === job) activeLatencyJob = null
-                        val current = probeKey()
-                        if (current != null && (current != ticket.key || job.isCancelled)) testConnection(silent = true)
+                        // @author 雾晚: cancellation/session changes never schedule another probe.
+                        updateStatusViews()
                     }
                 }
             }

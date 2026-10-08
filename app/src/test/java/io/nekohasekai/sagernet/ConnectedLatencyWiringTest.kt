@@ -8,6 +8,17 @@ import java.io.File
 /** Complements behavioral routing/state tests with checks of their Android integration points. */
 class ConnectedLatencyWiringTest {
     private fun source(path: String) = File("src/main/java/io/nekohasekai/sagernet/$path.kt").readText()
+    // Reopening, reattaching and IP refresh only render state; probes require a user action. @author 雾晚
+    @Test fun reopeningAndStatusRefreshNeverScheduleLatencyProbes() {
+        val stats = source("widget/StatsBar")
+        assertFalse("Lifecycle/state/IP/cancel callbacks must not silently probe", stats.contains("testConnection(silent = true)"))
+        assertFalse(stats.substringAfter("override fun onAttachedToWindow()").substringBefore("fun onIpDetailClicked()").contains("testConnection("))
+        assertFalse(stats.substringAfter("fun changeState(").substringBefore("fun refreshLandingIp(").contains("testConnection("))
+        assertFalse(stats.substringAfter("fun refreshLandingIp(").substringBefore("fun updateSpeed(").contains("testConnection("))
+        assertFalse(stats.substringAfter("job.invokeOnCompletion").contains("testConnection("))
+        assertTrue(stats.substringAfter("fun retestLatencyInPlace()").substringBefore("override fun setOnClickListener").contains("testConnection(silent = false)"))
+        assertTrue(source("ui/MainActivity").substringAfter("binding.stats.setOnClickListener").substringBefore("binding.stats.setOnLongClickListener").contains("binding.stats.testConnection()"))
+    }
     @Test fun binderDispatchesFromOwningServiceBeforeLazyBoxAndKeepsDefaultCustomPaths() {
         val binder = source("bg/BaseService").substringAfter("private fun measureUrl(")
             .substringBefore("override fun postNotificationSpeed")
