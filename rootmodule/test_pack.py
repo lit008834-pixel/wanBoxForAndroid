@@ -37,6 +37,10 @@ class PackageTest(unittest.TestCase):
             self.assertNotIn('ip rule flush', text)
             self.assertNotIn('rm -rf /data/adb/wanbox', text)
         self.assertIn('ARCH" = arm64', (source / 'customize.sh').read_text())
+        installer = (source / 'customize.sh').read_text()
+        self.assertIn('__internal schedule-install "$$"', installer)
+        self.assertNotIn('__internal activate', installer)
+        self.assertIn('install-manager', installer)
 
     def test_actual_packager_preserves_scripts_licenses_and_non_applied_example(self):
         with tempfile.TemporaryDirectory() as tmp:

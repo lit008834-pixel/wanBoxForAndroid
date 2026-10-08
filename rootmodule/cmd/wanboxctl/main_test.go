@@ -15,6 +15,10 @@ func TestCommandAllowlistRejectsExtraArgumentsAndShellInput(t *testing.T) {
 		{}, {"status", "extra"}, {"start", "extra"}, {"sh", "-c", "echo unsafe"},
 		{"config", "apply", "../file"}, {"config", "erase"}, {"autostart", "yes"},
 		{"__internal", "unknown"}, {"stop; echo unsafe"}, {"--data-root", "/tmp"},
+		{"__internal", "schedule-install", "1"}, {"__internal", "schedule-install", "2;stop"},
+		{"__internal", "schedule-install", "02"}, {"__internal", "schedule-install", "2", "extra"},
+		{"__internal", "finish-install", "2", "bad", "bad"},
+		{"__internal", "finish-install", "2", "0", "../file"},
 	} {
 		if err := run(context.Background(), r, args); err == nil || err.Error() != "arguments_invalid" {
 			t.Fatalf("unexpected command acceptance: %q: %v", args, err)

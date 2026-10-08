@@ -38,7 +38,7 @@ func packageManifest(dir string) (PackageManifest, error) {
 	if e := readJSON(filepath.Join(dir, "package-manifest.json"), &m, 64<<10); e != nil || m.SchemaVersion != 1 || len(m.Files) > len(packageFiles) {
 		return m, errors.New("package_manifest_invalid")
 	}
-	for _, name := range []string{"module.prop", "service.sh", "uninstall.sh", "customize.sh", "bin/rootbox", "bin/wanboxctl", "LICENSE", "LIBCORE-LICENSE"} {
+	for _, name := range []string{"module.prop", "service.sh", "uninstall.sh", "bin/rootbox", "bin/wanboxctl", "LICENSE", "LIBCORE-LICENSE"} {
 		if _, ok := m.Files[name]; !ok {
 			return m, errors.New("package_file_missing")
 		}
@@ -121,6 +121,10 @@ func checkPackageELF(path string) error {
 // Target is supplied ONLY by the fixed CLI installer branch, never App input.
 // @author 雾晚
 func (r *Runtime) Activate(ctx context.Context, target string) error {
+	return r.activate(ctx, target, false)
+}
+
+func (r *Runtime) activate(ctx context.Context, target string, managerFinished bool) error {
 	return r.withLock(func() error {
 		if filepath.Clean(target) == filepath.Clean(r.ModuleDir) {
 			return errors.New("install_requires_staging")
@@ -148,6 +152,15 @@ func (r *Runtime) Activate(ctx context.Context, target string) error {
 		}
 		defer os.RemoveAll(stage)
 		for name, file := range manifest.Files {
+			// Magisk removes these two install-only files after customize returns.
+			// ScheduleInstall verified them beforehand. Runtime binaries/config are
+			// always required and hash checked; no general missing-file fallback.
+			if managerFinished && (name == "customize.sh" || name == "README.md") {
+				if _, err := os.Lstat(filepath.Join(r.ModuleDir, name)); os.IsNotExist(err) {
+					delete(manifest.Files, name)
+					continue
+				}
+			}
 			if e = verifyPackageFile(r.ModuleDir, name, file, filepath.Join(stage, name)); e != nil {
 				return e
 			}

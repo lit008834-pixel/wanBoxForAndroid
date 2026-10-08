@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -42,6 +43,21 @@ func main() {
 	}
 }
 func run(ctx context.Context, r *module.Runtime, args []string) error {
+	if (len(args) == 3 || len(args) == 5) && args[0] == "__internal" {
+		pid, e := strconv.Atoi(args[2])
+		if e != nil || pid <= 1 || strconv.Itoa(pid) != args[2] {
+			return errors.New("arguments_invalid")
+		}
+		if len(args) == 3 && args[1] == "schedule-install" {
+			return r.ScheduleInstall(ctx, pid)
+		}
+		if len(args) == 5 && args[1] == "finish-install" {
+			if _, e = strconv.ParseUint(args[3], 10, 64); e != nil || len(args[4]) != 64 || strings.Trim(args[4], "0123456789abcdef") != "" {
+				return errors.New("arguments_invalid")
+			}
+			return r.FinishInstall(ctx, pid, args[3], args[4])
+		}
+	}
 	if len(args) == 2 && args[0] == "data" {
 		switch args[1] {
 		case "prepare":

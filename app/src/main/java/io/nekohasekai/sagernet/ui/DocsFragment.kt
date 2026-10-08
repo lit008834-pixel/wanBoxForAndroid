@@ -148,17 +148,7 @@ class DocsFragment : ToolbarFragment(R.layout.layout_docs) {
                 keywords = "流量 统计 上传 下载 消耗",
             )
         )
-        allItems.add(
-            DocListItem.Item(
-                category = "用户界面设置",
-                title = "通知栏显示分组 (showGroupInNotification)",
-                badge = "推荐: 开启",
-                desc = "在 Android 系统下拉通知栏的 VPN 常驻通知中，同步标明当前连接节点所属的订阅分组或合集名称。",
-                prosCons = "【利】下拉通知即可确认当前节点来自哪个机场或自建分组；【弊】若分组名称极长在窄屏设备上可能略微挤占宽度。",
-                recommendation = "【最稳推荐：开启】方便随时确认当前使用的代理服务归属。",
-                keywords = "通知栏 分组 机场 订阅",
-            )
-        )
+
         allItems.add(
             DocListItem.Item(
                 category = "用户界面设置",
@@ -294,17 +284,7 @@ class DocsFragment : ToolbarFragment(R.layout.layout_docs) {
                 keywords = "共享 局域网 电脑 开热点 switch 代理网关",
             )
         )
-        allItems.add(
-            DocListItem.Item(
-                category = "VPN 设置",
-                title = "计费网络 (meteredNetwork)",
-                badge = "推荐: 流量紧张开启，无限量关闭",
-                desc = "向 Android 系统框架声明当前 VPN 接口为“按流量计费网络”。",
-                prosCons = "【利】系统会自动暂停后台 Google Play 应用自动更新及云相册全量备份，防止机场流量被偷跑刷爆；【弊】部分依赖不限流量的后台同步会暂停。",
-                recommendation = "【最稳推荐：机场每月套餐有限用户建议开启】防止百兆更新偷跑套餐。",
-                keywords = "计费 流量 偷跑 更新 限制",
-            )
-        )
+
         allItems.add(
             DocListItem.Item(
                 category = "VPN 设置",
@@ -374,17 +354,7 @@ class DocsFragment : ToolbarFragment(R.layout.layout_docs) {
                 keywords = "密码 认证 用户名 鉴权 安全",
             )
         )
-        allItems.add(
-            DocListItem.Item(
-                category = "模式与入站设置",
-                title = "HTTP 代理绕过名单 (httpProxyBypass)",
-                badge = "推荐: 保持默认",
-                desc = "在使用系统全局 HTTP 代理时，配置直接绕过代理的域名与 IP 白名单（如 127.0.0.1, localhost, *.cn）。",
-                prosCons = "【利】保障内网与直连站点不受 HTTP 代理影响；【弊】配置错误可能导致内网请求走外网失败。",
-                recommendation = "【最稳推荐：保持默认】普通用户无需改动。",
-                keywords = "绕过名单 http 白名单 域名",
-            )
-        )
+
 
         // 4. 核心设置
         allItems.add(DocListItem.Header("4. 核心设置 (Core Settings)", "配置内核流量嗅探、域名预解析、IPv6 路由与规则集引擎"))
@@ -609,28 +579,8 @@ class DocsFragment : ToolbarFragment(R.layout.layout_docs) {
 
         // 8. 进阶设置
         allItems.add(DocListItem.Header("8. 进阶设置 (Advanced Settings)", "内核长连接自愈、安全策略、唤醒锁与日志调试"))
-        allItems.add(
-            DocListItem.Item(
-                category = "进阶设置",
-                title = "网络切换重置连接 (networkChangeResetConnections)",
-                badge = "模块模式: 不适用",
-                desc = "此项依赖旧 Android Service 的网络/屏幕广播或 PowerManager；独立模块不使用该路径，原偏好值保留。",
-                prosCons = "默认网卡监听由模块核心负责，不新增 App 常驻监听或唤醒锁。",
-                recommendation = "请使用模块真实状态及设备切网/休眠测试判断连接情况。",
-                keywords = "模块 root 网络 唤醒 兼容",
-            )
-        )
-        allItems.add(
-            DocListItem.Item(
-                category = "进阶设置",
-                title = "唤醒时重置连接 (wakeResetConnections)",
-                badge = "模块模式: 不适用",
-                desc = "此项依赖旧 Android Service 的网络/屏幕广播或 PowerManager；独立模块不使用该路径，原偏好值保留。",
-                prosCons = "默认网卡监听由模块核心负责，不新增 App 常驻监听或唤醒锁。",
-                recommendation = "请使用模块真实状态及设备切网/休眠测试判断连接情况。",
-                keywords = "模块 root 网络 唤醒 兼容",
-            )
-        )
+
+
         allItems.add(
             DocListItem.Item(
                 category = "进阶设置",
@@ -653,17 +603,7 @@ class DocsFragment : ToolbarFragment(R.layout.layout_docs) {
                 keywords = "tls 版本 1.2 1.3 握手 加密",
             )
         )
-        allItems.add(
-            DocListItem.Item(
-                category = "进阶设置",
-                title = "后台唤醒锁 (acquireWakeLock)",
-                badge = "模块模式: 不适用",
-                desc = "此项依赖旧 Android Service 的网络/屏幕广播或 PowerManager；独立模块不使用该路径，原偏好值保留。",
-                prosCons = "默认网卡监听由模块核心负责，不新增 App 常驻监听或唤醒锁。",
-                recommendation = "请使用模块真实状态及设备切网/休眠测试判断连接情况。",
-                keywords = "模块 root 网络 唤醒 兼容",
-            )
-        )
+
         allItems.add(
             DocListItem.Item(
                 category = "进阶设置",

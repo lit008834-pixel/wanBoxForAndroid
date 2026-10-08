@@ -133,10 +133,6 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(), OnPreferenceDataS
     }
 
     override fun onPreferenceDataStoreChanged(store: PreferenceDataStore, key: String) {
-        if (key == Key.SHOW_DIRECT_SPEED || key == "showGroupInNotification") {
-            SagerNet.application.sendBroadcast(Intent(io.nekohasekai.sagernet.Action.REFRESH_NOTIFICATION)
-                .setPackage(SagerNet.application.packageName))
-        }
         if (key == Key.MTU && DataStore.serviceState.started) {
             // The persisted MTU needs a new module snapshot, without recreating MainActivity.
             SagerNet.reloadService()
@@ -215,7 +211,6 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(), OnPreferenceDataS
             true
         }
         val mixedAuthConfig = findPreference<Preference>(Key.MIXED_AUTH_CONFIG)!!
-        val httpProxyBypass = findPreference<EditTextPreference>(Key.HTTP_PROXY_BYPASS)!!
         val dnsHosts = findPreference<EditTextPreference>(Key.DNS_HOSTS)!!
         val strictRoute = findPreference<SwitchPreference>(Key.STRICT_ROUTE)!!
         val speedTestMode = findPreference<SimpleMenuPreference>(Key.SPEED_TEST_MODE)!!
@@ -269,9 +264,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(), OnPreferenceDataS
         }
 
         mixedPort.setOnBindEditTextListener(EditTextPreferenceModifiers.Port)
-        httpProxyBypass.setOnBindEditTextListener(EditTextPreferenceModifiers.Hosts)
         dnsHosts.setOnBindEditTextListener(EditTextPreferenceModifiers.Hosts)
-        httpProxyBypass.summaryProvider = ListSummaryProvider(maxLines = 1)
         dnsHosts.summaryProvider = ListSummaryProvider(maxLines = 1)
 
         speedTestMode.setOnPreferenceChangeListener { _, newValue ->
@@ -301,8 +294,6 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(), OnPreferenceDataS
             valid
         }
 
-        val metedNetwork = findPreference<Preference>(Key.METERED_NETWORK)!!
-        metedNetwork.remove() // Android VPN-only; retain the stored value in backups.
         isProxyApps = findPreference(Key.PROXY_APPS)!!
         isProxyApps.setOnPreferenceChangeListener { _, newValue ->
             startActivity(Intent(activity, AppManagerActivity::class.java))
@@ -322,7 +313,6 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(), OnPreferenceDataS
 
         val tunImplementation = findPreference<SimpleMenuPreference>(Key.TUN_IMPLEMENTATION)!!
         val resolveDestination = findPreference<SwitchPreference>(Key.RESOLVE_DESTINATION)!!
-        val acquireWakeLock = findPreference<SwitchPreference>(Key.ACQUIRE_WAKE_LOCK)!!
         val hideFromRecentApps = findPreference<SwitchPreference>(Key.HIDE_FROM_RECENT_APPS)!!
         val enableClashAPI = findPreference<SwitchPreference>(Key.ENABLE_CLASH_API)!!
         enableClashAPI.setOnPreferenceChangeListener { _, newValue ->
@@ -344,11 +334,10 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(), OnPreferenceDataS
             true
         }
 
-        // 禁用混合入站：开启时代理端口/身份验证/绕过列表设置项变灰，端口摘要显示「已禁用」
+        // 禁用混合入站时代理端口及身份验证设置项变灰。
         fun updateMixedPortState(disabled: Boolean = DataStore.disableMixedInbound) {
             mixedPort.isEnabled = !disabled
             mixedAuthConfig.isEnabled = !disabled
-            httpProxyBypass.isEnabled = !disabled
             if (disabled) {
                 mixedPort.summaryProvider = null
                 mixedPort.summary = getString(R.string.mixed_inbound_disabled)
@@ -391,10 +380,8 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(), OnPreferenceDataS
         }
 
         mixedPort.onPreferenceChangeListener = reloadListener
-        httpProxyBypass.onPreferenceChangeListener = reloadListener
         dnsHosts.onPreferenceChangeListener = reloadListener
         strictRoute.onPreferenceChangeListener = reloadListener
-        // @author 雾晚: notification-only preferences refresh after persistence.
         trafficSniffing.onPreferenceChangeListener = reloadListener
         bypassLan.onPreferenceChangeListener = reloadListener
         bypassLanInCore.onPreferenceChangeListener = reloadListener
@@ -416,10 +403,8 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(), OnPreferenceDataS
 
         resolveDestination.onPreferenceChangeListener = reloadListener
         tunImplementation.onPreferenceChangeListener = reloadListener
-        // Preserve existing keys/values; an independent native module has no Android wake/broadcast owner.
-        for (key in listOf(Key.ACQUIRE_WAKE_LOCK, Key.WAKE_RESET_CONNECTIONS, Key.NETWORK_CHANGE_RESET_CONNECTIONS)) {
-            findPreference<Preference>(key)?.apply { isEnabled = false; summary = getString(R.string.root_module_managed_network) }
-        }
+        // Root-inapplicable controls are absent from XML; their historical
+        // persisted keys remain available to backup/restore without mutation.
         val performancePriorityMode = findPreference<SwitchPreference>(Key.PERFORMANCE_PRIORITY_MODE)
         performancePriorityMode?.setOnPreferenceChangeListener { _, newValue ->
             val enabled = newValue as Boolean
