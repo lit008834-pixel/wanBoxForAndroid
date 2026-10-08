@@ -1,8 +1,18 @@
 # wanBoxForAndroid 更新日志（Changelog）
 
-> 维护范围：下列 wanBox 3.0.x 条目按各自 GitHub Release 汇总；详细回归覆盖与兼容/升级信息请见对应版本页面。最新正式版为 v3.0.6，当前预览构建为 v3.0.7-preview.6。
+> 维护范围：下列 wanBox 3.0.x 条目按各自 GitHub Release 汇总；详细回归覆盖与兼容/升级信息请见对应版本页面。最新正式版为 v3.0.6，当前预览构建为 v3.0.7-preview.7。项目起源与当前定位见 [README](README.md)。
 
 ## wanBox 3.0.x 发布记录
+
+### v3.0.7-preview.7（预览版，2026-10-08）
+
+作者：@author 雾晚
+
+- 修复桌面应用图标退回 Android 默认图标：解除自适应图标前景的循环引用，恢复原有猫耳图标，保留启动入口及历史图标别名。
+- 修复 VPN 跨进程 socket 保护接口接收的文件描述符副本未释放的问题；正常完成和回调异常均释放副本，拒绝不完整或多描述符请求，不关闭发送端原始 socket。
+- 核验官方 sing-box v1.15.0-alpha.10 与 Android/Root 集成。核心版本保持不变；已包含的 GSO、UDP 和连接中断修复不重复移植，不宣称网速提升。
+- 新增启动器资源循环回归测试、安装后图标加载/绘制测试与 SCM_RIGHTS 生命周期测试；保留现有网络监听、Root/VPN 分派、测速与路由行为。
+- 预览版本 `3.0.7-preview.7`，Android `versionCode=1740`；公开 APK 为 arm64-v8a，最低 Android 12。
 
 ### v3.0.7-preview.6（预览版，2026-10-07）
 
@@ -236,9 +246,9 @@
 - 应用显示名称改为 **wanBox**，并采用亮蓝色主题。
 - 修复修改 MTU 后返回节点页的问题。
 
-## 上游 OwnBox 历史记录（分叉前）
+## OwnBox 历史来源记录（wanBox 独立维护前）
 
-> 以下内容是 wanBox 分叉前上游 OwnBox 的历史版本记录，不代表当前 wanBox 版本的功能状态。
+> wanBoxForAndroid 从 OwnBoxForAndroid 早期代码基础发展而来，现由本仓库独立维护代码、版本发布与功能路线。以下仅保留项目起源相关的 OwnBox 历史版本记录，不代表当前 wanBox 版本的功能状态；当前项目定位见 [README](README.md)。
 
 ### OwnBox for Android v2.9.0 正式版
 
