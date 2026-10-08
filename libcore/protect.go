@@ -1,3 +1,4 @@
+// @author 雾晚
 package libcore
 
 // libneko/protect_server 的自实现替代：
@@ -64,21 +65,39 @@ func handleProtectConn(conn *net.UnixConn, callback func(fd int)) {
 		}
 	}()
 
+	// SCM_RIGHTS creates receiver-owned copies. JNI borrows them only for this
+	// synchronous callback; closing the Unix connection does not close the copies.
+	var fds []int
+	defer func() {
+		for _, fd := range fds {
+			_ = unix.Close(fd)
+		}
+	}()
 	buf := make([]byte, 1)
-	oob := make([]byte, unix.CmsgSpace(4))
-	_, oobn, _, _, err := conn.ReadMsgUnix(buf, oob)
-	if err != nil {
-		log.Println("protect: read msg failed:", err)
-		return
-	}
+	// Bounded ancillary buffer; collect even truncated rights so none are leaked.
+	oob := make([]byte, unix.CmsgSpace(4*16))
+	_, oobn, flags, _, readErr := conn.ReadMsgUnix(buf, oob)
 	messages, err := unix.ParseSocketControlMessage(oob[:oobn])
-	if err != nil || len(messages) == 0 {
+	if err != nil {
 		log.Println("protect: parse control message failed:", err)
 		return
 	}
-	fds, err := unix.ParseUnixRights(&messages[0])
-	if err != nil || len(fds) == 0 {
-		log.Println("protect: parse unix rights failed:", err)
+	for _, message := range messages {
+		if message.Header.Level != unix.SOL_SOCKET || message.Header.Type != unix.SCM_RIGHTS {
+			continue
+		}
+		rights, err := unix.ParseUnixRights(&message)
+		if err != nil {
+			log.Println("protect: parse unix rights failed:", err)
+			return
+		}
+		fds = append(fds, rights...)
+		for _, fd := range rights {
+			unix.CloseOnExec(fd)
+		}
+	}
+	if readErr != nil || flags&unix.MSG_CTRUNC != 0 || len(fds) != 1 {
+		log.Println("protect: expected one complete descriptor message")
 		return
 	}
 

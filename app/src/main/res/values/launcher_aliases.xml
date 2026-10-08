@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- @author 雾晚: identical pixels share one asset. -->
+<!-- @author 雾晚: only non-cyclic bitmap aliases may share an asset. -->
 <resources>
-    <item type="drawable" name="wanbox_launcher_art">@mipmap/wanbox_launcher</item>
     <item type="drawable" name="ic_launcher_dark_foreground">@drawable/ic_launcher_foreground</item>
 </resources>
