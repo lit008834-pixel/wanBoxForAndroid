@@ -322,17 +322,24 @@ object RawUpdater : GroupUpdater() {
         Logs.d("toInsert profiles: ${toInsert.size}")
         Logs.d("toUpdate profiles: ${toUpdate.size}")
 
-        toInsert.forEach {
-            SagerDatabase.proxyDao.addProxy(it)
-        }
-        if (toUpdate.isNotEmpty()) {
-            SagerDatabase.proxyDao.updateProxy(toUpdate).also {
-                Logs.d("Updated profiles: $it")
+        // @author 雾晚: the pending journal is shared with the remote worker process.
+        // Check inside the same DB transaction so a canceled/stale update cannot
+        // recreate a group removed by clean-install preparation.
+        SagerDatabase.instance.runInTransaction {
+            check(!io.nekohasekai.sagernet.bg.RootModuleDataUpdate.pending()) { "data_update_pending" }
+            check(SagerDatabase.groupDao.getById(proxyGroup.id)?.subscription?.link == subscription.link) { "subscription_changed" }
+            toInsert.forEach {
+                SagerDatabase.proxyDao.addProxy(it)
             }
-        }
-        if (!isShrunkTooMuch && toDelete.isNotEmpty()) {
-            SagerDatabase.proxyDao.deleteProxy(toDelete).also {
-                Logs.d("Deleted profiles: $it")
+            if (toUpdate.isNotEmpty()) {
+                SagerDatabase.proxyDao.updateProxy(toUpdate).also {
+                    Logs.d("Updated profiles: $it")
+                }
+            }
+            if (!isShrunkTooMuch && toDelete.isNotEmpty()) {
+                SagerDatabase.proxyDao.deleteProxy(toDelete).also {
+                    Logs.d("Deleted profiles: $it")
+                }
             }
         }
 
@@ -397,7 +404,11 @@ object RawUpdater : GroupUpdater() {
         }
 
         subscription.lastUpdated = (System.currentTimeMillis() / 1000).toInt()
-        SagerDatabase.groupDao.updateGroup(proxyGroup)
+        SagerDatabase.instance.runInTransaction {
+            check(!io.nekohasekai.sagernet.bg.RootModuleDataUpdate.pending()) { "data_update_pending" }
+            check(SagerDatabase.groupDao.getById(proxyGroup.id)?.subscription?.link == subscription.link) { "subscription_changed" }
+            SagerDatabase.groupDao.updateGroup(proxyGroup)
+        }
         GroupManager.postUpdate(proxyGroup)
         finishUpdate(proxyGroup)
 

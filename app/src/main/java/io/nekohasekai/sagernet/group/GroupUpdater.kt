@@ -122,6 +122,8 @@ abstract class GroupUpdater {
 
         suspend fun executeUpdate(proxyGroup: ProxyGroup, byUser: Boolean): Boolean {
             return supervisorScope {
+                // @author 雾晚: do not schedule writes during a user-confirmed data reset.
+                if (io.nekohasekai.sagernet.bg.RootModuleDataUpdate.pending()) return@supervisorScope false
                 if (!updating.add(proxyGroup.id)) return@supervisorScope false
                 GroupManager.postReload(proxyGroup.id)
 

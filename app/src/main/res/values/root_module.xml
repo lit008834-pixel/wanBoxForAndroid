@@ -5,4 +5,17 @@
     <string name="root_module_action_failed">Module operation failed. Grant Root permission, install and enable the matching wanBox module, then retry. Invalid configurations keep the last working snapshot.</string>
     <string name="root_module_managed_network">Module networking is managed independently. This Android Service option does not apply; its saved value is retained.</string>
     <string name="root_tun_settings">Root TUN settings</string>
+    <string name="root_module_update_data">Module update data</string>
+    <string name="root_module_update_data_summary">Both module ZIPs preserve data by default. Prepare a clean installation or keep only nodes/subscriptions here before updating.</string>
+    <string name="root_module_keep_all">Keep all data (default)</string>
+    <string name="root_module_clean">Clean installation</string>
+    <string name="root_module_nodes_only">Keep only nodes and subscriptions</string>
+    <string name="root_module_share_backup">Share latest full pre-update backup</string>
+    <string name="root_module_keep_all_hint">Install either module ZIP directly. Existing App data and module configuration are preserved.</string>
+    <string name="root_module_clean_confirm">This immediately stops the proxy and clears nodes, subscriptions, route rules, settings and module runtime configuration. A full App backup and private module archive are retained. Continue, then install either module ZIP. The App will restart.</string>
+    <string name="root_module_nodes_confirm">This immediately stops the proxy, keeps nodes/subscription groups and removes route rules, other settings and module runtime configuration. A full App backup and private module archive are retained. Continue, then install either module ZIP. The App will restart.</string>
+    <string name="root_module_data_done">Data preparation finished. You can now install either module ZIP. A full backup is available in this page.</string>
+    <string name="root_module_data_retry">Data preparation is incomplete. Check Root/module availability and stop node tests, then return here to continue. Backups are retained and reconnect is blocked while preparation is pending.</string>
+    <string name="root_module_data_continue">Continue pending preparation</string>
+    <string name="root_module_no_backup">No pre-update backup is available.</string>
 </resources>

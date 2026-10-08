@@ -25,7 +25,7 @@ object RootModuleClient {
     @android.annotation.SuppressLint("SdCardPath")
     const val CLI = "/data/adb/modules/wanbox/bin/wanboxctl"
     private val commands = setOf("status", "module", "logs", "start", "stop", "restart", "reload",
-        "config apply", "config validate", "autostart on", "autostart off")
+        "config apply", "config validate", "autostart on", "autostart off", "data prepare", "data finish", "data rollback")
     private val changes = Mutex()
     data class Status(val phase: String, val revision: String, val runningRevision: String,
         val profileId: Long, val profileName: String, val stats: RootNotificationSample?, val error: String = "") {
@@ -94,6 +94,7 @@ object RootModuleClient {
         if (!changes.tryLock()) throw IOException("module_busy")
         try {
         val before = call("status")
+        if (RootModuleDataUpdate.pending()) throw IOException("data_update_pending")
         if (before.phase == "disabled") throw IOException("module_disabled_or_missing")
         val profile = SagerDatabase.proxyDao.getById(DataStore.selectedProxy) ?: throw IOException("profile_missing")
         val instance = ProxyInstance(profile)
@@ -109,6 +110,7 @@ object RootModuleClient {
         } finally { changes.unlock() }
     }
     suspend fun stop() = changes.withLock { call("stop") }
+    internal suspend fun <T> dataUpdate(action: suspend () -> T): T = changes.withLock { action() }
     suspend fun setAutoStart(enabled: Boolean) = changes.withLock { call("autostart ${if (enabled) "on" else "off"}") }
 }
 

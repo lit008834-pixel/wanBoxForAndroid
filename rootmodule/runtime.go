@@ -92,6 +92,10 @@ type Runtime struct {
 	ModuleDir string
 	// Validate must perform the pinned core's real check, without starting TUN.
 	Validate func(context.Context, string, string) error
+	// Unexported test seams; CLI input can never replace these lifecycle operations.
+	installValidate func(context.Context, string, string) error
+	installStart    func(context.Context) error
+	installRunning  func() bool
 }
 
 func New(root, moduleDir string) *Runtime {
@@ -447,6 +451,16 @@ func (r *Runtime) Enabled() bool {
 	return true
 }
 func (r *Runtime) withLock(fn func() error) error {
+	return r.withDataLock(func() error {
+		if _, e := os.Lstat(r.path("data-reset.json")); e == nil {
+			return errors.New("data_update_pending")
+		} else if !os.IsNotExist(e) {
+			return e
+		}
+		return fn()
+	})
+}
+func (r *Runtime) withDataLock(fn func() error) error {
 	if e := r.init(); e != nil {
 		return e
 	}

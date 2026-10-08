@@ -5,6 +5,8 @@ import argparse
 import pathlib
 import struct
 import zipfile
+import hashlib
+import json
 
 def check_elf(path, abi):
     data = path.read_bytes()
@@ -26,13 +28,20 @@ def main():
     if b'core_config_invalid' not in core:
         raise ValueError('rootbox predates module validation; rebuild native core first')
     args.output.parent.mkdir(parents=True, exist_ok=True)
+    files = {item.name: item.read_bytes().replace(b"\r\n", b"\n")
+        for item in sorted((pathlib.Path(__file__).parent / 'package').iterdir())}
+    files['LICENSE'] = (pathlib.Path(__file__).parent.parent / 'LICENSE').read_bytes()
+    files['LIBCORE-LICENSE'] = (pathlib.Path(__file__).parent.parent / 'libcore' / 'LICENSE').read_bytes()
+    files['bin/rootbox'], files['bin/wanboxctl'] = core, cli
+    files['package-manifest.json'] = manifest(files, False)
     with zipfile.ZipFile(args.output, 'w', zipfile.ZIP_DEFLATED) as out:
-        for item in sorted((pathlib.Path(__file__).parent / 'package').iterdir()):
-            out.writestr(item.name, item.read_bytes().replace(b"\r\n", b"\n"))
-        out.write(pathlib.Path(__file__).parent.parent / 'LICENSE', 'LICENSE')
-        out.write(pathlib.Path(__file__).parent.parent / 'libcore' / 'LICENSE', 'LIBCORE-LICENSE')
-        out.writestr('bin/rootbox', core)
-        out.writestr('bin/wanboxctl', cli)
+        for name, data in files.items(): out.writestr(name, data)
+
+def manifest(files, with_manager):
+    return json.dumps({'schemaVersion': 1, 'withManager': with_manager, 'files': {
+        name: {'size': len(data), 'sha256': hashlib.sha256(data).hexdigest()}
+        for name, data in files.items() if name != 'package-manifest.json'
+    }}, separators=(',', ':')).encode()
 
 if __name__ == '__main__':
     main()

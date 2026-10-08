@@ -5,4 +5,17 @@
     <string name="root_module_action_failed">模块操作失败。请授予 Root 权限，安装并启用配套 wanBox 模块后重试。无效配置会保留上一份有效快照。</string>
     <string name="root_module_managed_network">网络由独立模块管理；此 Android Service 选项不适用，原保存值仍保留。</string>
     <string name="root_tun_settings">Root TUN 设置</string>
+    <string name="root_module_update_data">模块更新数据</string>
+    <string name="root_module_update_data_summary">两个模块包默认保留全部数据。需要全新安装或仅保留节点和订阅，请在更新前于此处理。</string>
+    <string name="root_module_keep_all">保留全部数据（默认）</string>
+    <string name="root_module_clean">全新安装</string>
+    <string name="root_module_nodes_only">仅保留节点和订阅</string>
+    <string name="root_module_share_backup">分享最近的更新前完整备份</string>
+    <string name="root_module_keep_all_hint">直接安装任一模块 ZIP 即可，保留管理 App 数据和模块运行配置。</string>
+    <string name="root_module_clean_confirm">此操作现在就停止代理，清空节点、订阅、路由规则、设置及模块运行配置。先保留完整 App 备份和私有模块归档。完成后再安装任一模块 ZIP，管理 App 会重新启动。是否继续？</string>
+    <string name="root_module_nodes_confirm">此操作现在就停止代理，保留节点及订阅分组，清除路由规则、其他设置及模块运行配置。先保留完整 App 备份和私有模块归档。完成后再安装任一模块 ZIP，管理 App 会重新启动。是否继续？</string>
+    <string name="root_module_data_done">数据准备完成，可以安装任一模块 ZIP；完整备份可在此页面分享。</string>
+    <string name="root_module_data_retry">数据准备未完成。请检查 Root 权限、模块是否可用并停止节点测速，再回到这里继续。备份仍保留；准备未完成时禁止重新连接。</string>
+    <string name="root_module_data_continue">继续未完成的数据准备</string>
+    <string name="root_module_no_backup">尚无更新前备份。</string>
 </resources>

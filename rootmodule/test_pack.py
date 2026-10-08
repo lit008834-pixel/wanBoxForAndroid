@@ -6,6 +6,9 @@ import unittest
 import subprocess
 import sys
 import zipfile
+import json
+import hashlib
+from bundle_manager import bundle
 from pack import check_elf
 
 class PackageTest(unittest.TestCase):
@@ -52,5 +55,20 @@ class PackageTest(unittest.TestCase):
                 for name in ('service.sh', 'customize.sh', 'uninstall.sh'):
                     self.assertNotIn(b'\r', z.read(name))
                     self.assertNotIn(b'example.snapshot.json', z.read(name))
+                m = json.loads(z.read('package-manifest.json'))
+                self.assertFalse(m['withManager'])
+                for name, spec in m['files'].items():
+                    data = z.read(name)
+                    self.assertEqual({'size': len(data), 'sha256': hashlib.sha256(data).hexdigest()}, spec)
+            apk, with_apk = tmp / 'manager.apk', tmp / 'with-manager.zip'
+            with zipfile.ZipFile(apk, 'w') as z:
+                z.writestr('AndroidManifest.xml', b'fixture')
+                z.writestr('lib/arm64-v8a/libfixture.so', data)
+            bundle(output, apk, with_apk)
+            with zipfile.ZipFile(with_apk) as z:
+                self.assertTrue(json.loads(z.read('package-manifest.json'))['withManager'])
+                self.assertEqual(apk.read_bytes(), z.read('manager.apk'))
+            with zipfile.ZipFile(output, 'a') as z: z.writestr('../escape', b'x')
+            with self.assertRaises(ValueError): bundle(output, apk, with_apk)
 
 if __name__ == '__main__': unittest.main()

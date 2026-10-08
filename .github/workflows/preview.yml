@@ -37,6 +37,11 @@ jobs:
       - name: Native Build
         if: steps.cache.outputs.cache-hit != 'true'
         run: ./run lib core
+      - name: Prepare pinned source for cached-core tests
+        if: steps.cache.outputs.cache-hit == 'true'
+        run: |
+          bash buildScript/lib/core/get_source.sh
+          (cd libcore && go mod tidy)
       - name: Verify LibCore AAR
         run: |
           test -s app/libs/libcore.aar
@@ -152,6 +157,20 @@ jobs:
         with:
           name: APKs
           path: ${{ env.APK }}
+      - name: Download module without manager
+        uses: actions/download-artifact@v4
+        with:
+          name: root-module
+          path: module-artifacts
+      - name: Bundle verified signed management APK
+        run: |
+          python3 rootmodule/bundle_manager.py --source module-artifacts/wanbox-root-module-arm64-v8a.zip --apk public-apks/*arm64-v8a*.apk --output module-artifacts/wanbox-root-module-with-manager-arm64-v8a.zip
+          python3 -m zipfile -t module-artifacts/wanbox-root-module-with-manager-arm64-v8a.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: root-module-with-manager
+          path: module-artifacts/wanbox-root-module-with-manager-arm64-v8a.zip
+          if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:
           name: internal-upgrade-fixture
@@ -248,6 +267,16 @@ jobs:
         run: |
           test -s apks/wanbox-root-module-arm64-v8a.zip
           python3 -m zipfile -t apks/wanbox-root-module-arm64-v8a.zip
+          (cd apks && sha256sum *.apk *.zip > SHA256SUMS && sha256sum --check SHA256SUMS)
+      - name: Download module with manager
+        uses: actions/download-artifact@v4
+        with:
+          name: root-module-with-manager
+          path: apks
+      - name: Verify both module variants
+        run: |
+          test "$(find apks -maxdepth 1 -name '*.zip' | wc -l)" -eq 2
+          python3 -m zipfile -t apks/wanbox-root-module-with-manager-arm64-v8a.zip
           (cd apks && sha256sum *.apk *.zip > SHA256SUMS && sha256sum --check SHA256SUMS)
       - name: Publish to GitHub Releases
         uses: softprops/action-gh-release@v2

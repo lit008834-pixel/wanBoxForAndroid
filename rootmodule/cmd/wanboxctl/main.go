@@ -42,6 +42,16 @@ func main() {
 	}
 }
 func run(ctx context.Context, r *module.Runtime, args []string) error {
+	if len(args) == 2 && args[0] == "data" {
+		switch args[1] {
+		case "prepare":
+			return r.PrepareDataUpdate(ctx)
+		case "finish":
+			return r.FinishDataUpdate()
+		case "rollback":
+			return r.RollbackDataUpdate()
+		}
+	}
 	if len(args) == 2 && args[0] == "config" && args[1] == "rollback" {
 		return r.Rollback(ctx)
 	}
@@ -75,6 +85,10 @@ func run(ctx context.Context, r *module.Runtime, args []string) error {
 		switch args[1] {
 		case "supervise":
 			return r.Supervise(ctx)
+		case "activate":
+			return r.Activate(ctx, "/data/adb/modules/wanbox")
+		case "install-manager":
+			return r.InstallManager(ctx)
 		case "boot":
 			return r.Boot(ctx, func() bool {
 				t, c := context.WithTimeout(ctx, 2*time.Second)

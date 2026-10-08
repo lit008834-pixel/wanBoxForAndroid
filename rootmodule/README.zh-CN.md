@@ -61,7 +61,7 @@ App 的 RootTunService 仅在绑定时观察模块。页面隐藏后解绑并停
 | KernelSU 相同流程、SELinux 与 cgroup 脱离 | 未执行 |
 | 关闭/强停/卸载 App 后真实代理继续、重开状态一致 | 未执行 |
 | Wi-Fi/蜂窝、断网恢复、IPv4/IPv6/DNS/UDP、Doze | 未执行 |
-| Linux 真实子进程/取消/回滚 fixture 与 race | 本机 Windows：仅交叉编译 fixture；race 缺 gcc，未执行 |
+| Linux 真实子进程/取消/回滚 fixture 与 race | 首次 Actions Native Build 已通过；后续热更新版本以本次 Actions 结果为准 |
 | Android 仪器测试与 UI 前后截图 | 仅编译，未执行 |
 
 设备验收：先备份并连接同一虚构/测试节点，记录 `status` 的 supervisor/core PID 与 revision；依次关闭页面、force-stop 管理 App、重开、更新配置、提交损坏配置、重启、自启关闭、禁用/启用、升级、卸载。每步验证代理实际通路、私有数据保留、进程数、`ip rule`/路由/防火墙前后差异。执行两种管理器并覆盖上述网络矩阵后才可发布支持结论。
@@ -83,3 +83,15 @@ git diff --check
 配置校验实际应传绝对配置文件路径。Android Go CLI/rootbox 使用 NDK Android31 ARM64 编译为 PIE，fresh core 含 `rootmodule` build tag；主线四 ABI 构建能力保留。构建 Android 管理 APK 的既有 AAR 不是手工修改对象，新的独立核心由源码编译并放在 ZIP。
 
 本地 Debug APK 不使用正式版发布签名，不能声称可覆盖已安装正式版；需使用原发布流程与原签名验证升级，不能让用户卸载丢数据。版本号/包名/签名策略均未改。产物清单、校验和和实际结果记录在交付目录，生成文件不提交。
+
+## 免手机重启更新与三种数据方式
+
+`install.go` 校验固定文件白名单、SHA256/大小、ARM64 PIE、模块 ID，并用新核心重新校验当前快照。待旧进程清理后，在模块目录同一文件系统 rename 切换代码；若正在连接则重启核心，失败尝试回滚。管理器 staging 必须与活动目录不同；SELinux、管理器挂载及断电原子性仍是设备验收项。手机无需重启不等于连接无中断。
+
+`pack.py` 生成不带 APK包及 manifest；`bundle_manager.py` 在 CI 已验证原签名/包名/版本/ABI 后加入同一公开 APK，生成带管理 APK包。仅后者执行 Android package shell 安装，失败不回滚模块，也不删除旧 App 数据。
+
+管理 App 的「模块更新数据」提供默认保留全部、全新安装、仅保留节点/订阅。后两项是用户确认的更新前准备：先用真实 PortableBackup 导出全部数据到私有持久文件，再通过 root CLI `data prepare` 停止并归档模块配置。Room 的现有跨数据库事务写入完整空计划或保留节点/分组计划，最后 `data finish`。路由/其他偏好不保留；不改 Room schema，不 root 操作 App SQLite，不执行 pm clear、不删除内置资源和备份。
+
+App AtomicFile 日志和模块固定路径日志持久化步骤。中断时 App 从备份重复同一计划，模块完成剩余 rename；未完成时 CLI 的连接、配置提交、升级受阻。两个存储域不伪称同一 SQLite 原子事务；恢复机制提供可重入完成及完整备份。模块 `data rollback` 只用于未完成事务的管理员恢复，使用前应先恢复对应 App 完整备份。归档保留敏感凭据且不自动删除，用户可从 App 页面分享完整备份再用已有导入入口恢复。
+
+新增测试覆盖代码切换/损坏拒绝/新核心不兼容/启动失败回滚、禁用和卸载标志、数据准备重入/连接阻断/归档恢复。启动失败测试用注入的生命周期故障，不能替代 Android Root 真机。Android 节点保留与清空使用真实序列化/Room 的仪器测试另行编译，执行结果以设备/CI 记录为准。
