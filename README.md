@@ -3,14 +3,14 @@
 <p align="center">
   <img src="docs/logo.png" width="128" height="128" alt="wanBoxForAndroid Logo">
   <br>
-  <b>Android 通用代理与网络调试客户端：正式版 v3.0.6；当前预览版 v3.0.7-preview.6，均使用 sing-box v1.15.0-alpha.10</b>
+  <b>面向 Root 设备的独立 Android 代理项目：正式版 v3.0.6；当前预览版 v3.0.7-preview.7，均使用 sing-box v1.15.0-alpha.10</b>
   <br>
-  <b>An Android proxy and network diagnostics client: stable v3.0.6 and current preview v3.0.7-preview.6 use sing-box v1.15.0-alpha.10</b>
+  <b>An independent, root-focused Android proxy project: stable v3.0.6 and current preview v3.0.7-preview.7 use sing-box v1.15.0-alpha.10</b>
 </p>
 
 <p align="center">
   <a href="https://github.com/lit008834-pixel/wanBoxForAndroid/releases/tag/v3.0.6"><img src="https://img.shields.io/badge/Stable-v3.0.6-blue.svg?style=flat-square" alt="Latest stable release"></a>
-  <a href="https://github.com/lit008834-pixel/wanBoxForAndroid/releases/tag/v3.0.7-preview.6"><img src="https://img.shields.io/badge/Preview-v3.0.7--preview.6-5b7cfa.svg?style=flat-square" alt="Latest preview release"></a>
+  <a href="https://github.com/lit008834-pixel/wanBoxForAndroid/releases/tag/v3.0.7-preview.7"><img src="https://img.shields.io/badge/Preview-v3.0.7--preview.7-5b7cfa.svg?style=flat-square" alt="Latest preview release"></a>
   <a href="https://android-arsenal.com/api?level=21"><img src="https://img.shields.io/badge/Stable%20Android-5.0%2B%20(API%2021%2B)-brightgreen.svg?style=flat-square" alt="Stable minimum Android version"></a>
   <a href="https://android-arsenal.com/api?level=31"><img src="https://img.shields.io/badge/Preview%20Android-12%2B%20(API%2031%2B)-brightgreen.svg?style=flat-square" alt="Preview minimum Android version"></a>
   <a href="https://www.gnu.org/licenses/gpl-3.0"><img src="https://img.shields.io/badge/License-GPL--3.0-orange.svg?style=flat-square" alt="License"></a>
@@ -29,9 +29,11 @@
 ---
 ## 📖 项目介绍 / Introduction
 
-**wanBoxForAndroid 是基于 OwnBoxForAndroid 的非官方 Android 分支，支持 VPN TUN 与需要 Root 权限的 Root TUN 运行方式。上游项目：[OwnBoxForAndroid](https://github.com/Own716/OwnBoxForAndroid)。**
+**wanBoxForAndroid 从 OwnBoxForAndroid 的早期代码基础发展而来，目前由本仓库独立维护，拥有自己的代码、版本发布与功能路线；它不是 OwnBoxForAndroid 的官方版本，也不再以持续同步上游作为项目目标。项目面向 Root Android 设备，重点发展 Root TUN 与模块化运行。当前 v3.0.7-preview.7 仍保留 VPN TUN 和 Root TUN；纯 Root 模块模式尚未发布。**
 
-**wanBoxForAndroid is an unofficial Android fork based on OwnBoxForAndroid. It supports VPN TUN and Root TUN (root access required). Upstream project: [OwnBoxForAndroid](https://github.com/Own716/OwnBoxForAndroid).**
+**wanBoxForAndroid evolved from an early OwnBoxForAndroid codebase and is now independently maintained with its own code, releases, and roadmap. It is not an official OwnBoxForAndroid release, nor does it aim to continuously sync upstream. The project focuses on rooted Android devices, with Root TUN and module-based operation as its direction. Current v3.0.7-preview.7 still includes VPN TUN and Root TUN; pure Root-module operation has not yet been released.**
+
+项目起源、当前状态与发展方向详见[项目定位与发展说明](docs/project-positioning.zh-CN.md)。
 
 ---
 
