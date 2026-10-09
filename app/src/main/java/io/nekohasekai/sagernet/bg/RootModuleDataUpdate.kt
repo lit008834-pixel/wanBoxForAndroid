@@ -59,6 +59,10 @@ object RootModuleDataUpdate {
     // durable journal allows retry after process death; module reconnect is blocked.
     suspend fun prepare(mode: Int, installerId: String? = null): File? = RootModuleClient.dataUpdate {
         withContext(Dispatchers.IO + NonCancellable) {
+            // The :bg tile has a separate Mutex and cannot see main-process test jobs.
+            // Only the manager UI may restore App data; other processes ask it to finish.
+            if (android.app.Application.getProcessName() != io.nekohasekai.sagernet.BuildConfig.APPLICATION_ID)
+                throw IOException("install_data_update_pending")
             require(mode in KEEP_ALL..NODES_ONLY)
             require(installerId == null || installerId.matches(Regex("[a-f0-9]{32}")))
             if (mode == KEEP_ALL && !pending()) return@withContext null
@@ -130,6 +134,11 @@ object RootModuleDataUpdate {
     // Process death is resumed from the original full backup, never from a
     // partially reset database. The installer has already confirmed the choice.
     suspend fun applyInstallerSelection(): Boolean {
+        if (android.app.Application.getProcessName() != io.nekohasekai.sagernet.BuildConfig.APPLICATION_ID) {
+            if (pending() || RootModuleClient.call("status").installData != null)
+                throw IOException("install_data_update_pending")
+            return false
+        }
         var applied = false
         if (pending()) { prepare(KEEP_ALL); applied = true }
         val state = try { RootModuleClient.call("status") }

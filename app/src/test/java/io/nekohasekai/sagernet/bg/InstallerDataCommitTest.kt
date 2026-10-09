@@ -81,6 +81,10 @@ class InstallerDataCommitTest {
         assertTrue(source.contains("batchTestJob?.cancel()"))
         assertTrue(source.substringAfter("private fun trackBatchTest").substringBefore("inner class GroupPagerAdapter")
             .contains("job.invokeOnCompletion"))
+        val recovery = File("src/main/java/io/nekohasekai/sagernet/bg/RootModuleDataUpdate.kt").readText()
+        val ownerCheck = "android.app.Application.getProcessName() != io.nekohasekai.sagernet.BuildConfig.APPLICATION_ID"
+        assertTrue(recovery.substringAfter("suspend fun prepare").substringBefore("val existing").contains(ownerCheck))
+        assertTrue(recovery.substringAfter("suspend fun applyInstallerSelection").substringBefore("var applied").contains(ownerCheck))
         val xml = javax.xml.parsers.DocumentBuilderFactory.newInstance().apply { isNamespaceAware = true }
             .newDocumentBuilder().parse(File("src/main/AndroidManifest.xml"))
         val services = xml.getElementsByTagName("service")
