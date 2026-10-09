@@ -34,7 +34,8 @@ class ConnectedLatencyWiringTest {
     @Test fun rootReadinessGuardsBothMixedProbeAndIsolatedFallback() {
         val root = source("bg/RootTunService").substringAfter("fun urlTest(").substringBefore("override suspend fun startProcesses")
         assertTrue(root.contains("RootModuleClient.call(\"status\")"))
-        assertTrue(root.contains("if (!before.connected)"))
+        assertTrue(root.contains("if (!before.connected || before.profileId != DataStore.selectedProxy)"))
+        assertTrue(root.contains("after.profileId == DataStore.selectedProxy"))
         assertTrue(root.contains("after.runningRevision == before.runningRevision"))
         assertTrue(root.contains("TestInstance(profile, url, timeoutMs).doTest()"))
         assertTrue(root.contains("ProxyUrlProbe.measure("))

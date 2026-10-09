@@ -273,6 +273,9 @@ jobs:
             adb shell am instrument -w -r -e class io.nekohasekai.sagernet.RootModuleSnapshotTest com.lit008834.pixel.wanboxforandroid.debug.test/androidx.test.runner.AndroidJUnitRunner > snapshot-test-result.txt
             cat snapshot-test-result.txt
             grep -F 'OK (2 tests)' snapshot-test-result.txt
+            adb shell am instrument -w -r -e class io.nekohasekai.sagernet.DomesticRoutingConfigTest com.lit008834.pixel.wanboxforandroid.debug.test/androidx.test.runner.AndroidJUnitRunner > domestic-routing-test-result.txt
+            cat domestic-routing-test-result.txt
+            grep -F 'OK (1 test)' domestic-routing-test-result.txt
 
   publish:
     name: Publish Preview Release

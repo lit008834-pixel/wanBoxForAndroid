@@ -28,4 +28,23 @@ class RouteRulePriorityTest {
         assertFalse(RouteRulePriority.isFallback(RuleEntity(config = "{\"rule_set\":[\"custom\"]}")))
         assertEquals(emptyList<RuleEntity>(), RouteRulePriority.order(emptyList()))
     }
+    @Test fun legacyGeoReferencesCannotShadowAppOrLiteralRules() {
+        val domestic = RuleEntity(id = 1, domains = "geosite:cn", userOrder = 1)
+        val ips = RuleEntity(id = 2, ip = "geoip-cn", userOrder = 2)
+        val app = RuleEntity(id = 3, packages = setOf("fixture.app"), userOrder = 3)
+        val domain = RuleEntity(id = 4, domains = "domain:fixture.invalid", userOrder = 4)
+        val literalIp = RuleEntity(id = 5, ip = "192.0.2.0/24", userOrder = 5)
+        assertEquals(listOf(3L, 4L, 5L, 1L, 2L),
+            RouteRulePriority.order(listOf(domestic, ips, app, domain, literalIp)).map { it.id })
+        assertTrue(RouteRulePriority.isFallback(domestic.copy(domains = "geosite:cn, geosite-google")))
+        assertFalse(RouteRulePriority.isFallback(domestic.copy(domains = "geosite:cn\ndomain:fixture.invalid")))
+        assertFalse(RouteRulePriority.isFallback(ips.copy(ip = "geoip:cn\n192.0.2.1")))
+        assertFalse(RouteRulePriority.isFallback(domestic.copy(packages = setOf("fixture.app"))))
+        assertFalse(RouteRulePriority.isFallback(ips.copy(config = "{\"invert\":true}")))
+        assertTrue(RouteRulePriority.needsIpResolution(ips))
+        assertFalse(RouteRulePriority.needsIpResolution(domestic))
+        assertFalse(RouteRulePriority.needsIpResolution(literalIp))
+        assertFalse(RouteRulePriority.needsIpResolution(ips.copy(ip = "geoip:private")))
+    }
+
 }

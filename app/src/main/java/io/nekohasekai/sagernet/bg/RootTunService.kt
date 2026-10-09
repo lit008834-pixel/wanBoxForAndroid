@@ -37,10 +37,12 @@ class RootTunService : Service(), BaseService.Interface {
                 try {
                     val status = RootModuleClient.call("status")
                     val changedError = snapshot?.error != status.error
+                    val changedProfile = status.connected && (snapshot?.connected != true || snapshot?.profileId != status.profileId)
                     snapshot = status; DataStore.currentProfile = if (status.connected) status.profileId else 0
                     DataStore.mixedInboundAuthed = status.connected && DataStore.mixedInboundNeedsAuth
                     data.changeState(status.state, if (changedError && status.error.isNotBlank())
                         getString(io.nekohasekai.sagernet.R.string.root_module_action_failed) + " (" + status.error + ")" else null)
+                    if (changedProfile) data.binder.broadcast { it.cbSelectorUpdate(status.profileId) }
                     status.stats?.let { stats -> data.binder.broadcast {
                         it.cbSpeedUpdate(io.nekohasekai.sagernet.aidl.SpeedDisplayData(stats.tx, stats.rx, stats.directTx, stats.directRx, 0, 0))
                     } }
@@ -55,14 +57,14 @@ class RootTunService : Service(), BaseService.Interface {
     }
     fun urlTest(url: String, timeoutMs: Int): Int = runBlocking(Dispatchers.IO) {
         val before = RootModuleClient.call("status")
-        if (!before.connected) return@runBlocking 0
+        if (!before.connected || before.profileId != DataStore.selectedProxy) return@runBlocking 0
         val result = if (DataStore.mixedInboundDisabled) {
             val profile = SagerDatabase.proxyDao.getById(before.profileId) ?: return@runBlocking 0
             TestInstance(profile, url, timeoutMs).doTest()
         } else io.nekohasekai.sagernet.utils.ProxyUrlProbe.measure(url, DataStore.mixedPort, timeoutMs,
             DataStore.mixedUsername.takeIf { DataStore.mixedInboundNeedsAuth }, DataStore.mixedPassword)
         val after = RootModuleClient.call("status")
-        if (after.connected && after.runningRevision == before.runningRevision) result else 0
+        if (after.connected && after.profileId == DataStore.selectedProxy && after.runningRevision == before.runningRevision) result else 0
     }
     override fun reload() { SagerNet.reloadService() }
     override fun startRunner() { SagerNet.startService() }

@@ -699,14 +699,16 @@ class MainActivity : ThemedActivity(),
 
     override fun cbSelectorUpdate(id: Long) {
         val old = DataStore.selectedProxy
-        DataStore.selectedProxy = id
+        // @author 雾晚: module acknowledgement updates the running node, never
+        // overwrites a newer user selection with an older sampled profile.
+        if (DataStore.serviceMode != Key.MODE_ROOT) DataStore.selectedProxy = id
         DataStore.currentProfile = id
         refreshConfigurationProfileState()
         runOnDefaultDispatcher {
             ProfileManager.postUpdate(old, true)
             ProfileManager.postUpdate(id, true)
         }
-        binding.stats.refreshLandingIp(forceRefresh = true)
+        if (id == DataStore.selectedProxy) binding.stats.refreshLandingIp(forceRefresh = true)
     }
 
     override fun onPreferenceDataStoreChanged(store: PreferenceDataStore, key: String) {
@@ -719,6 +721,7 @@ class MainActivity : ThemedActivity(),
                 }
                 Key.CONNECTION_TEST_URL, Key.CONNECTION_TEST_TIMEOUT -> binding.stats.refreshDisplay()
                 Key.PROFILE_ID -> {
+                    refreshConfigurationProfileState()
                     binding.stats.refreshDisplay()
                     LandingIpManager.clearCache()
                     if (DataStore.serviceState.connected && DataStore.showLandingIp) {
@@ -735,13 +738,6 @@ class MainActivity : ThemedActivity(),
                     ) {
                         is GroupFragment -> fragment.updateBottomPadding()
                         is RouteFragment -> fragment.updateBottomPadding()
-                    }
-                }
-                Key.PROXY_APPS, Key.BYPASS_MODE, Key.INDIVIDUAL -> {
-                    if (DataStore.serviceState.canStop) {
-                        snackbar(getString(R.string.need_reload)).setAction(R.string.apply) {
-                            SagerNet.reloadService()
-                        }.show()
                     }
                 }
             }

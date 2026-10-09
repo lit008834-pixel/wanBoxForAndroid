@@ -21,7 +21,6 @@ import io.nekohasekai.sagernet.database.SagerDatabase
 import io.nekohasekai.sagernet.databinding.ActivityNodeSelectDialogBinding
 import io.nekohasekai.sagernet.ktx.onMainDispatcher
 import io.nekohasekai.sagernet.ktx.runOnDefaultDispatcher
-import io.nekohasekai.sagernet.widget.OwnBoxWidgetProvider
 
 class NodeSelectDialogActivity : AppCompatActivity() {
 
@@ -107,18 +106,10 @@ class NodeSelectDialogActivity : AppCompatActivity() {
     }
 
     private fun selectNode(proxy: ProxyEntity) {
-        runOnDefaultDispatcher {
-            DataStore.selectedProxy = proxy.id
-            DataStore.currentProfile = proxy.id
-            if (DataStore.serviceState.started) {
-                SagerNet.reloadService()
-            }
-            OwnBoxWidgetProvider.updateWidgets(this@NodeSelectDialogActivity)
-
-            onMainDispatcher {
-                finishWithFade()
-            }
-        }
+        // @author 雾晚: use the same immediate ordered selection as the main list.
+        // Only the module observer may acknowledge the actually running profile.
+        SagerNet.selectProfile(proxy.id)
+        finishWithFade()
     }
 
     private fun finishWithFade() {
