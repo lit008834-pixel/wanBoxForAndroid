@@ -21,6 +21,12 @@ import io.nekohasekai.sagernet.database.SagerDatabase
 import io.nekohasekai.sagernet.databinding.ActivityNodeSelectDialogBinding
 import io.nekohasekai.sagernet.ktx.onMainDispatcher
 import io.nekohasekai.sagernet.ktx.runOnDefaultDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class NodeSelectDialogActivity : AppCompatActivity() {
 
@@ -29,6 +35,11 @@ class NodeSelectDialogActivity : AppCompatActivity() {
     private val displayedNodes = mutableListOf<ProxyEntity>()
     private lateinit var adapter: NodeAdapter
     private var currentGroupId: Long = -1L
+    // @author 雾晚: three-state selection (idle -> selecting -> confirmed/failed).
+    // The checkmark follows the actually running profile, not the saved intent.
+    private var selectingId: Long = 0L
+    private var filterRevision = 0
+    private val dialogScope = MainScope()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -79,6 +90,7 @@ class NodeSelectDialogActivity : AppCompatActivity() {
     }
 
     private fun filterNodes() {
+        val revision = ++filterRevision
         runOnDefaultDispatcher {
             val nodes = if (currentGroupId == -1L) {
                 SagerDatabase.proxyDao.getAll().filter { !DataStore.isGroupDisabled(it.groupId) }
@@ -86,7 +98,8 @@ class NodeSelectDialogActivity : AppCompatActivity() {
                 if (DataStore.isGroupDisabled(currentGroupId)) emptyList() else SagerDatabase.proxyDao.getByGroup(currentGroupId)
             }
             onMainDispatcher {
-                updateNodeList(nodes)
+                // @author 雾晚: drop stale filter results; only the latest tab wins.
+                if (revision == filterRevision) updateNodeList(nodes)
             }
         }
     }
@@ -106,10 +119,40 @@ class NodeSelectDialogActivity : AppCompatActivity() {
     }
 
     private fun selectNode(proxy: ProxyEntity) {
-        // @author 雾晚: use the same immediate ordered selection as the main list.
-        // Only the module observer may acknowledge the actually running profile.
+        // @author 雾晚: three-state selection. Show "selecting", wait for the module
+        // observer to confirm the actually running profile, then close. Slow full
+        // reloads close with a hint instead of blocking the dialog.
+        if (selectingId != 0L) return
+        selectingId = proxy.id
+        adapter.notifyDataSetChanged()
         SagerNet.selectProfile(proxy.id)
-        finishWithFade()
+        dialogScope.launch {
+            val confirmed = withContext(Dispatchers.IO) {
+                repeat(5) {
+                    delay(if (it == 0) 800L else 1000L)
+                    val status = runCatching { io.nekohasekai.sagernet.bg.RootModuleClient.call("status") }.getOrNull()
+                    if (status != null && status.connected && status.profileId == proxy.id) return@withContext true
+                }
+                false
+            }
+            selectingId = 0L
+            if (confirmed) {
+                finishWithFade()
+            } else {
+                adapter.notifyDataSetChanged()
+                android.widget.Toast.makeText(
+                    this@NodeSelectDialogActivity,
+                    getString(R.string.node_switch_in_progress),
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+                finishWithFade()
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        dialogScope.cancel()
+        super.onDestroy()
     }
 
     private fun finishWithFade() {
@@ -137,7 +180,12 @@ class NodeSelectDialogActivity : AppCompatActivity() {
         @SuppressLint("SetTextI18n")
         override fun onBindViewHolder(holder: VH, position: Int) {
             val item = displayedNodes[position]
-            val isSelected = item.id == DataStore.selectedProxy
+            // @author 雾晚: checkmark follows the actually running profile
+            // (DataStore.currentProfile, updated by the module observer),
+            // not the saved selection intent.
+            val runningId = DataStore.currentProfile.takeIf { it > 0 } ?: DataStore.selectedProxy
+            val isSelected = item.id == runningId
+            val isSelecting = item.id == selectingId
 
             holder.name.text = item.displayName()
             holder.type.text = item.displayType()
@@ -155,7 +203,11 @@ class NodeSelectDialogActivity : AppCompatActivity() {
                 holder.ping.setTextColor(Color.parseColor("#94A3B8"))
             }
 
-            if (isSelected) {
+            if (isSelecting) {
+                holder.root.setBackgroundResource(R.drawable.bg_item_node_selected)
+                holder.checkIcon.visibility = View.VISIBLE
+                holder.ping.text = "…"
+            } else if (isSelected) {
                 holder.root.setBackgroundResource(R.drawable.bg_item_node_selected)
                 holder.checkIcon.visibility = View.VISIBLE
             } else {

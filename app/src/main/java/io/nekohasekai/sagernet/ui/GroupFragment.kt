@@ -194,6 +194,8 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
         UndoSnackbarManager.Interface<ProxyGroup> {
 
         val groupList = ArrayList<ProxyGroup>()
+        // @author 雾晚: group sizes fetched once per reload; bind() must not hit DB per row.
+        var groupCounts: Map<Long, Long> = emptyMap()
 
         suspend fun reload() {
             val groups = SagerDatabase.groupDao.allGroups().toMutableList()
@@ -202,6 +204,8 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
                     groups.remove(ungroupedGroup)
                 }
             }
+            groupCounts = SagerDatabase.proxyDao.countByGroups(groups.map { it.id })
+                .associate { it.groupId to it.count }
             groupList.clear()
             groupList.addAll(groups)
             groupListView.post {
@@ -602,9 +606,9 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
 
             groupUser.text = subscription?.username ?: ""
 
-            runOnDefaultDispatcher {
-                val size = SagerDatabase.proxyDao.countByGroup(group.id)
-                onMainDispatcher {
+            // @author 雾晚: use the pre-fetched batch counts; never query per row.
+            val size = groupCounts[group.id] ?: 0L
+            onMainDispatcher {
                     @Suppress("DEPRECATION") when (group.type) {
                         GroupType.BASIC -> {
                             if (size == 0L) {
@@ -629,8 +633,6 @@ class GroupFragment : ToolbarFragment(R.layout.layout_group),
                         }
                     }
                 }
-
-            }
 
         }
     }
