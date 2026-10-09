@@ -116,6 +116,9 @@ object RootModuleClient {
             if (before.phase == "disabled") throw IOException("module_disabled_or_missing")
             val profile = SagerDatabase.proxyDao.getById(DataStore.selectedProxy)
                 ?: if (!startIfStopped && !before.state.canStop) return else throw IOException("profile_missing")
+            // @author 雾晚: refresh cross-user UIDs (TTL-cached) so per-app rules
+            // cover secondary users / cloned apps.
+            runCatching { io.nekohasekai.sagernet.utils.PackageCache.refreshMultiUserUids() }
             val instance = ProxyInstance(profile)
             val file = File.createTempFile("module-snapshot-", ".json", SagerNet.application.cacheDir)
             try {

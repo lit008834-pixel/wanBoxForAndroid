@@ -4,6 +4,7 @@
     <string name="root_module_mode">Root module (Magisk / KernelSU)</string>
     <string name="root_module_action_failed">Module operation failed. Grant Root permission, install and enable the matching wanBox module, then retry. Invalid configurations keep the last working snapshot.</string>
     <string name="root_module_node_switch_failed">Node hot-switch failed; the saved selection is kept and a full apply was used instead. If this repeats, export the application log.</string>
+    <string name="root_module_revision_conflict">The configuration was changed elsewhere and this apply was rejected to avoid overwriting it. The list has been refreshed; please retry your change.</string>
     <string name="root_module_managed_network">Module networking is managed independently. This Android Service option does not apply; its saved value is retained.</string>
     <string name="root_tun_settings">Root TUN settings</string>
     <string name="root_module_data_retry">Installer data preparation is incomplete. Stop node tests and subscription updates, check Root/module availability, then reopen wanBox to retry. The full backup is retained and reconnect is blocked until complete.</string>

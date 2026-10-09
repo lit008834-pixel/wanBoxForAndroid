@@ -88,4 +88,31 @@ class NodeHotSwitchPolicyTest {
         assertTrue(en.contains("name=\"root_module_node_switch_failed\""))
         assertTrue(zh.contains("name=\"root_module_node_switch_failed\""))
     }
+
+    @Test fun resolveScopedToDirectBoundIpRules() {
+        val source = File("src/main/java/io/nekohasekai/sagernet/fmt/ConfigBuilder.kt").readText()
+        // The blanket resolve must not run for proxy-bound IP rules (poisoned
+        // direct-DNS answers would be acted on).
+        assertTrue(source.contains("if (rule.outbound == -1L || rule.outbound == -2L)"))
+    }
+
+    @Test fun perAppRulesCoverSecondaryUsers() {
+        val cache = File("src/main/java/io/nekohasekai/sagernet/utils/PackageCache.kt").readText()
+        assertTrue(cache.contains("fun uidsForPackage(packageName: String)"))
+        assertTrue(cache.contains("pm list users"))
+        val builder = File("src/main/java/io/nekohasekai/sagernet/fmt/ConfigBuilder.kt").readText()
+        assertTrue(builder.contains("PackageCache.uidsForPackage(it)"))
+        assertTrue(builder.contains("PackageCache.uidsForPackage(pkg)"))
+        val client = File("src/main/java/io/nekohasekai/sagernet/bg/RootModuleClient.kt").readText()
+        assertTrue(client.contains("PackageCache.refreshMultiUserUids()"))
+    }
+
+    @Test fun revisionConflictSurfacedToUser() {
+        val source = File("src/main/java/io/nekohasekai/sagernet/bg/RootModuleErrors.kt").readText()
+        assertTrue(source.contains("\"revision_conflict\" -> R.string.root_module_revision_conflict"))
+        val en = File("src/main/res/values/root_module.xml").readText()
+        val zh = File("src/main/res/values-zh-rCN/root_module.xml").readText()
+        assertTrue(en.contains("name=\"root_module_revision_conflict\""))
+        assertTrue(zh.contains("name=\"root_module_revision_conflict\""))
+    }
 }
