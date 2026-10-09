@@ -30,6 +30,17 @@ func (r *Runtime) writeInstallChoice(mode, digest string) error {
 	if !validInstallMode(mode) || !revisionName.MatchString(digest) {
 		return errors.New("arguments_invalid")
 	}
+	pending, e := r.installSelection()
+	if e != nil {
+		return e
+	}
+	if pending != nil {
+		if mode != "preserve" && mode != pending.Mode {
+			return errors.New("install_data_selection_changed")
+		}
+		// Installing recovery code must retain the original App journal token.
+		return jsonWrite(filepath.Join(r.ModuleDir, "install-choice.json"), installChoice{pending.Mode, digest, pending.ID})
+	}
 	var token [16]byte
 	if _, e := rand.Read(token[:]); e != nil {
 		return errors.New("install_data_selection_failed")
@@ -128,6 +139,9 @@ func (r *Runtime) queueInstallSelectionID(mode, id string) error {
 	if previous, e := r.installSelection(); e != nil {
 		return e
 	} else if previous != nil {
+		if previous.ID == id && previous.Mode == mode {
+			return nil
+		}
 		return errors.New("install_data_update_pending")
 	}
 	var completed InstallDataSelection
@@ -142,6 +156,26 @@ func (r *Runtime) queueInstallSelectionID(mode, id string) error {
 		return errors.New("install_data_selection_invalid")
 	}
 	return jsonWrite(r.path("install-data.json"), InstallDataSelection{id, mode})
+}
+
+// Code updates may carry an unfinished installer selection, but may neither
+// change its intent nor race an active App/module data transaction. @author 雾晚
+func (r *Runtime) withInstallLock(mode string, fn func(*InstallDataSelection) error) error {
+	return r.withDataLock(func() error {
+		if _, e := os.Lstat(r.path("data-reset.json")); e == nil {
+			return errors.New("data_update_pending")
+		} else if !os.IsNotExist(e) {
+			return e
+		}
+		pending, e := r.installSelection()
+		if e != nil {
+			return e
+		}
+		if pending != nil && mode != "preserve" && mode != pending.Mode {
+			return errors.New("install_data_selection_changed")
+		}
+		return fn(pending)
+	})
 }
 
 // An old or forged acknowledgement cannot clear a newer selection. @author 雾晚

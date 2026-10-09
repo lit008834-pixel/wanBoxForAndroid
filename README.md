@@ -3,14 +3,14 @@
 <p align="center">
   <img src="docs/logo.png" width="128" height="128" alt="wanBoxForAndroid Logo">
   <br>
-  <b>面向 Root 设备的独立 Android 代理项目：正式版 v3.0.6；当前预览版 v3.0.7-preview.12，均使用 sing-box v1.15.0-alpha.10</b>
+  <b>面向 Root 设备的独立 Android 代理项目：正式版 v3.0.6；当前预览版 v3.0.7-preview.14，均使用 sing-box v1.15.0-alpha.10</b>
   <br>
-  <b>An independent, root-focused Android proxy project: stable v3.0.6 and current preview v3.0.7-preview.12 use sing-box v1.15.0-alpha.10</b>
+  <b>An independent, root-focused Android proxy project: stable v3.0.6 and current preview v3.0.7-preview.14 use sing-box v1.15.0-alpha.10</b>
 </p>
 
 <p align="center">
   <a href="https://github.com/lit008834-pixel/wanBoxForAndroid/releases/tag/v3.0.6"><img src="https://img.shields.io/badge/Stable-v3.0.6-blue.svg?style=flat-square" alt="Latest stable release"></a>
-  <a href="https://github.com/lit008834-pixel/wanBoxForAndroid/releases/tag/v3.0.7-preview.12"><img src="https://img.shields.io/badge/Preview-v3.0.7--preview.11-5b7cfa.svg?style=flat-square" alt="Latest preview release"></a>
+  <a href="https://github.com/lit008834-pixel/wanBoxForAndroid/releases/tag/v3.0.7-preview.14"><img src="https://img.shields.io/badge/Preview-v3.0.7--preview.14-5b7cfa.svg?style=flat-square" alt="Latest preview release"></a>
   <a href="https://android-arsenal.com/api?level=21"><img src="https://img.shields.io/badge/Stable%20Android-5.0%2B%20(API%2021%2B)-brightgreen.svg?style=flat-square" alt="Stable minimum Android version"></a>
   <a href="https://android-arsenal.com/api?level=31"><img src="https://img.shields.io/badge/Preview%20Android-12%2B%20(API%2031%2B)-brightgreen.svg?style=flat-square" alt="Preview minimum Android version"></a>
   <a href="https://www.gnu.org/licenses/gpl-3.0"><img src="https://img.shields.io/badge/License-GPL--3.0-orange.svg?style=flat-square" alt="License"></a>
@@ -29,9 +29,9 @@
 ---
 ## 📖 项目介绍 / Introduction
 
-**wanBoxForAndroid 从 OwnBoxForAndroid 的早期代码基础发展而来，目前由本仓库独立维护，拥有自己的代码、版本发布与功能路线；它不是 OwnBoxForAndroid 的官方版本，也不再以持续同步上游作为项目目标。项目面向 Root Android 设备；当前 v3.0.7-preview.12 使用独立 Root TUN 模块，App 保留原有管理界面，不再提供普通 VPN 模式。正式版 v3.0.6 的历史功能范围以其发行说明为准。**
+**wanBoxForAndroid 从 OwnBoxForAndroid 的早期代码基础发展而来，目前由本仓库独立维护，拥有自己的代码、版本发布与功能路线；它不是 OwnBoxForAndroid 的官方版本，也不再以持续同步上游作为项目目标。项目面向 Root Android 设备；当前 v3.0.7-preview.14 使用独立 Root TUN 模块，App 保留原有管理界面，不再提供普通 VPN 模式。正式版 v3.0.6 的历史功能范围以其发行说明为准。**
 
-**wanBoxForAndroid evolved from an early OwnBoxForAndroid codebase and is independently maintained with its own code, releases, and roadmap. It is not an official OwnBoxForAndroid release and does not aim to continuously sync upstream. Current v3.0.7-preview.12 uses an independent Root TUN module and retains the management UI; ordinary VPN mode is no longer offered. Stable v3.0.6 retains the historical scope documented in its release notes.**
+**wanBoxForAndroid evolved from an early OwnBoxForAndroid codebase and is independently maintained with its own code, releases, and roadmap. It is not an official OwnBoxForAndroid release and does not aim to continuously sync upstream. Current v3.0.7-preview.14 uses an independent Root TUN module and retains the management UI; ordinary VPN mode is no longer offered. Stable v3.0.6 retains the historical scope documented in its release notes.**
 
 项目起源、当前状态与发展方向详见[项目定位与发展说明](docs/project-positioning.zh-CN.md)。
 

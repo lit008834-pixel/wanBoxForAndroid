@@ -298,7 +298,7 @@ object LandingIpManager {
         forceRefresh: Boolean = false,
         onUpdate: ((LandingIpInfo) -> Unit)? = null,
     ): Result<LandingIpInfo> = withContext(Dispatchers.IO) {
-        if (!DataStore.serviceState.connected) {
+        if (!DataStore.serviceState.connected || DataStore.currentProfile != profileId) {
             return@withContext Result.failure(IllegalStateException("service_not_connected"))
         }
 
@@ -310,7 +310,7 @@ object LandingIpManager {
             }
             val ticket = cache.ticket(profileId)
             fun publish(info: LandingIpInfo) {
-                if (DataStore.serviceState.connected && DataStore.selectedProxy == profileId && cache.put(ticket, info)) onUpdate?.invoke(info)
+                if (DataStore.serviceState.connected && DataStore.selectedProxy == profileId && DataStore.currentProfile == profileId && cache.put(ticket, info)) onUpdate?.invoke(info)
             }
             isQuerying = true
             val startTime = System.nanoTime()
@@ -382,7 +382,7 @@ object LandingIpManager {
                     }
 
                     if (winningInfo != null) {
-                        if (DataStore.serviceState.connected && DataStore.selectedProxy == profileId && cache.put(ticket, winningInfo)) Result.success(winningInfo)
+                        if (DataStore.serviceState.connected && DataStore.selectedProxy == profileId && DataStore.currentProfile == profileId && cache.put(ticket, winningInfo)) Result.success(winningInfo)
                         else Result.failure(IllegalStateException("landing_ip_query_retired"))
                     } else {
                         Result.failure(Exception("无法获取落地 IP 信息"))

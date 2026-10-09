@@ -232,3 +232,109 @@ func TestCompletedInstallChoiceCannotResetNewDataOnReboot(t *testing.T) {
 		}
 	}
 }
+
+// An unfinished App transaction must not prevent installing its recovery code.
+// It still blocks network commands and retains the original confirmed intent.
+// @author 雾晚
+func TestCodeUpdateCarriesPendingSelectionWithoutResetOrRestart(t *testing.T) {
+	for _, requested := range []string{"preserve", "nodes"} {
+		r, source := fixture(t)
+		state, e := r.Apply(context.Background(), source)
+		if e != nil {
+			t.Fatal(e)
+		}
+		packageFixture(t, r)
+		if e = r.queueInstallSelection("nodes"); e != nil {
+			t.Fatal(e)
+		}
+		before, _ := r.installSelection()
+		digest, _ := manifestDigest(r.ModuleDir)
+		if e = r.writeInstallChoice(requested, digest); e != nil {
+			t.Fatal(e)
+		}
+		choice, e := r.readInstallChoice()
+		if e != nil || choice.Mode != before.Mode || choice.ID != before.ID {
+			t.Fatal("changed pending intent", choice, e)
+		}
+		starts := 0
+		r.installRunning = func() bool { return true }
+		r.installStart = func(context.Context) error { starts++; return nil }
+		target := filepath.Join(filepath.Dir(r.ModuleDir), "recovery")
+		if e = r.completeInstallMode(context.Background(), func(context.Context) error { return nil }, target, digest, choice.Mode); e != nil {
+			t.Fatal(e)
+		}
+		installed := New(r.Root, target)
+		after, e := installed.installSelection()
+		if e != nil || *after != *before || starts != 0 {
+			t.Fatal("lost intent or restarted before App recovery", after, starts, e)
+		}
+		if revision, _, e := installed.Current(); e != nil || revision != state.Revision {
+			t.Fatal("modified user data", e)
+		}
+		if e = installed.Start(context.Background()); e == nil || e.Error() != "install_data_update_pending" {
+			t.Fatal("unblocked pending connection", e)
+		}
+		if e = installed.Boot(context.Background(), func() bool { return true }); e == nil || e.Error() != "install_data_update_pending" {
+			t.Fatal("lost pending choice on reboot", e)
+		}
+		if e = installed.PrepareDataUpdate(context.Background()); e != nil {
+			t.Fatal(e)
+		}
+		if e = installed.FinishDataUpdate(); e != nil {
+			t.Fatal(e)
+		}
+		if e = installed.FinishInstallSelection(before.ID); e != nil {
+			t.Fatal("original acknowledgement rejected", e)
+		}
+		if installed.Status().InstallData != nil {
+			t.Fatal("recovery did not finish")
+		}
+	}
+}
+
+func TestPendingInstallCannotChangeIntentOrInterleaveDataTransaction(t *testing.T) {
+	r, _ := fixture(t)
+	packageFixture(t, r)
+	digest, _ := manifestDigest(r.ModuleDir)
+	if e := r.withDataLock(func() error { return r.queueInstallSelection("nodes") }); e != nil {
+		t.Fatal(e)
+	}
+	before, _ := r.installSelection()
+	if e := r.writeInstallChoice("fresh", digest); e == nil {
+		t.Fatal("changed pending nodes selection to fresh")
+	}
+	target := filepath.Join(filepath.Dir(r.ModuleDir), "recovery")
+	if e := r.activateMode(context.Background(), target, false, "fresh"); e == nil {
+		t.Fatal("replaced conflicting intent")
+	}
+	if e := r.PrepareDataUpdate(context.Background()); e != nil {
+		t.Fatal(e)
+	}
+	if e := r.Activate(context.Background(), target); e == nil || e.Error() != "data_update_pending" {
+		t.Fatal("interleaved active data transaction", e)
+	}
+	after, _ := r.installSelection()
+	if *after != *before {
+		t.Fatal("changed durable selection")
+	}
+	if _, e := os.Stat(target); !os.IsNotExist(e) {
+		t.Fatal("replaced code on rejected update", e)
+	}
+}
+
+func TestSelectionQueueAcceptsOnlyExactPendingReplay(t *testing.T) {
+	r, _ := fixture(t)
+	id := strings.Repeat("a", 32)
+	if e := r.withDataLock(func() error { return r.queueInstallSelectionID("nodes", id) }); e != nil {
+		t.Fatal(e)
+	}
+	if e := r.queueInstallSelectionID("nodes", id); e != nil {
+		t.Fatal("exact replay rejected", e)
+	}
+	if e := r.queueInstallSelectionID("nodes", strings.Repeat("b", 32)); e == nil {
+		t.Fatal("different token overwrote intent")
+	}
+	if e := r.queueInstallSelectionID("fresh", id); e == nil {
+		t.Fatal("different mode overwrote intent")
+	}
+}

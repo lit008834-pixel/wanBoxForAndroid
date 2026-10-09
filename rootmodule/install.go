@@ -132,7 +132,10 @@ func (r *Runtime) activateMode(ctx context.Context, target string, managerFinish
 	if !validInstallMode(mode) {
 		return errors.New("arguments_invalid")
 	}
-	return r.withLock(func() error {
+	return r.withInstallLock(mode, func(pending *InstallDataSelection) error {
+		if pending != nil {
+			mode = pending.Mode
+		}
 		if filepath.Clean(target) == filepath.Clean(r.ModuleDir) {
 			return errors.New("install_requires_staging")
 		}
@@ -286,7 +289,9 @@ func (r *Runtime) activateMode(ctx context.Context, target string, managerFinish
 			return rollback()
 		}
 		if mode != "preserve" {
-			if choice != nil {
+			if pending != nil {
+				e = r.queueInstallSelectionID(pending.Mode, pending.ID)
+			} else if choice != nil {
 				e = r.queueInstallSelectionID(mode, choice.ID)
 			} else {
 				e = r.queueInstallSelection(mode)

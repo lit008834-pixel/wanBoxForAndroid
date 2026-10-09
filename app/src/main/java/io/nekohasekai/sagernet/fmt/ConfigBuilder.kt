@@ -1365,7 +1365,18 @@ fun buildConfig(
             // Keep userOrder within each tier; custom JSON and scoped rule sets stay explicit.
             // Core DNS/loop protections stay ahead, App-owned fallbacks are appended below.
             // 应用用户规则
+            var resolvedForGeoIp = false
             for (rule in extraRules) {
+                // @author 雾晚: resolve only after explicit/domain rules had a chance to
+                // match. Official alpha.10 has no fork-specific match_only option.
+                // Normal DNS routing chooses the resolver; never force public/direct DNS.
+                if (!resolvedForGeoIp && RouteRulePriority.needsIpResolution(rule)) {
+                    route.rules.add(Rule_DefaultOptions().apply {
+                        action = "resolve"
+                        _hack_config_map["timeout"] = "3s"
+                    })
+                    resolvedForGeoIp = true
+                }
                 if (rule.packages.isNotEmpty()) {
                     PackageCache.awaitLoadSync()
                 }

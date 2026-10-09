@@ -1144,4 +1144,10 @@
     <string name="tcp_rtt_network_unavailable">物理网络尚未就绪，请连接网络后重试。</string>
     <string name="service_start_rejected">系统拒绝在后台启动服务，请打开 wanBox 重新连接，并检查电池限制。</string>
     <string name="connection_test_tcp_all">TCP RTT 测试（全部）</string>
+    <string name="preset_domestic_split">预设：国内域名/IP 直连，其余走代理</string>
+    <string name="preset_domestic_split_message">启用中国域名和中国 IP 直连规则，切换为规则模式并开启 DNS 分流。未命中的流量走当前代理，指定应用/域名/IP 规则仍优先。保留原有规则，相同直连规则仅启用、不重复创建。分应用绕过名单中的应用仍不进入路由。</string>
+    <string name="preset_domestic_domains">中国域名直连</string>
+    <string name="preset_domestic_ips">中国 IP 直连</string>
+    <string name="preset_domestic_custom_config">当前使用完整自定义配置，请编辑其中的路由，或关闭完整自定义配置后使用预设。</string>
+    <string name="preset_domestic_failed">路由预设保存失败，请检查可用存储后重试。</string>
 </resources>

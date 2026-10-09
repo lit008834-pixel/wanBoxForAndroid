@@ -78,4 +78,37 @@ class CoalescedReloadTest {
         delay(250)
         assertEquals(0, count); assertFalse(reload.request())
     }
+    @Test fun alreadyCancelledOwnerRejectsRequestsEvenIfWorkerNeverStarts() = runBlocking {
+        val parent = SupervisorJob()
+        parent.cancel(); parent.join()
+        val queue = CoalescedReload(CoroutineScope(parent + Dispatchers.Default), 20,
+            apply = { fail("Cancelled queue must not apply") }, onError = { throw it })
+        parent.join()
+        assertFalse(queue.request())
+    }
+
+    @Test fun manualSelectionWakesQuietWindowImmediatelyEvenAfterPassiveEdit() = runBlocking {
+        val owner = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val applied = CompletableDeferred<Unit>()
+        try {
+            val queue = CoalescedReload(owner, 10000, apply = { applied.complete(Unit) }, onError = { throw it })
+            queue.request(); delay(30)
+            queue.request(immediate = true); queue.request() // passive signal cannot erase urgency
+            withTimeout(2000) { applied.await() }
+        } finally { owner.cancel(); owner.coroutineContext[Job]!!.join() }
+    }
+    @Test fun selectionDuringApplyWaitsForTransactionButSkipsNextQuietWindow() = runBlocking {
+        val owner = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val first = CompletableDeferred<Unit>(); val release = CompletableDeferred<Unit>()
+        val second = CompletableDeferred<Unit>(); var count = 0
+        try {
+            val queue = CoalescedReload(owner, 10000, apply = {
+                if (++count == 1) { first.complete(Unit); release.await() } else second.complete(Unit)
+            }, onError = { throw it })
+            queue.request(immediate = true); withTimeout(2000) { first.await() }
+            queue.request(immediate = true); assertEquals(1, count)
+            release.complete(Unit); withTimeout(2000) { second.await() }; assertEquals(2, count)
+        } finally { owner.cancel(); owner.coroutineContext[Job]!!.join() }
+    }
+
 }

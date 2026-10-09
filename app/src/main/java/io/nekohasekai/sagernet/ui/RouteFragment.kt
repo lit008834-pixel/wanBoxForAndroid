@@ -147,6 +147,44 @@ class RouteFragment : ToolbarFragment(R.layout.layout_route), Toolbar.OnMenuItem
         }).attachToRecyclerView(ruleListView)
     }
 
+    /** Optional preset; no startup/default migration rewrites user routing. @author 雾晚 */
+    private fun showDomesticRoutingPreset() {
+        if (DataStore.globalCustomConfig.isNotBlank()) {
+            snackbar(R.string.preset_domestic_custom_config).show()
+            return
+        }
+        MaterialAlertDialogBuilder(activity)
+            .setTitle(R.string.preset_domestic_split)
+            .setMessage(R.string.preset_domestic_split_message)
+            .setPositiveButton(R.string.apply) { _, _ ->
+                val domainName = getString(R.string.preset_domestic_domains)
+                val ipName = getString(R.string.preset_domestic_ips)
+                // Application scope finishes the atomic save even if this page is closed.
+                SagerNet.application.applicationScope.launch(Dispatchers.IO) {
+                    try {
+                        io.nekohasekai.sagernet.route.DomesticRoutingPreset.apply(
+                            domainName, ipName)
+                        DataStore.globalMode = false
+                        DataStore.enableDnsRouting = true
+                        SagerNet.reloadService()
+                        withContext(Dispatchers.Main) {
+                            if (isAdded && view != null) {
+                                ruleAdapter.reload()
+                                snackbar(R.string.preset_applied_toast).show()
+                            }
+                        }
+                    } catch (error: CancellationException) { throw error }
+                    catch (_: Exception) {
+                        withContext(Dispatchers.Main) {
+                            if (isAdded && view != null) snackbar(R.string.preset_domestic_failed).show()
+                        }
+                    }
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
     fun updateBottomPadding() {
         if (!::ruleListView.isInitialized) return
         ruleListView.clipToPadding = false
@@ -186,11 +224,16 @@ class RouteFragment : ToolbarFragment(R.layout.layout_route), Toolbar.OnMenuItem
                 val presets = arrayOf(
                     getString(R.string.preset_bypass_cn_apps),
                     getString(R.string.preset_proxy_foreign_apps),
-                    getString(R.string.route_opt_block_ads)
+                    getString(R.string.route_opt_block_ads),
+                    getString(R.string.preset_domestic_split)
                 )
                 MaterialAlertDialogBuilder(activity)
                     .setTitle(R.string.route_preset_title)
                     .setItems(presets) { _, which ->
+                        if (which == 3) {
+                            showDomesticRoutingPreset()
+                            return@setItems
+                        }
                         runOnDefaultDispatcher {
                             when (which) {
                                 0 -> {

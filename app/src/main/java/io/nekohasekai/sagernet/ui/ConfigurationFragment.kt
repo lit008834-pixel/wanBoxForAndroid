@@ -3662,8 +3662,6 @@ class ConfigurationFragment @JvmOverloads constructor(
 
         }
 
-        val profileAccess = Mutex()
-        val reloadAccess = Mutex()
 
         inner class ConfigurationHolder(val view: View) : RecyclerView.ViewHolder(view),
             PopupMenu.OnMenuItemClickListener {
@@ -3779,31 +3777,13 @@ class ConfigurationFragment @JvmOverloads constructor(
 
             private fun selectProfile(proxyEntity: ProxyEntity) {
                 val pf = parentFragment as? ConfigurationFragment ?: return
-                runOnDefaultDispatcher {
-                    var update: Boolean
-                    var lastSelected: Long
-                    profileAccess.withLock {
-                        update = DataStore.selectedProxy != proxyEntity.id
-                        lastSelected = DataStore.selectedProxy
-                        DataStore.selectedProxy = proxyEntity.id
-                        onMainDispatcher {
-                            pf.updateSelectedProxySnapshot(proxyEntity.id)
-                        }
-                    }
-
-                    if (update) {
-                        ProfileManager.postUpdate(lastSelected, noTraffic = true)
-                        if (DataStore.serviceState != BaseService.State.Stopped && reloadAccess.tryLock()) {
-                            SagerNet.reloadService()
-                            reloadAccess.unlock()
-                        }
-                    } else if (SagerNet.isTv) {
-                        if (DataStore.serviceState.started) {
-                            SagerNet.stopService()
-                        } else {
-                            SagerNet.startService()
-                        }
-                    }
+                // @author 雾晚: submit every non-TV click in UI order, including a
+                // rapid return to the original node while a prior click is pending.
+                if (SagerNet.isTv && DataStore.selectedProxy == proxyEntity.id) {
+                    if (DataStore.serviceState.started) SagerNet.stopService() else SagerNet.startService()
+                } else {
+                    pf.updateSelectedProxySnapshot(proxyEntity.id)
+                    SagerNet.selectProfile(proxyEntity.id)
                 }
             }
 

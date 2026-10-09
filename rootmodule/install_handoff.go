@@ -62,7 +62,7 @@ func (r *Runtime) ScheduleInstallMode(ctx context.Context, installerPID int, mod
 	if e := stagingDirectory(r.ModuleDir); e != nil {
 		return e
 	}
-	return r.withLock(func() error {
+	return r.withInstallLock(mode, func(_ *InstallDataSelection) error {
 		installer, e := Identity(installerPID)
 		if e != nil {
 			return errors.New("installer_identity_invalid")
@@ -89,8 +89,12 @@ func (r *Runtime) ScheduleInstallMode(ctx context.Context, installerPID int, mod
 		if e = r.writeInstallChoice(mode, digest); e != nil {
 			return e
 		}
+		choice, e := r.readInstallChoice()
+		if e != nil {
+			return e
+		}
 		cmd := exec.Command(filepath.Join(r.ModuleDir, "bin", "wanboxctl"), "__internal", "finish-install",
-			strconv.Itoa(installer.PID), installer.Start, digest, mode)
+			strconv.Itoa(installer.PID), installer.Start, digest, choice.Mode)
 		null, e := os.OpenFile(os.DevNull, os.O_RDWR, 0)
 		if e != nil {
 			return errors.New("install_completion_start_failed")

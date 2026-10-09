@@ -1,0 +1,4 @@
+[
+  {"domain_suffix":["cn.fixture.invalid"],"outbound":"bypass"},
+  {"ip_cidr":["192.0.2.0/24","2001:db8:1::/48"],"outbound":"bypass"}
+]

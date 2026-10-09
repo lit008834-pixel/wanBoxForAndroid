@@ -1229,4 +1229,10 @@
     <string name="default_group_test_url" translatable="false">http://connectivitycheck.gstatic.com/generate_204</string>
     <string name="service_start_rejected">Android blocked starting the service. Open wanBox and connect again; check battery restrictions.</string>
     <string name="connection_test_tcp_all">TCP RTT for all groups</string>
+    <string name="preset_domestic_split">Preset: China domains/IPs direct, other traffic proxied</string>
+    <string name="preset_domestic_split_message">Enable China domain and IP direct rules, switch to rule mode and enable DNS routing. Other unmatched traffic uses the selected proxy. Explicit app/domain/IP rules retain priority. Existing rules are preserved; equivalent direct rules are enabled without duplication. The app bypass list still excludes those apps from routing.</string>
+    <string name="preset_domestic_domains">China domains direct</string>
+    <string name="preset_domestic_ips">China IPs direct</string>
+    <string name="preset_domestic_custom_config">A full custom configuration is active. Edit its routing or turn it off before applying this preset.</string>
+    <string name="preset_domestic_failed">Could not save routing preset. Check available storage and retry.</string>
 </resources>

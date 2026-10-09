@@ -47,6 +47,12 @@ class SagerNet : Application(),
 
     val applicationScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default)
 
+    private val appRoutingListener = object : io.nekohasekai.sagernet.database.preference.OnPreferenceDataStoreChangeListener {
+        override fun onPreferenceDataStoreChanged(store: androidx.preference.PreferenceDataStore, key: String) {
+            io.nekohasekai.sagernet.route.AppRoutingChanges.onSaved(key, ::reloadService)
+        }
+    }
+
     private val nativeInterface = NativeInterface()
 
     val externalAssets: File by lazy { getExternalFilesDir(null) ?: filesDir }
@@ -124,6 +130,9 @@ class SagerNet : Application(),
             AppLocale.apply()
             AppIconManager.init(this)
             DataStore.migrateSubscriptionUserAgents()
+            // @author 雾晚: only persisted app-policy changes request a passive apply.
+            // Register after startup/migrations; opening a screen cannot restart the core.
+            DataStore.configurationStore.registerChangeListener(appRoutingListener)
             runOnDefaultDispatcher { clearLegacyNotifications() }
         }
 
@@ -219,6 +228,19 @@ class SagerNet : Application(),
                 apply = { io.nekohasekai.sagernet.bg.RootModuleClient.startOrReload(startIfStopped = false) },
                 onError = ::reportModuleError)
         }
+        private val profileSelection by lazy {
+            io.nekohasekai.sagernet.bg.ProfileSelection(application.applicationScope, save = { id ->
+                val previous = DataStore.selectedProxy
+                if (previous != id) {
+                    DataStore.selectedProxy = id
+                }
+                configurationReload.request(immediate = true)
+                if (previous != id) io.nekohasekai.sagernet.database.ProfileManager.postUpdate(previous, noTraffic = true)
+                io.nekohasekai.sagernet.widget.OwnBoxWidgetProvider.updateWidgets(application)
+            }, onError = ::reportModuleError)
+        }
+        fun selectProfile(id: Long) { profileSelection.request(id) }
+
         private fun moduleCommand(work: suspend () -> Unit) {
             application.applicationScope.launch {
                 try { work() }

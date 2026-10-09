@@ -3,6 +3,14 @@
 # AGP removes shared dependencies from the test APK. Preserve their external public APIs
 # and the precise app facades invoked by androidTest; do not keep the whole business package.
 -keep,allowobfuscation class kotlin.** { public *; }
+# @author 雾晚: separate instrumentation APK calls these shared coroutine facades.
+-keep,allowobfuscation class kotlinx.coroutines.** { public *; protected *; }
+-keep,allowobfuscation class io.nekohasekai.sagernet.bg.RootModuleDataUpdate { public *; }
+-keep,allowobfuscation class io.nekohasekai.sagernet.bg.RootModuleSnapshot { public *; }
+-keep,allowobfuscation class io.nekohasekai.sagernet.bg.proto.ProxyInstance { public *; }
+-keep,allowobfuscation class io.nekohasekai.sagernet.bg.proto.BoxInstance { public *; }
+-keep,allowobfuscation class io.nekohasekai.sagernet.route.DomesticRoutingPreset { public *; }
+-keep,allowobfuscation class io.nekohasekai.sagernet.route.DomesticRoutingPreset$* { public *; }
 -keep class androidx.tracing.Trace { *; }
 -keep,allowobfuscation class androidx.core.** { public *; }
 -keep,allowobfuscation class androidx.appcompat.** { public *; }

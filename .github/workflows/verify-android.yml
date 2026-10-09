@@ -132,8 +132,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p audit-baseline
-          gh release download v3.0.3 -R lit008834-pixel/wanBoxForAndroid -p wanBoxForAndroid-3.0.3-arm64-v8a.apk -D audit-baseline
-          echo 'a3737032bf022e16aacb9ab0dafae8ca170fb4bea9b831ad2de69ba360c97bc5  audit-baseline/wanBoxForAndroid-3.0.3-arm64-v8a.apk' | sha256sum --check
+          # @author 雾晚: v3.0.3 was removed; keep a published, pinned OSS Release/ARM64 baseline.
+          gh release download v3.0.6 -R lit008834-pixel/wanBoxForAndroid -p wanBoxForAndroid-3.0.6-arm64-v8a.apk -D audit-baseline
+          echo '9917ee6758d41d5b6d335636b8236e9aa99945b5550125a3d29ff4f65dc6f3eb  audit-baseline/wanBoxForAndroid-3.0.6-arm64-v8a.apk' | sha256sum --check
           python3 tools/apk_payload_report.py audit-baseline/*.apk public-apks/*arm64-v8a*.apk > audit-baseline/payload.json
       - name: Enable KVM
         run: |
