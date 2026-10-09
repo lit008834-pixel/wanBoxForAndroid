@@ -1,5 +1,9 @@
 # @author 雾晚
 -keep class io.nekohasekai.sagernet.bg.InstallerDataCommit** { *; }
+# @author 雾晚: test coroutine classes call this instance accessor across APK boundaries.
+-keep,allowobfuscation class io.nekohasekai.sagernet.SagerNet$Companion {
+    public io.nekohasekai.sagernet.SagerNet getApplication();
+}
 # Only -PwanboxReleaseTests uses this file. R8 and resource shrinking remain enabled.
 # AGP removes shared dependencies from the test APK. Preserve their external public APIs
 # and the precise app facades invoked by androidTest; do not keep the whole business package.
