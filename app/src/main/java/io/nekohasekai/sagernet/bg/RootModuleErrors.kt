@@ -13,6 +13,8 @@ object RootModuleErrors {
         "stop_subscription_updates_before_update", "subscription_cancel_timeout" -> R.string.root_module_data_subscription_busy
         "install_data_selection_changed", "install_data_selection_invalid" -> R.string.root_module_data_selection_error
         "installer_journal_corrupt" -> R.string.root_module_data_journal_corrupt
+        "node_tag_not_found", "node_select_failed", "node_select_not_confirmed",
+        "node_select_unsupported", "clash_api_disabled", "module_not_running" -> R.string.root_module_node_switch_failed
         else -> R.string.root_module_action_failed
     }
 

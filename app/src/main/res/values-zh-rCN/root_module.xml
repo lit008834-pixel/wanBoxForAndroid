@@ -3,6 +3,7 @@
 <resources>
     <string name="root_module_mode">Root 模块（Magisk / KernelSU）</string>
     <string name="root_module_action_failed">模块操作失败。请授予 Root 权限，安装并启用配套 wanBox 模块后重试。无效配置会保留上一份有效快照。</string>
+    <string name="root_module_node_switch_failed">节点热切换失败；已保留保存的选择并改用完整应用。若反复出现请导出应用日志。</string>
     <string name="root_module_managed_network">网络由独立模块管理；此 Android Service 选项不适用，原保存值仍保留。</string>
     <string name="root_tun_settings">Root TUN 设置</string>
     <string name="root_module_data_retry">安装器的数据处理未完成。请停止节点测速及订阅更新、检查 Root 权限和模块状态，再重新打开 wanBox 自动继续。完整备份保留；未完成前暂停连接。</string>

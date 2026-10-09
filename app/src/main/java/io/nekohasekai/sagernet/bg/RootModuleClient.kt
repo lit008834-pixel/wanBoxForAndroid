@@ -67,7 +67,8 @@ object RootModuleClient {
             state["error"]?.asString.orEmpty().takeIf { it.matches(Regex("[a-z_]{1,80}")) }.orEmpty(), selection)
     }
     suspend fun call(command: String, input: File? = null): Status = withContext(Dispatchers.IO) {
-        require(command in commands || command.matches(Regex("data selection-finish [a-f0-9]{32}")))
+        require(command in commands || command.matches(Regex("data selection-finish [a-f0-9]{32}"))
+                || command.matches(Regex("node select [1-9][0-9]{0,18}")))
         require((command == "config apply" || command == "config validate") == (input != null))
         val process = try { ProcessBuilder("su", "-c", "exec $CLI $command").start() }
             catch (_: IOException) { throw IOException("root_required") }
@@ -90,7 +91,7 @@ object RootModuleClient {
                 val errors = launch(Dispatchers.IO) { process.errorStream.use { it.copyTo(object : java.io.OutputStream() { override fun write(value: Int) = Unit; override fun write(data: ByteArray, offset: Int, length: Int) = Unit }) } }
                 val writer = launch(Dispatchers.IO) { process.outputStream.use { pipe -> input?.inputStream()?.use { it.copyTo(pipe) } } }
                 try {
-                    withTimeout(if (command in setOf("status", "module", "logs")) 15_000L else 720_000L) { runInterruptible(Dispatchers.IO) { process.waitFor() } }
+                    withTimeout(if (command in setOf("status", "module", "logs") || command.startsWith("node select ")) 15_000L else 720_000L) { runInterruptible(Dispatchers.IO) { process.waitFor() } }
                     writer.join(); errors.join()
                     try { parseResponse(output.await()) }
                     catch (e: IOException) { throw e }
@@ -131,6 +132,16 @@ object RootModuleClient {
         } finally { changes.unlock() }
     }
     suspend fun stop() = changes.withLock { call("stop") }
+    /**
+     * Hot-switch the running core to another node without restart.
+     * Serialized with config applies; any failure must make the caller fall back
+     * to [startOrReload]. Never throws for user data, only fixed error codes.
+     * @author 雾晚
+     */
+    suspend fun selectNode(profileId: Long): Status {
+        require(profileId > 0)
+        return changes.withLock { call("node select $profileId") }
+    }
     internal suspend fun finishInstallerSelection(id: String) {
         require(id.matches(Regex("[a-f0-9]{32}")))
         call("data selection-finish $id")
@@ -218,6 +229,25 @@ internal class RootModuleSnapshot(private val instance: ProxyInstance, private v
             addBytes(configName, rewrite(JsonParser.parseString(content)).toString().toByteArray()); plugins.add(plugin)
         } }
         val config = rewrite(JsonParser.parseString(instance.config.config))
+        // @author 雾晚: hot-switch: publish profileId -> outbound tag (+display name) as a
+        // staged file (not the strict snapshot schema) so older modules still accept
+        // the snapshot; the module moves its runtime selector from this map.
+        runCatching {
+            val tagMap = instance.config.profileTagMap
+            if (tagMap.isNotEmpty()) {
+                val names = SagerDatabase.proxyDao.getEntities(tagMap.keys.toList()).associate { it.id to it.displayName() }
+                val profileTags = JsonObject()
+                tagMap.forEach { (id, tag) ->
+                    if (tag.isNotBlank()) {
+                        val entry = JsonObject()
+                        entry.addProperty("tag", tag)
+                        entry.addProperty("name", names[id].orEmpty().take(512))
+                        profileTags.add(id.toString(), entry)
+                    }
+                }
+                if (profileTags.size() > 0) addBytes("profile_tags.json", profileTags.toString().toByteArray())
+            }
+        }
         val encoded = JsonObject(); files.forEach { (name, bytes) -> encoded.addProperty(name, Base64.getEncoder().encodeToString(bytes)) }
         return JsonObject().apply {
             addProperty("schemaVersion", 1); addProperty("expectedRevision", revision); add("config", config); add("files", encoded); add("plugins", plugins)
