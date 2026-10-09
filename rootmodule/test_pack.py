@@ -9,9 +9,19 @@ import zipfile
 import json
 import hashlib
 from bundle_manager import bundle
-from pack import check_elf
+from pack import check_elf, module_properties
+from verify_version import verify
 
 class PackageTest(unittest.TestCase):
+    def test_preview_metadata_replaces_stale_template_and_rejects_invalid_input(self):
+        template = b'id=wanbox\r\nversion=old\r\nversionCode=1\r\nauthor=fixture\r\n'
+        props = 'PRE_VERSION_NAME=3.0.7-preview.99\nPRE_VERSION_CODE=999\n'
+        result = module_properties(template, props)
+        self.assertEqual(b'id=wanbox\nversion=3.0.7-preview.99\nversionCode=999\nauthor=fixture\n', result)
+        for invalid in [props.replace('999', '0'), props.replace('999', '2147483648'),
+                        props.replace('3.0.7-preview.99', '../bad'), props + 'PRE_VERSION_CODE=2\n', '']:
+            with self.assertRaises(ValueError): module_properties(template, invalid)
+        with self.assertRaises(ValueError): module_properties(b'version=old\n', props)
     def test_abi_and_pie_are_checked(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = pathlib.Path(tmp) / 'core'
@@ -55,6 +65,7 @@ class PackageTest(unittest.TestCase):
             core.write_bytes(data + b'core_config_invalid'); cli.write_bytes(data)
             subprocess.run([sys.executable, str(pathlib.Path(__file__).with_name('pack.py')),
                 '--abi', 'arm64-v8a', '--core', str(core), '--cli', str(cli), '--output', str(output)], check=True)
+            verify(output)
             with zipfile.ZipFile(output) as z:
                 self.assertIsNone(z.testzip())
                 for name in ('LICENSE', 'LIBCORE-LICENSE', 'README.md', 'installer-options.sh', 'example.snapshot.json', 'bin/rootbox', 'bin/wanboxctl'):
@@ -72,6 +83,7 @@ class PackageTest(unittest.TestCase):
                 z.writestr('AndroidManifest.xml', b'fixture')
                 z.writestr('lib/arm64-v8a/libfixture.so', data)
             bundle(output, apk, with_apk)
+            verify(with_apk)
             with zipfile.ZipFile(with_apk) as z:
                 self.assertTrue(json.loads(z.read('package-manifest.json'))['withManager'])
                 self.assertEqual(apk.read_bytes(), z.read('manager.apk'))

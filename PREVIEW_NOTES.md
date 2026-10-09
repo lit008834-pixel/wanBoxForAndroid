@@ -1,8 +1,10 @@
-# wanBox 3.0.7-preview.13 · 节点切换与国内外分流
+# wanBox 3.0.7-preview.14 · 节点切换与国内外分流
 
 作者：@author 雾晚
 
 ## 本次更新
+
+- **模块版本同步修复**：修正 preview.13 模块包内遗留的 preview.12 标记。现在模块版本从 APK 同源配置自动生成，带/不带管理器两种包均在发布前校验版本及身份。已有 preview.13 可直接保留数据覆盖升级。
 
 - **手动切换立即提交**：切换节点绕过连续编辑的合并窗口，不再被旧界面状态拦截。快速连续点击以最后选择为准，同一节点支持重新提交；进行中的原子应用完整结束后继续应用新选择。
 - **运行节点与选择分离**：模块确认实际运行的节点；旧状态回报不覆盖新选择。切换期间拒绝把旧节点的落地 IP 和通道延迟显示为新节点结果。
@@ -19,11 +21,11 @@
 3. 带 APK 包支持覆盖更新或跳过管理器；不带 APK 包请手动覆盖安装新版 APK。不要先卸载旧 App。
 4. 节点切换仍需生成并原子应用完整配置，实际核心切换可能短暂断流；并非保证零耗时切换。
 
-包名 `com.lit008834.pixel.wanboxforandroid`、原签名、数据库/备份格式及 sing-box `v1.15.0-alpha.10` 不变。APK `versionCode=1770`，模块 `versionCode=354`。
+包名 `com.lit008834.pixel.wanboxforandroid`、原签名、数据库/备份格式及 sing-box `v1.15.0-alpha.10` 不变。APK `versionCode=1775`，模块 `versionCode=355`。
 
 ## 下载文件
 
-- `wanBoxForAndroid-3.0.7-preview.13-arm64-v8a-release.apk`：管理 APK。
+- `wanBoxForAndroid-3.0.7-preview.14-arm64-v8a-release.apk`：管理 APK。
 - `wanbox-root-module-with-manager-arm64-v8a.zip`：带管理 APK 模块。
 - `wanbox-root-module-arm64-v8a.zip`：不带 APK 模块。
 - `SHA256SUMS`：附件校验和。
@@ -32,4 +34,4 @@
 
 发布流程在 Android 单元测试、Go/race、签名/ABI、覆盖升级、Room/配置生成的模拟器测试通过后才发布。未修改核心版本或引入参考项目私有 eBPF、DNS group、match_only 字段，不以规则移植宣称吞吐提升。
 
-[实现、来源和边界](https://github.com/lit008834-pixel/wanBoxForAndroid/blob/v3.0.7-preview.13/docs/preview13-routing-stability.zh-CN.md)。
+[实现、来源和边界](https://github.com/lit008834-pixel/wanBoxForAndroid/blob/v3.0.7-preview.14/docs/preview13-routing-stability.zh-CN.md)。

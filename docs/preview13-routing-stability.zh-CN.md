@@ -47,3 +47,9 @@
 人工验收：连接时依次点 A → B → A，最后选择与模块运行节点应相同；单点 B 无需等编辑合并窗口；失败后重选 B 可重试；停止时点节点/改名单不自启。路由预设重复应用不重复，指定应用代理规则优先，国内站直连、其余走所选节点；完整自定义配置不被修改。
 
 本地执行结果：260 项 Android 单元测试、`:app:assemblePreviewDebug`、`:app:compilePreviewDebugAndroidTestKotlin` 通过；`go -C rootmodule test ./...`、`go -C rootmodule vet ./...`、`go -C libcore test ./internal/appowner`、安全契约检查及 `git diff --check` 通过。Python 模块测试 7 项中 3 项通过、4 项 Linux/安装环境测试跳过；Linux 发布 CI 执行这些检查。
+
+## preview.14 打包修正
+
+发布后附件核对发现 preview.13 模块包的 module.prop 仍为 preview.12/code353，APK 为正确的 preview.13/code1770。保留已发布标签，不改写源码或附件；preview.14（APK code1775、模块 code355）修正模板并从 nb4a.properties 自动生成模块版本，发布前校验带/不带 APK 两种包。新增旧模板替换、无效版本拒绝及真实打包/组合包元数据回归测试。
+
+审查 CI 的体积基线 v3.0.3 已不存在；改用已下载 SHA-256 校验的正式版 v3.0.6 ARM64（9917ee6758d41d5b6d335636b8236e9aa99945b5550125a3d29ff4f65dc6f3eb），仍运行比较、迁移/回滚及外部控制测试，不跳过门禁。
