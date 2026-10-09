@@ -401,7 +401,11 @@ fun buildConfig(
         if (forTest) mapOf() else SagerDatabase.proxyDao.getEntities(extraRules.mapNotNull { rule ->
             rule.outbound.takeIf { it > 0 && it != proxy.id }
         }.toHashSet().toList()).associateBy { it.id }
-    val buildSelector = !forTest && group?.isSelector == true && !forExport
+    // @author 雾晚: hot-switch: module configs always carry a top-level selector
+    // (TAG_PROXY) over the group's nodes, so switching nodes only moves the
+    // selector via the runtime Clash API instead of restarting the core.
+    // forTest/forExport keep the previous behavior.
+    val buildSelector = !forTest && !forExport
     val isGroupUrlTest = group?.let { DataStore.isGroupUrlTest(it.id) } == true
     val isGroupLoadBalance = group?.let { DataStore.isGroupLoadBalance(it.id) } == true
     val useAutoSelect = !forTest && !forExport && isGroupUrlTest
@@ -699,7 +703,12 @@ fun buildConfig(
                     // }
                 }
 
-                if (DataStore.enableClashAPI || DataStore.allowAccess) {
+                // @author 雾晚: hot-switch: module configs (!forTest && !forExport) always
+                // expose the Clash API on loopback so wanboxctl can move the top-level
+                // selector at runtime (node select) without restarting the core.
+                // The secret is stable (DataStore.clashApiSecret) so snapshot bytes stay
+                // identical when nothing changed.
+                if (!forExport || DataStore.enableClashAPI || DataStore.allowAccess) {
                     clash_api = ClashAPIOptions().apply {
                         external_controller = "127.0.0.1:9090"
                         secret = DataStore.clashApiSecret
