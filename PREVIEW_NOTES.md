@@ -1,4 +1,4 @@
-# wanBox 3.0.7-preview.15 · 节点切换与国内外分流
+# wanBox 3.0.7-preview.14 · 节点切换与国内外分流
 
 作者：@author 雾晚
 
@@ -24,11 +24,11 @@
 4. 遇到旧版 `install_data_update_pending`，安装本版后打开配套管理 APK，让其完成原来的数据处理；不要卸载 App 或删除数据目录。
 5. 节点切换仍需生成并原子应用完整配置，实际核心切换可能短暂断流；并非保证零耗时切换。
 
-包名 `com.lit008834.pixel.wanboxforandroid`、原签名、数据库/备份格式及 sing-box `v1.15.0-alpha.10` 不变。APK `versionCode=1780`，模块 `versionCode=356`。
+包名 `com.lit008834.pixel.wanboxforandroid`、原签名、数据库/备份格式及 sing-box `v1.15.0-alpha.10` 不变。APK `versionCode=1775`，模块 `versionCode=355`。
 
 ## 下载文件
 
-- `wanBoxForAndroid-3.0.7-preview.15-arm64-v8a-release.apk`：管理 APK。
+- `wanBoxForAndroid-3.0.7-preview.14-arm64-v8a-release.apk`：管理 APK。
 - `wanbox-root-module-with-manager-arm64-v8a.zip`：带管理 APK 模块。
 - `wanbox-root-module-arm64-v8a.zip`：不带 APK 模块。
 - `SHA256SUMS`：附件校验和。
@@ -37,4 +37,4 @@
 
 发布流程在 Android 单元测试、Go/race、签名/ABI、覆盖升级、Room/配置生成的模拟器测试通过后才发布。未修改核心版本或引入参考项目私有 eBPF、DNS group、match_only 字段，不以规则移植宣称吞吐提升。
 
-[实现、来源和边界](https://github.com/lit008834-pixel/wanBoxForAndroid/blob/v3.0.7-preview.15/docs/preview13-routing-stability.zh-CN.md)。
+[实现、来源和边界](https://github.com/lit008834-pixel/wanBoxForAndroid/blob/v3.0.7-preview.14/docs/preview13-routing-stability.zh-CN.md)。

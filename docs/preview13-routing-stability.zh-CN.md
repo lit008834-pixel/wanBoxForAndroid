@@ -54,8 +54,8 @@
 
 审查 CI 的体积基线 v3.0.3 已不存在；改用已下载 SHA-256 校验的正式版 v3.0.6 ARM64（9917ee6758d41d5b6d335636b8236e9aa99945b5550125a3d29ff4f65dc6f3eb），仍运行比较、迁移/回滚及外部控制测试，不跳过门禁。
 
-## preview.15 安装恢复
+## preview.14 安装恢复
 
 preview.14 用户截图在 schedule-install 阶段报 install_data_update_pending，状态存在 nodes 待处理请求。回归测试复现通用运行锁把待处理请求连同代码更新一起拒绝。安装专用锁允许保留/相同方式更新代码，校验包、原子替换、沿用原请求 ID；不同方式拒绝，data-reset 事务期间仍阻止替换。队列仅允许相同 ID/方式的幂等重放，原网络命令的保护保持不变。配套 App 完成备份与恢复前不启动核心；不删除用户节点、订阅或旧数据来解除报错。
 
-单独 R8 release 仪器测试此前出现共享协程 facade/Root 数据工具被优化掉，以及测试仍查找已删除网络控制项。仅内部 wanboxReleaseTests 变体保留测试调用的共享 API，公开 APK 不使用这些规则；设置测试检查当前 Root 模块入口及旧项不存在。preview.14 的 Release/tag 由用户主动删除，使用新 preview.15 标签，不重建历史发布。
+单独 R8 release 仪器测试此前出现共享协程 facade/Root 数据工具被优化掉，以及测试仍查找已删除网络控制项。仅内部 wanboxReleaseTests 变体保留测试调用的共享 API，公开 APK 不使用这些规则；设置测试检查当前 Root 模块入口及旧项不存在。preview.14 的 Release/tag 由用户主动删除，用户随后明确要求仍按 preview.14 发布；恢复发布时使用修复后的提交与附件，不改动其他已存在的标签。
