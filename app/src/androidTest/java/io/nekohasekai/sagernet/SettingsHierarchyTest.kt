@@ -29,9 +29,14 @@ class SettingsHierarchyTest {
             core.setExpanded(false); assertFalse(fragment.isVisible)
             core.setExpanded(true); assertTrue(fragment.isVisible)
             assertFalse(screen.findPreference<androidx.preference.Preference>(Key.ENABLE_TLS_FRAGMENT)!!.isVisible)
-            listOf(Key.ACQUIRE_WAKE_LOCK, Key.PERFORMANCE_PRIORITY_MODE, Key.WAKE_RESET_CONNECTIONS,
-                Key.NETWORK_CHANGE_RESET_CONNECTIONS).forEach {
+            listOf(Key.PERFORMANCE_PRIORITY_MODE, Key.PROXY_APPS, Key.STRICT_ROUTE,
+                Key.TUN_IMPLEMENTATION).forEach {
                 assertEquals("categoryVPN", screen.findPreference<androidx.preference.Preference>(it)!!.parent!!.key)
+            }
+            // Root-only manager delegates network lifecycle to the module; the
+            // obsolete App wake/reset controls must stay absent. @author 雾晚
+            listOf(Key.ACQUIRE_WAKE_LOCK, Key.WAKE_RESET_CONNECTIONS, Key.NETWORK_CHANGE_RESET_CONNECTIONS).forEach {
+                assertNull(screen.findPreference<androidx.preference.Preference>(it))
             }
             assertEquals("categoryUI", screen.findPreference<androidx.preference.Preference>(Key.HIDE_FROM_RECENT_APPS)!!.parent!!.key)
             core.setExpanded(false)
