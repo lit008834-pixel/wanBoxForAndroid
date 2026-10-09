@@ -33,7 +33,7 @@ func rootTrafficTags(outbounds []option.Outbound, endpoints []option.Endpoint) (
 
 // @author 雾晚: QueryStats resets counters; read every routed tag exactly once per sample.
 func rootTrafficRate(tags []string, direction string, elapsed float64, query func(string, string) int64) int64 {
-	if elapsed <= 0 {
+	if elapsed <= 0 || math.IsNaN(elapsed) || math.IsInf(elapsed, 0) {
 		return 0
 	}
 	var bytes int64

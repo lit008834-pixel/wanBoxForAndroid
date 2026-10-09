@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.ui
 
 import android.os.Bundle
@@ -30,7 +31,8 @@ class SwitchActivity : ThemedActivity(R.layout.layout_empty),
             ProfileManager.postUpdate(old, true)
             ProfileManager.postUpdate(profileId, true)
         }
-        SagerNet.reloadService()
+        // Explicit shortcut selection retains its existing ability to connect when stopped.
+        SagerNet.startService()
         finish()
     }
 }

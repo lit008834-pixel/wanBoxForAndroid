@@ -43,3 +43,29 @@ func TestRootTrafficRateBoundaries(t *testing.T) {
 		t.Fatal("negative rate")
 	}
 }
+
+// @author 雾晚: invalid sampling time must not consume counters or produce a negative rate.
+func TestRootTrafficNonFiniteAndFractionalElapsed(t *testing.T) {
+	for _, elapsed := range []float64{-1, math.NaN(), math.Inf(1), math.Inf(-1)} {
+		if got := rootTrafficRate([]string{"fixture"}, "uplink", elapsed, func(string, string) int64 {
+			t.Fatal("invalid interval consumed a counter")
+			return 1
+		}); got != 0 {
+			t.Fatal("invalid interval produced rate", got)
+		}
+	}
+	if got := rootTrafficRate([]string{"fixture"}, "uplink", 0.25, func(string, string) int64 { return 25 }); got != 100 {
+		t.Fatal("fractional interval rate", got)
+	}
+	if got := rootTrafficRate([]string{"fixture"}, "uplink", math.SmallestNonzeroFloat64, func(string, string) int64 { return 1 }); got != math.MaxInt64 {
+		t.Fatal("rate overflow", got)
+	}
+}
+
+func TestRootTrafficTagsAreUniqueAcrossOutboundsAndEndpoints(t *testing.T) {
+	proxy, direct := rootTrafficTags([]option.Outbound{{Type: "direct", Tag: "direct"}, {Type: "socks", Tag: "node"}},
+		[]option.Endpoint{{Type: "wireguard", Tag: "node"}, {Type: "wireguard", Tag: "direct"}, {Type: "wireguard"}, {Type: "wireguard", Tag: "wg"}})
+	if !reflect.DeepEqual(proxy, []string{"node", "wg"}) || !reflect.DeepEqual(direct, []string{"direct"}) {
+		t.Fatal("duplicate/empty tags", proxy, direct)
+	}
+}

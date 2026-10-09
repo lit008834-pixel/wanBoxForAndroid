@@ -55,6 +55,7 @@ import moe.matsuri.nb4a.utils.listByLineOrComma
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 // @author 雾晚
 import io.nekohasekai.sagernet.route.RouteRuleEditor
+import io.nekohasekai.sagernet.route.RouteRulePriority
 
 const val TAG_MIXED = "mixed-in"
 
@@ -395,7 +396,7 @@ fun buildConfig(
         return list
     }
 
-    val extraRules = if (forTest) listOf() else SagerDatabase.rulesDao.enabledRules()
+    val extraRules = if (forTest) listOf() else RouteRulePriority.order(SagerDatabase.rulesDao.enabledRules())
     val extraProxies =
         if (forTest) mapOf() else SagerDatabase.proxyDao.getEntities(extraRules.mapNotNull { rule ->
             rule.outbound.takeIf { it > 0 && it != proxy.id }
@@ -1360,6 +1361,9 @@ fun buildConfig(
 
             route.final_ = mainProxyTag
         } else {
+            // @author 雾晚: explicit user matches precede rule-set-only fallbacks.
+            // Keep userOrder within each tier; custom JSON and scoped rule sets stay explicit.
+            // Core DNS/loop protections stay ahead, App-owned fallbacks are appended below.
             // 应用用户规则
             for (rule in extraRules) {
                 if (rule.packages.isNotEmpty()) {

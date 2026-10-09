@@ -8,6 +8,15 @@ import java.io.File
 /** Root module notifications must not reappear through secondary App paths. @author 雾晚 */
 class RootNotificationRemovalContractTest {
     private fun source(path: String) = File("src/main/java/io/nekohasekai/sagernet/$path").readText()
+    @Test fun notificationOnlyPreferencesAreAbsentButTrafficStatisticsRemainIndependent() {
+        val settings = File("src/main/res/xml/global_preferences.xml").readText()
+        for (key in listOf("showDirectSpeed", "speedInterval", "showGroupInNotification")) {
+            assertFalse(settings.contains("app:key=\"$key\""))
+            assertFalse(source("ui/DocsFragment.kt").contains("($key)"))
+        }
+        assertTrue(settings.contains("app:key=\"profileTrafficStatistics\""))
+        assertFalse(source("ui/SettingsPreferenceFragment.kt").contains("profileTrafficStatistics.isEnabled"))
+    }
 
     @Test fun activeRootObserverDoesNotOwnAnAndroidForegroundService() {
         val manifest = File("src/main/AndroidManifest.xml").readText()

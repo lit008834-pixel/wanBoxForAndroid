@@ -114,29 +114,7 @@ class DocsFragment : ToolbarFragment(R.layout.layout_docs) {
         allItems.clear()
 
         // 1. 用户界面设置
-        allItems.add(DocListItem.Header("1. 用户界面设置 (UI Settings)", "控制主页呈现、通知栏网速、资产卡片、桌面图标及系统主题视觉风格"))
-        allItems.add(
-            DocListItem.Item(
-                category = "用户界面设置",
-                title = "显示直连的速度 (showDirectSpeed)",
-                badge = "推荐: 开启",
-                desc = "在通知中也显示不经过代理的流量速度。提示：该功能是在“手机通知中心”里显示直连速度，方便随时观察直连应用的后台流量动向。",
-                prosCons = "【利】在手机下拉通知中心中，不仅能实时查看代理出站网速，还能同步洞察国内直连应用（如微信、网银、国内视频等）的真实数据吞吐，一览全局后台流量，防范个别应用在后台偷跑流量；【弊】通知栏网速展示区域文本长度略微增加。",
-                recommendation = "【最稳推荐：开启】在通知中心全景感知手机双向网络吞吐，防范后台偷跑。",
-                keywords = "直连速度 速度 通知中心 通知栏 showDirectSpeed 网速 偷跑",
-            )
-        )
-        allItems.add(
-            DocListItem.Item(
-                category = "用户界面设置",
-                title = "速率更新间隔 (speedInterval)",
-                badge = "推荐: 1000ms (默认)",
-                desc = "设定主页状态栏以及系统常驻通知栏中，实时上传/下载速率数值的刷新频率周期（如 1000ms、1500ms、2000ms）。",
-                prosCons = "【利】1000ms 刷新周期灵敏平滑；【弊】若设为过短（如 200ms）在低端机型上会微量增加 UI 刷新负载，设为过长则数值滞后。",
-                recommendation = "【最稳推荐：保持默认 1000ms】在动态灵敏度与系统能效功耗间取得最佳平衡。",
-                keywords = "网速 速率 刷新 间隔 通知栏",
-            )
-        )
+        allItems.add(DocListItem.Header("1. 用户界面设置 (UI Settings)", "控制主页呈现、资产卡片、桌面图标及系统主题视觉风格"))
         allItems.add(
             DocListItem.Item(
                 category = "用户界面设置",

@@ -24,4 +24,13 @@ class LandingIpCacheTest {
         assertFalse(cache.put(old, info()))
         assertEquals("198.51.100.1", cache.get(2)!!.ip)
     }
+    @Test fun newerQueryRetiresOldTicketEvenWhenSwitchingBackToSameNode() {
+        val cache = LandingIpCache { 0 }
+        val old = cache.ticket(1)
+        cache.ticket(2)
+        val current = cache.ticket(1)
+        assertTrue(cache.put(current, info().copy(ip = "198.51.100.1")))
+        assertFalse(cache.put(old, info()))
+        assertEquals("198.51.100.1", cache.get(1)!!.ip)
+    }
 }

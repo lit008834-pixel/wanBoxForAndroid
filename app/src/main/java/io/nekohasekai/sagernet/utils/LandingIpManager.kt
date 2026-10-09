@@ -1,3 +1,4 @@
+// @author 雾晚
 package io.nekohasekai.sagernet.utils
 
 import io.nekohasekai.sagernet.database.DataStore
@@ -50,7 +51,6 @@ object LandingIpManager {
     private val cache = LandingIpCache()
     private val queries = Mutex()
     @Volatile private var isQuerying = false
-    val cachedProfileId: Long get() = cache.profileId()
     fun clearCache() = cache.clear()
     fun getCachedInfo(): LandingIpInfo? = cache.get(DataStore.selectedProxy)
     fun isCurrentlyQuerying(): Boolean = isQuerying
@@ -140,7 +140,7 @@ object LandingIpManager {
                     val org = conn?.optString("org").orEmpty()
                     val asnNum = conn?.optInt("asn", 0) ?: 0
                     val asn = if (asnNum > 0) "AS$asnNum $org".trim() else org
-                    val cost = System.currentTimeMillis() - startTime
+                    val cost = ((System.nanoTime() - startTime) / 1_000_000L).coerceAtLeast(0L)
 
                     return LandingIpInfo(
                         ip = ip,
@@ -177,7 +177,7 @@ object LandingIpManager {
                 val asnOrg = json.optString("asn_organization")
                 val asnNum = json.optInt("asn", 0)
                 val asn = if (asnNum > 0) "AS$asnNum $asnOrg".trim() else asnOrg
-                val cost = System.currentTimeMillis() - startTime
+                val cost = ((System.nanoTime() - startTime) / 1_000_000L).coerceAtLeast(0L)
 
                 return LandingIpInfo(
                     ip = ip,
@@ -212,7 +212,7 @@ object LandingIpManager {
                 val isp = json.optString("isp")
                 val org = json.optString("org")
                 val asn = json.optString("as")
-                val cost = System.currentTimeMillis() - startTime
+                val cost = ((System.nanoTime() - startTime) / 1_000_000L).coerceAtLeast(0L)
 
                 return LandingIpInfo(
                     ip = ip,
@@ -248,7 +248,7 @@ object LandingIpManager {
                 val countryCode = cfLoc
                 val flag = countryCodeToFlagEmoji(countryCode)
                 val country = localizeCountry(countryCode, countryCode)
-                val cost = System.currentTimeMillis() - startTime
+                val cost = ((System.nanoTime() - startTime) / 1_000_000L).coerceAtLeast(0L)
 
                 return LandingIpInfo(
                     ip = cfIp,
@@ -274,7 +274,7 @@ object LandingIpManager {
             val json = JSONObject(body)
             val ip = json.optString("ip").trim()
             if (ip.isNotBlank()) {
-                val cost = System.currentTimeMillis() - startTime
+                val cost = ((System.nanoTime() - startTime) / 1_000_000L).coerceAtLeast(0L)
                 return LandingIpInfo(
                     ip = ip,
                     country = "",
@@ -313,7 +313,7 @@ object LandingIpManager {
                 if (DataStore.serviceState.connected && DataStore.selectedProxy == profileId && cache.put(ticket, info)) onUpdate?.invoke(info)
             }
             isQuerying = true
-            val startTime = System.currentTimeMillis()
+            val startTime = System.nanoTime()
             val ua = USER_AGENT.takeIf { it.isNotBlank() }
                 ?: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
 
@@ -352,9 +352,9 @@ object LandingIpManager {
 
                     try {
                     var winningInfo: LandingIpInfo? = null
-                    val deadline = System.currentTimeMillis() + 2800L
-                    while (System.currentTimeMillis() < deadline) {
-                        val remaining = (deadline - System.currentTimeMillis()).coerceAtLeast(1L)
+                    val deadline = System.nanoTime() + 2_800_000_000L
+                    while (System.nanoTime() < deadline) {
+                        val remaining = ((deadline - System.nanoTime()) / 1_000_000L).coerceAtLeast(1L)
                         val received = withTimeoutOrNull(remaining) { resultChannel.receiveCatching().getOrNull() }
                         if (received != null) {
                             val isDetailed = received.isp.isNotBlank() && received.isp != "Cloudflare Edge"
@@ -368,7 +368,7 @@ object LandingIpManager {
                                     publish(received)
                                 }
                                 // 毫秒级等待是否有更高精度全量详细信息返回（如运营商/城市）
-                                val detailedRemaining = 600L.coerceAtMost(deadline - System.currentTimeMillis())
+                                val detailedRemaining = ((deadline - System.nanoTime()) / 1_000_000L).coerceIn(1L, 600L)
                                 val second = withTimeoutOrNull(detailedRemaining) { resultChannel.receiveCatching().getOrNull() }
                                 if (second != null && second.isp.isNotBlank() && second.isp != "Cloudflare Edge") {
                                     winningInfo = second

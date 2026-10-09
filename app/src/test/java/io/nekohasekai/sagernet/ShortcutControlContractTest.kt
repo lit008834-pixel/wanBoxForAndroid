@@ -35,6 +35,7 @@ class ShortcutControlContractTest {
         assertFalse(File("src/main/java/io/nekohasekai/sagernet/ui/VpnRequestActivity.kt").exists())
         val core = File("src/main/java/io/nekohasekai/sagernet/SagerNet.kt").readText()
         assertTrue(core.contains("RootModuleClient.startOrReload()"))
+        assertTrue(File("src/main/java/io/nekohasekai/sagernet/ui/SwitchActivity.kt").readText().contains("SagerNet.startService()"))
         assertTrue(core.contains("RootModuleClient.stop()"))
         val shortcuts = File("src/main/res/xml/shortcuts.xml").readText()
         assertTrue(shortcuts.contains("QuickToggleShortcut")); assertTrue(shortcuts.contains("QuickEnableShortcut"))

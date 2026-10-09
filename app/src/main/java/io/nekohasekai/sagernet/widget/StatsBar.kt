@@ -522,7 +522,7 @@ class StatsBar @JvmOverloads constructor(
             }
             val currentProfile = DataStore.selectedProxy
             val cached = LandingIpManager.getCachedInfo()
-            if (!forceRefresh && cached != null && LandingIpManager.cachedProfileId == currentProfile) {
+            if (!forceRefresh && cached != null) {
                 btnIpDetail?.visibility = View.VISIBLE
                 updateStatusViews()
                 return@runOnUi

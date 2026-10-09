@@ -104,27 +104,30 @@ object RootModuleClient {
         } finally { process.destroy() }
     }
     fun safeError(error: Exception): String = error.message?.takeIf { it.matches(Regex("[a-z_]{1,80}")) } ?: "module_operation_failed"
-    suspend fun startOrReload(onlyIfRunning: Boolean = false) {
+    suspend fun startOrReload(startIfStopped: Boolean = true) {
         RootModuleDataUpdate.applyInstallerSelection()
-        if (onlyIfRunning) changes.lock()
+        if (!startIfStopped) changes.lock()
         else if (!changes.tryLock()) throw IOException("module_busy")
         try {
-        val before = call("status")
-        // @author 雾晚: rule edits use module truth, never a stale UI/Binder state.
-        if (onlyIfRunning && !before.state.canStop) return
-        if (RootModuleDataUpdate.pending()) throw IOException("data_update_pending")
-        if (before.phase == "disabled") throw IOException("module_disabled_or_missing")
-        val profile = SagerDatabase.proxyDao.getById(DataStore.selectedProxy) ?: throw IOException("profile_missing")
-        val instance = ProxyInstance(profile)
-        val file = File.createTempFile("module-snapshot-", ".json", SagerNet.application.cacheDir)
-        try {
-            instance.init()
-            file.writeText(RootModuleSnapshot(instance, before.revision).build().toString())
-            if (file.length() > 192L * 1024 * 1024) throw IOException("snapshot_too_large")
-            call("config apply", file)
-            call("autostart ${if (DataStore.persistAcrossReboot) "on" else "off"}")
-            call("start")
-        } finally { file.delete(); instance.close() }
+            val before = call("status")
+            // @author 雾晚: rule edits use module truth, never a stale UI/Binder state.
+            if (RootModuleDataUpdate.pending()) throw IOException("data_update_pending")
+            if (before.phase == "disabled") throw IOException("module_disabled_or_missing")
+            val profile = SagerDatabase.proxyDao.getById(DataStore.selectedProxy)
+                ?: if (!startIfStopped && !before.state.canStop) return else throw IOException("profile_missing")
+            val instance = ProxyInstance(profile)
+            val file = File.createTempFile("module-snapshot-", ".json", SagerNet.application.cacheDir)
+            try {
+                instance.init()
+                file.writeText(RootModuleSnapshot(instance, before.revision).build().toString())
+                if (file.length() > 192L * 1024 * 1024) throw IOException("snapshot_too_large")
+                val applied = call("config apply", file)
+                // Apply owns active-core restart/rollback; passive edits never start a stopped module.
+                if (startIfStopped) {
+                    call("autostart ${if (DataStore.persistAcrossReboot) "on" else "off"}")
+                    if (!applied.state.canStop) call("start")
+                }
+            } finally { file.delete(); instance.close() }
         } finally { changes.unlock() }
     }
     suspend fun stop() = changes.withLock { call("stop") }

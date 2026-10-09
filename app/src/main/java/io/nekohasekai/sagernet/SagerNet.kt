@@ -140,11 +140,6 @@ class SagerNet : Application(),
         }
     }
 
-    override fun onConfigurationChanged(newConfig: Configuration) {
-        super.onConfigurationChanged(newConfig)
-        clearLegacyNotifications()
-    }
-
     override fun getWorkManagerConfiguration(): WorkConfiguration {
         return WorkConfiguration.Builder()
             .setDefaultProcessName("${BuildConfig.APPLICATION_ID}:bg")
@@ -212,17 +207,23 @@ class SagerNet : Application(),
         }
 
         // @author 雾晚: short management operations; no Android service owns the core.
+        private fun reportModuleError(error: Exception) {
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                android.widget.Toast.makeText(application, application.getString(R.string.root_module_action_failed) +
+                    " (" + io.nekohasekai.sagernet.bg.RootModuleClient.safeError(error) + ")",
+                    android.widget.Toast.LENGTH_LONG).show()
+            }
+        }
+        private val configurationReload by lazy {
+            io.nekohasekai.sagernet.bg.CoalescedReload(application.applicationScope,
+                apply = { io.nekohasekai.sagernet.bg.RootModuleClient.startOrReload(startIfStopped = false) },
+                onError = ::reportModuleError)
+        }
         private fun moduleCommand(work: suspend () -> Unit) {
             application.applicationScope.launch {
                 try { work() }
                 catch (e: kotlinx.coroutines.CancellationException) { throw e }
-                catch (error: Exception) {
-                    android.os.Handler(android.os.Looper.getMainLooper()).post {
-                        android.widget.Toast.makeText(application, application.getString(R.string.root_module_action_failed) +
-                            " (" + io.nekohasekai.sagernet.bg.RootModuleClient.safeError(error) + ")",
-                            android.widget.Toast.LENGTH_LONG).show()
-                    }
-                }
+                catch (error: Exception) { reportModuleError(error) }
             }
         }
         fun toggleService(profileId: Long = -1L) = moduleCommand {
@@ -241,11 +242,9 @@ class SagerNet : Application(),
             if (!client.call("status").state.canStop) client.startOrReload()
         }
         fun startService() = moduleCommand { io.nekohasekai.sagernet.bg.RootModuleClient.startOrReload() }
-        fun reloadService() = moduleCommand { io.nekohasekai.sagernet.bg.RootModuleClient.startOrReload() }
+        fun reloadService() { configurationReload.request() }
         // @author 雾晚: restart from newly generated App rules/settings, not the old module snapshot.
-        fun restartService() = moduleCommand {
-            io.nekohasekai.sagernet.bg.RootModuleClient.startOrReload(onlyIfRunning = true)
-        }
+        fun restartService() { configurationReload.request() }
         fun stopService() = moduleCommand { io.nekohasekai.sagernet.bg.RootModuleClient.stop() }
 
         fun updatePerformancePriorityMode(enabled: Boolean) {

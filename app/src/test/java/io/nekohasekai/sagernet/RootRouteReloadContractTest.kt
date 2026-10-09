@@ -10,11 +10,13 @@ class RootRouteReloadContractTest {
     private fun source(path: String) = File("src/main/java/io/nekohasekai/sagernet/$path").readText()
     @Test fun ruleSaveAndDeleteRebuildSnapshotInsteadOfRestartingOldConfiguration() {
         val restart = source("SagerNet.kt").substringAfter("fun restartService()").substringBefore("fun stopService()")
-        assertTrue(restart.contains("startOrReload(onlyIfRunning = true)"))
+        assertTrue(restart.contains("configurationReload.request()"))
+        assertTrue(source("SagerNet.kt").contains("startOrReload(startIfStopped = false)"))
         assertFalse(restart.contains("call(\"restart\")"))
         val client = source("bg/RootModuleClient.kt").substringAfter("suspend fun startOrReload(").substringBefore("suspend fun stop()")
-        assertTrue(client.contains("if (onlyIfRunning && !before.state.canStop) return"))
-        assertTrue(client.contains("if (onlyIfRunning) changes.lock()"))
+        assertTrue(client.contains("if (!startIfStopped) changes.lock()"))
+        assertFalse(client.contains("if (onlyIfRunning && !before.state.canStop) return"))
+        assertTrue(client.substringAfter("call(\"config apply\", file)").contains("if (startIfStopped)"))
         assertTrue(client.indexOf("instance.init()") < client.indexOf("call(\"config apply\", file)"))
         for (path in listOf("ui/RouteFragment.kt", "ui/RouteSettingsActivity.kt")) {
             val source = source(path)

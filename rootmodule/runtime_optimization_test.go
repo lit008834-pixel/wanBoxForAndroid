@@ -5,6 +5,7 @@ package module
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"reflect"
 	"testing"
@@ -50,6 +51,30 @@ func TestUnchangedApplyDoesNotStageOrReplaceRollback(t *testing.T) {
 	}
 	if validations != 1 {
 		t.Fatal("cancelled no-op staged a snapshot")
+	}
+}
+
+// @author 雾晚: editing while stopped commits the candidate but does not create core processes.
+func TestStoppedEditCommitsAndInvalidCandidatePreservesPriorConfig(t *testing.T) {
+	r, snapshot := fixture(t)
+	initial, err := r.Apply(context.Background(), snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	snapshot.ExpectedRevision = initial.Revision
+	snapshot.ProfileName = "edited while stopped"
+	changed, err := r.Apply(context.Background(), snapshot)
+	if err != nil || changed.Revision == initial.Revision || changed.Phase != "stopped" || changed.Core.PID != 0 || changed.Supervisor.PID != 0 {
+		t.Fatal("stopped apply started/ignored config", changed, err)
+	}
+	r.Validate = func(context.Context, string, string) error { return fmt.Errorf("fixture_invalid") }
+	snapshot.ExpectedRevision = changed.Revision
+	snapshot.ProfileName = "invalid edit"
+	if _, err = r.Apply(context.Background(), snapshot); err == nil {
+		t.Fatal("invalid candidate accepted")
+	}
+	if current := r.Status(); current.Revision != changed.Revision || current.Phase != "stopped" || current.Core.PID != 0 || current.Supervisor.PID != 0 {
+		t.Fatal("invalid edit changed stopped state", current)
 	}
 }
 

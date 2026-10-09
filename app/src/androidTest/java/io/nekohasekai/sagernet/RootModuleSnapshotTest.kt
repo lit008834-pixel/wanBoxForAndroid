@@ -21,9 +21,11 @@ class RootModuleSnapshotTest {
         val main = node(99011, "192.0.2.1")
         val first = node(99012, "192.0.2.2")
         val second = node(99013, "192.0.2.3")
-        val rule = RuleEntity(id = 99014, enabled = true, domains = "domain:fixture.invalid", outbound = first.id)
+        val rule = RuleEntity(id = 99014, userOrder = 1, enabled = true, domains = "domain:fixture.invalid", outbound = first.id)
+        val remoteFallback = RuleEntity(id = 99015, userOrder = 0, enabled = true,
+            ruleset = "rssite:https://example.invalid/list.srs", outbound = -1)
         try {
-            BackupRestore.apply(BackupRestore.Plan(listOf(main, first, second), listOf(ProxyGroup(id = 99010, name = "fixture")), listOf(rule), null), true, true, false)
+            BackupRestore.apply(BackupRestore.Plan(listOf(main, first, second), listOf(ProxyGroup(id = 99010, name = "fixture")), listOf(rule, remoteFallback), null), true, true, false)
             DataStore.globalCustomConfig = ""; DataStore.globalMode = false; DataStore.enableClashAPI = false
             suspend fun config(): com.google.gson.JsonObject {
                 val instance = ProxyInstance(main)
@@ -36,6 +38,12 @@ class RootModuleSnapshotTest {
             fun host(config: com.google.gson.JsonObject, tag: String) = config["outbounds"].asJsonArray
                 .first { it.asJsonObject["tag"]?.asString == tag }.asJsonObject["server"].asString
             val before = config()
+            val routeRules = before["route"].asJsonObject["rules"].asJsonArray.toList()
+            val explicitIndex = routeRules.indexOfFirst { it.asJsonObject["domain_suffix"]?.toString()?.contains("fixture.invalid") == true }
+            val remoteIndex = routeRules.indexOfFirst { it.asJsonObject["rule_set"] != null }
+            assertTrue("Explicit user rule must precede its remote fallback", explicitIndex >= 0 && remoteIndex > explicitIndex)
+            val privateIndex = routeRules.indexOfFirst { it.asJsonObject["ip_is_private"]?.asBoolean == true }
+            if (privateIndex >= 0) assertTrue("Private fallback must not shadow user rules", privateIndex > remoteIndex)
             assertEquals("192.0.2.2", host(before, target(before)))
             SagerDatabase.rulesDao.updateRule(rule.copy(outbound = second.id))
             val after = config()

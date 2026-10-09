@@ -9,7 +9,11 @@ internal class LandingIpCache(private val now: () -> Long = System::nanoTime) {
     private var profile = -1L
     private var savedAt = 0L
     @Synchronized fun clear() { generation++; entry = null; profile = -1L }
-    @Synchronized fun ticket(profile: Long) = Ticket(generation, profile)
+    @Synchronized fun ticket(profile: Long): Ticket {
+        // A newer query retires older tickets even when the selected node switches back.
+        generation++
+        return Ticket(generation, profile)
+    }
     @Synchronized fun get(profile: Long? = null): LandingIpInfo? {
         val age = now() - savedAt
         return entry?.takeIf { age in 0 until 60_000_000_000L && (profile == null || profile == this.profile) }
