@@ -200,7 +200,7 @@ func TestSelectNodeFailures(t *testing.T) {
 	}
 
 	// Wrong secret -> clash api rejects -> not confirmed path surfaces failure.
-	r, fake = newStaged(t, true, tags)
+	r, fake := newStaged(t, true, tags)
 	fake.setSecret("other")
 	if e := r.SelectNode(context.Background(), 1); e == nil {
 		t.Fatal("expected auth failure")
