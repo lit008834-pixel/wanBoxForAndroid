@@ -20,10 +20,42 @@ import io.nekohasekai.sagernet.group.GroupUpdater
 import io.nekohasekai.sagernet.ktx.Logs
 import io.nekohasekai.sagernet.ktx.app
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 object SubscriptionUpdater {
 
     private const val WORK_NAME = "SubscriptionUpdater"
+
+    // @author 雾晚: per-group failure backoff, worker memory only. A dead subscription
+    // server no longer gets hammered every cycle; success resets the count.
+    private data class Backoff(var consecutiveFailures: Int = 0, var notBefore: Long = 0L)
+    private val backoffMap = HashMap<Long, Backoff>()
+    private val backoffMutex = Mutex()
+
+    private fun backoffDelayMs(failures: Int): Long = when {
+        failures <= 1 -> 5 * 60_000L
+        failures == 2 -> 15 * 60_000L
+        failures == 3 -> 30 * 60_000L
+        failures == 4 -> 60 * 60_000L
+        else -> 2 * 60 * 60_000L
+    }
+
+    suspend fun shouldBackoff(groupId: Long): Boolean = backoffMutex.withLock {
+        val b = backoffMap[groupId] ?: return false
+        System.currentTimeMillis() < b.notBefore
+    }
+
+    suspend fun recordUpdateResult(groupId: Long, success: Boolean) = backoffMutex.withLock {
+        if (success) {
+            backoffMap.remove(groupId)
+        } else {
+            val b = backoffMap.getOrPut(groupId) { Backoff() }
+            b.consecutiveFailures++
+            b.notBefore = System.currentTimeMillis() + backoffDelayMs(b.consecutiveFailures)
+            Logs.i("SubscriptionUpdater: group $groupId failed ${b.consecutiveFailures}x, backing off")
+        }
+    }
 
     suspend fun reconfigureUpdater() {
         val workManager = RemoteWorkManager.getInstance(app)
@@ -100,7 +132,12 @@ object SubscriptionUpdater {
                 }
                 Logs.d("work: updating " + profile.displayName())
 
-                GroupUpdater.executeUpdate(profile, false)
+                if (shouldBackoff(profile.id)) {
+                    Logs.d("work: backing off " + profile.displayName())
+                    continue
+                }
+                val ok = GroupUpdater.executeUpdate(profile, false)
+                recordUpdateResult(profile.id, ok)
             }
             return Result.success()
         }
