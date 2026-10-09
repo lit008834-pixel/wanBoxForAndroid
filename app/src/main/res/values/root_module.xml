@@ -6,4 +6,17 @@
     <string name="root_module_managed_network">Module networking is managed independently. This Android Service option does not apply; its saved value is retained.</string>
     <string name="root_tun_settings">Root TUN settings</string>
     <string name="root_module_data_retry">Installer data preparation is incomplete. Stop node tests and subscription updates, check Root/module availability, then reopen wanBox to retry. The full backup is retained and reconnect is blocked until complete.</string>
+    <string name="root_module_data_pending">The installer data selection is waiting to complete. Open wanBox to finish it before connecting. This status does not indicate missing Root permission.</string>
+    <string name="root_module_data_test_busy">Stop the running node test, then reconnect or reopen wanBox to finish the installer data selection.</string>
+    <string name="root_module_data_subscription_busy">Subscription updates have not stopped. Wait for them to finish, then reconnect or reopen wanBox. Existing data and backups are retained.</string>
+    <string name="root_module_data_selection_error">The installer data selection is invalid or has changed. Keep your backup and export the application log; do not delete application data or the pending selection file.</string>
+    <string name="root_module_data_stage_failed">Installer data processing failed at: %1$s (%2$s). Existing backups and progress are retained. Reopen wanBox to retry; if it fails again, export the application log.</string>
+    <string name="root_module_stage_quiesce">stopping subscription work</string>
+    <string name="root_module_stage_backup">creating and validating the full backup</string>
+    <string name="root_module_stage_journal">reading or saving recovery progress</string>
+    <string name="root_module_stage_prepare">archiving module data</string>
+    <string name="root_module_stage_restore">applying the database transaction</string>
+    <string name="root_module_stage_finish">completing module data processing</string>
+    <string name="root_module_stage_acknowledge">acknowledging the installer selection</string>
+    <string name="root_module_stage_refresh">refreshing application settings</string>
 </resources>

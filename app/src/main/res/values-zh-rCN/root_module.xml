@@ -6,4 +6,17 @@
     <string name="root_module_managed_network">网络由独立模块管理；此 Android Service 选项不适用，原保存值仍保留。</string>
     <string name="root_tun_settings">Root TUN 设置</string>
     <string name="root_module_data_retry">安装器的数据处理未完成。请停止节点测速及订阅更新、检查 Root 权限和模块状态，再重新打开 wanBox 自动继续。完整备份保留；未完成前暂停连接。</string>
+    <string name="root_module_data_pending">安装器的数据选择尚待完成，请打开 wanBox 完成处理后再连接。这一状态不表示缺少 Root 权限。</string>
+    <string name="root_module_data_test_busy">请停止正在运行的节点测速，再连接或重新打开 wanBox 完成安装数据处理。</string>
+    <string name="root_module_data_subscription_busy">订阅更新尚未停止，请等待更新结束后再连接或重新打开 wanBox。现有数据与备份保留。</string>
+    <string name="root_module_data_selection_error">安装器的数据选择无效或已变更。请保留备份并导出应用日志，不要清除应用数据或删除待处理记录。</string>
+    <string name="root_module_data_stage_failed">安装数据处理失败，位置：%1$s（%2$s）。现有备份及处理进度保留，重新打开 wanBox 可重试；再次失败请导出应用日志。</string>
+    <string name="root_module_stage_quiesce">停止订阅任务</string>
+    <string name="root_module_stage_backup">生成并校验完整备份</string>
+    <string name="root_module_stage_journal">读取或保存恢复进度</string>
+    <string name="root_module_stage_prepare">归档模块数据</string>
+    <string name="root_module_stage_restore">执行数据库事务</string>
+    <string name="root_module_stage_finish">完成模块数据处理</string>
+    <string name="root_module_stage_acknowledge">确认安装器数据选择</string>
+    <string name="root_module_stage_refresh">刷新应用设置</string>
 </resources>

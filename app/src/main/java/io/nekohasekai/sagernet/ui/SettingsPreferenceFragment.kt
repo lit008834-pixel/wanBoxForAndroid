@@ -135,7 +135,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(), OnPreferenceDataS
                 } catch (e: kotlinx.coroutines.CancellationException) { throw e }
                   catch (e: Exception) {
                     Handler(Looper.getMainLooper()).post { Toast.makeText(SagerNet.application,
-                        SagerNet.application.getString(R.string.root_module_action_failed) + " (" + io.nekohasekai.sagernet.bg.RootModuleClient.safeError(e) + ")", Toast.LENGTH_LONG).show() }
+                        io.nekohasekai.sagernet.bg.RootModuleErrors.message(SagerNet.application, e), Toast.LENGTH_LONG).show() }
                 }
             }
             false // Persist only after the module accepted the same value.

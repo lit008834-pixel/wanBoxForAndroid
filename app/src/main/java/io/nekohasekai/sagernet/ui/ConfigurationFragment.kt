@@ -255,6 +255,8 @@ class ConfigurationFragment @JvmOverloads constructor(
     private val profileStateGeneration = AtomicLong()
     private val profileStateInitialized = CompletableDeferred<Unit>()
     private var speedTestJob: Job? = null
+    private var batchTestJob: Job? = null
+    private var batchTestDialog: android.app.Dialog? = null
     private var speedTestRunner: SpeedTestQueueRunner<ProxyEntity>? = null
     private var speedTestDialog: AlertDialog? = null
     private var speedTestHidden = false
@@ -966,6 +968,9 @@ class ConfigurationFragment @JvmOverloads constructor(
     }
 
     private fun cancelViewTests() {
+        batchTestJob?.cancel()
+        batchTestDialog?.dismiss()
+        batchTestDialog = null
         if (speedTestJob != null) {
             speedTestRunner?.cancel()
             speedTestJob?.cancel()
@@ -2119,6 +2124,7 @@ class ConfigurationFragment @JvmOverloads constructor(
         if (DataStore.runningTest) return else DataStore.runningTest = true
         val test = TestDialog()
         val dialog = test.builder.show()
+        batchTestDialog = dialog
         val testJobs = mutableListOf<Job>()
         val isAll = isCurrentAllGroups()
         val group = DataStore.currentGroup()
@@ -2193,6 +2199,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                 test.cancel()
             }
         }
+        trackBatchTest(mainJob, dialog)
         test.cancel = {
             test.dialogStatus.set(2)
             dialog.dismiss()
@@ -2206,7 +2213,6 @@ class ConfigurationFragment @JvmOverloads constructor(
                 } else {
                     GroupManager.postReload(DataStore.currentGroupId())
                 }
-                DataStore.runningTest = false
             }
         }
         test.minimize = {
@@ -2220,6 +2226,7 @@ class ConfigurationFragment @JvmOverloads constructor(
         if (DataStore.runningTest) return else DataStore.runningTest = true
         val test = TestDialog()
         val dialog = test.builder.show()
+        batchTestDialog = dialog
         val testJobs = mutableListOf<Job>()
         val isAll = isCurrentAllGroups()
         val group = DataStore.currentGroup()
@@ -2280,6 +2287,7 @@ class ConfigurationFragment @JvmOverloads constructor(
                 test.cancel()
             }
         }
+        trackBatchTest(mainJob, dialog)
         test.cancel = {
             test.dialogStatus.set(2)
             dialog.dismiss()
@@ -2293,12 +2301,27 @@ class ConfigurationFragment @JvmOverloads constructor(
                 } else {
                     GroupManager.postReload(DataStore.currentGroupId())
                 }
-                DataStore.runningTest = false
             }
         }
         test.minimize = {
             test.dialogStatus.set(1)
             dialog.hide()
+        }
+    }
+
+    // Completion runs after all workers have finished, including lifecycle cancellation.
+    // Releasing the guard in a cancelled UI coroutine could leave it stuck forever.
+    private fun trackBatchTest(job: Job, dialog: android.app.Dialog) {
+        batchTestJob = job
+        job.invokeOnCompletion {
+            DataStore.runningTest = false
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                dialog.dismiss()
+                if (batchTestJob === job) {
+                    batchTestJob = null
+                    batchTestDialog = null
+                }
+            }
         }
     }
 

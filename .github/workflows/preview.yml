@@ -269,7 +269,7 @@ jobs:
             adb install -t internal-policy/tests.apk
             adb shell am instrument -w -r -e class io.nekohasekai.sagernet.RootModuleDataUpdateTest com.lit008834.pixel.wanboxforandroid.debug.test/androidx.test.runner.AndroidJUnitRunner > policy-test-result.txt
             cat policy-test-result.txt
-            grep -F 'OK (1 test)' policy-test-result.txt
+            grep -F 'OK (3 tests)' policy-test-result.txt
             adb shell am instrument -w -r -e class io.nekohasekai.sagernet.RootModuleSnapshotTest com.lit008834.pixel.wanboxforandroid.debug.test/androidx.test.runner.AndroidJUnitRunner > snapshot-test-result.txt
             cat snapshot-test-result.txt
             grep -F 'OK (2 tests)' snapshot-test-result.txt
