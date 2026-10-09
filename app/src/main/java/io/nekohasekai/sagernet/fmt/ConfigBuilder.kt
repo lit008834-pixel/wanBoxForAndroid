@@ -780,7 +780,9 @@ fun buildConfig(
                     val selectedUids = DataStore.individual.lineSequence()
                         .map { it.trim() }
                         .filter { it.isNotEmpty() }
-                        .mapNotNull { PackageCache[it] }
+                        // @author 雾晚: include secondary users' UIDs so the app filter
+                        // covers cloned/dual apps as well.
+                        .flatMap { PackageCache.uidsForPackage(it) }
                         .filter { it >= 1000 && it != SagerNet.application.applicationInfo.uid }
                         .distinct()
                         .toList()
@@ -1380,16 +1382,23 @@ fun buildConfig(
                 // match. Official alpha.10 has no fork-specific match_only option.
                 // Normal DNS routing chooses the resolver; never force public/direct DNS.
                 if (!resolvedForGeoIp && RouteRulePriority.needsIpResolution(rule)) {
-                    route.rules.add(Rule_DefaultOptions().apply {
-                        action = "resolve"
-                        _hack_config_map["timeout"] = "3s"
-                    })
-                    resolvedForGeoIp = true
+                    // @author 雾晚: narrow the resolve scope: only direct/bypass/block-bound
+                    // IP rules need the locally resolved address for the routing decision.
+                    // Proxy-bound IP rules keep the domain intact so the proxy-side DNS
+                    // resolves it; resolving via direct DNS first risks acting on poisoned
+                    // answers in filtered environments.
+                    if (rule.outbound == -1L || rule.outbound == -2L) {
+                        route.rules.add(Rule_DefaultOptions().apply {
+                            action = "resolve"
+                            _hack_config_map["timeout"] = "3s"
+                        })
+                        resolvedForGeoIp = true
+                    }
                 }
                 if (rule.packages.isNotEmpty()) {
                     PackageCache.awaitLoadSync()
                 }
-                val uidList = rule.packages.map {
+                val uidList = rule.packages.flatMap { pkg ->
                     if (!useTun) {
                         Toast.makeText(
                             SagerNet.application,
@@ -1397,8 +1406,9 @@ fun buildConfig(
                             Toast.LENGTH_SHORT
                         ).show()
                     }
-                    PackageCache[it]?.takeIf { uid -> uid >= 1000 }
-                }.toHashSet().filterNotNull()
+                    // @author 雾晚: match the package on all users (cloned/dual apps).
+                    PackageCache.uidsForPackage(pkg).filter { uid -> uid >= 1000 }
+                }.toHashSet()
                 val ruleSets = mutableListOf<RuleSet>()
 
                 val domainList = if (rule.domains.isNotBlank()) rule.domains.listByLineOrComma() else null
