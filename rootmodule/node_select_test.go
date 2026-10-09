@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -18,9 +19,34 @@ import (
 type fakeClash struct {
 	t        *testing.T
 	selector string
-	now      string
 	secret   string
+	mu       sync.Mutex
+	now      string
 	putCount int
+}
+
+func (f *fakeClash) getNow() string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.now
+}
+
+func (f *fakeClash) getPutCount() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.putCount
+}
+
+func (f *fakeClash) setSecret(secret string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.secret = secret
+}
+
+func (f *fakeClash) getSecret() string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.secret
 }
 
 func (f *fakeClash) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -28,14 +54,17 @@ func (f *fakeClash) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	if f.secret != "" && r.Header.Get("Authorization") != "Bearer "+f.secret {
+	if secret := f.getSecret(); secret != "" && r.Header.Get("Authorization") != "Bearer "+secret {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 	switch r.Method {
 	case http.MethodGet:
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"name":%q,"type":"Selector","now":%q}`, f.selector, f.now)
+		f.mu.Lock()
+		now := f.now
+		f.mu.Unlock()
+		fmt.Fprintf(w, `{"name":%q,"type":"Selector","now":%q}`, f.selector, now)
 	case http.MethodPut:
 		var body struct {
 			Name string `json:"name"`
@@ -44,8 +73,10 @@ func (f *fakeClash) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "bad request", http.StatusBadRequest)
 			return
 		}
+		f.mu.Lock()
 		f.now = body.Name
 		f.putCount++
+		f.mu.Unlock()
 		w.WriteHeader(http.StatusNoContent)
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -69,7 +100,7 @@ func stageSelectNode(t *testing.T, r *Runtime, fake *fakeClash, tags map[string]
 	}
 	clash := ""
 	if withClashAPI {
-		clash = fmt.Sprintf(`,"experimental":{"clash_api":{"external_controller":"127.0.0.1:%s","secret":%q}}`, port, fake.secret)
+		clash = fmt.Sprintf(`,"experimental":{"clash_api":{"external_controller":"127.0.0.1:%s","secret":%q}}`, port, fake.getSecret())
 	}
 	config := fmt.Sprintf(`{"outbounds":[{"type":"selector","tag":"proxy","outbounds":["a","b"]}]%s}`, clash)
 	if e := os.WriteFile(filepath.Join(gen, "run", "config.json"), []byte(config), 0600); e != nil {
@@ -103,8 +134,8 @@ func TestSelectNodeHotSwitch(t *testing.T) {
 	if e := r.SelectNode(context.Background(), 2); e != nil {
 		t.Fatal("select:", e)
 	}
-	if fake.putCount != 1 || fake.now != "b" {
-		t.Fatal("clash api not switched", fake.putCount, fake.now)
+	if fake.getPutCount() != 1 || fake.getNow() != "b" {
+		t.Fatal("clash api not switched", fake.getPutCount(), fake.getNow())
 	}
 	var st State
 	if e := readJSON(r.path("state.json"), &st, 1<<20); e != nil {
@@ -127,7 +158,7 @@ func TestSelectNodeAlreadyCurrentSkipsPut(t *testing.T) {
 	if e := r.SelectNode(context.Background(), 2); e != nil {
 		t.Fatal("select:", e)
 	}
-	if fake.putCount != 0 {
+	if fake.getPutCount() != 0 {
 		t.Fatal("redundant PUT issued")
 	}
 }
@@ -169,8 +200,8 @@ func TestSelectNodeFailures(t *testing.T) {
 	}
 
 	// Wrong secret -> clash api rejects -> not confirmed path surfaces failure.
-	r, fake := newStaged(t, true, tags)
-	fake.secret = "other"
+	r, fake = newStaged(t, true, tags)
+	fake.setSecret("other")
 	if e := r.SelectNode(context.Background(), 1); e == nil {
 		t.Fatal("expected auth failure")
 	}
