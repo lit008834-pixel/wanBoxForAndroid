@@ -86,6 +86,7 @@ class MainActivity : ThemedActivity(),
     lateinit var navigation: NavigationView
     private var currentMainFragment: ToolbarFragment? = null
     private var installerDataJob: Job? = null
+    private var installerDataDialog: android.app.Dialog? = null
     private val serviceModeReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action == Action.SERVICE_MODE_CHANGED) connection.rebindIfServiceChanged(this@MainActivity)
@@ -754,14 +755,22 @@ class MainActivity : ThemedActivity(),
                 if (io.nekohasekai.sagernet.bg.RootModuleDataUpdate.applyInstallerSelection() && !isFinishing)
                     recreate()
             } catch (error: CancellationException) { throw error }
-              catch (_: Exception) {
-                android.widget.Toast.makeText(this@MainActivity, R.string.root_module_data_retry,
-                    android.widget.Toast.LENGTH_LONG).show()
+              catch (error: Exception) {
+                // Stage/type/code are safe diagnostics; exception text may contain credentials.
+                val stage = (error as? io.nekohasekai.sagernet.bg.InstallerDataCommit.Failure)?.stage?.name ?: "SELECTION"
+                val types = generateSequence(error as Throwable) { it.cause }.take(4).joinToString("/") { it.javaClass.simpleName }
+                Logs.e("InstallerData stage=$stage type=$types code=${io.nekohasekai.sagernet.bg.RootModuleClient.safeError(error)}")
+                if (!isFinishing && !isDestroyed && lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) {
+                    installerDataDialog?.dismiss()
+                    installerDataDialog = alert(io.nekohasekai.sagernet.bg.RootModuleErrors.message(this@MainActivity, error)).also { it.show() }
+                }
             }
         }
     }
 
     override fun onStop() {
+        installerDataDialog?.dismiss()
+        installerDataDialog = null
         if (SagerNet.databaseFailure == null) {
             binding.stats.onHostStopped()
             connection.updateConnectionId(SagerConnection.CONNECTION_ID_MAIN_ACTIVITY_BACKGROUND)

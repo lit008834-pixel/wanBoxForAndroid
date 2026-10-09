@@ -218,8 +218,7 @@ class SagerNet : Application(),
         // @author 雾晚: short management operations; no Android service owns the core.
         private fun reportModuleError(error: Exception) {
             android.os.Handler(android.os.Looper.getMainLooper()).post {
-                android.widget.Toast.makeText(application, application.getString(R.string.root_module_action_failed) +
-                    " (" + io.nekohasekai.sagernet.bg.RootModuleClient.safeError(error) + ")",
+                android.widget.Toast.makeText(application, io.nekohasekai.sagernet.bg.RootModuleErrors.message(application, error),
                     android.widget.Toast.LENGTH_LONG).show()
             }
         }

@@ -1,4 +1,5 @@
 # @author 雾晚
+-keep class io.nekohasekai.sagernet.bg.InstallerDataCommit** { *; }
 # Only -PwanboxReleaseTests uses this file. R8 and resource shrinking remain enabled.
 # AGP removes shared dependencies from the test APK. Preserve their external public APIs
 # and the precise app facades invoked by androidTest; do not keep the whole business package.

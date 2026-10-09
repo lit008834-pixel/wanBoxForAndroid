@@ -41,7 +41,7 @@ class RootTunService : Service(), BaseService.Interface {
                     snapshot = status; DataStore.currentProfile = if (status.connected) status.profileId else 0
                     DataStore.mixedInboundAuthed = status.connected && DataStore.mixedInboundNeedsAuth
                     data.changeState(status.state, if (changedError && status.error.isNotBlank())
-                        getString(io.nekohasekai.sagernet.R.string.root_module_action_failed) + " (" + status.error + ")" else null)
+                        RootModuleErrors.message(this@RootTunService, status.error) else null)
                     if (changedProfile) data.binder.broadcast { it.cbSelectorUpdate(status.profileId) }
                     status.stats?.let { stats -> data.binder.broadcast {
                         it.cbSpeedUpdate(io.nekohasekai.sagernet.aidl.SpeedDisplayData(stats.tx, stats.rx, stats.directTx, stats.directRx, 0, 0))

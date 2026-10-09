@@ -49,7 +49,7 @@ object DataStore : OnPreferenceDataStoreChangeListener {
 
     // main
 
-    var runningTest = false
+    @Volatile var runningTest = false
 
     fun currentGroupId(): Long {
         val currentSelected = configurationStore.getLong(Key.PROFILE_GROUP, -1)
