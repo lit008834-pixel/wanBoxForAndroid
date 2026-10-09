@@ -10,6 +10,7 @@
     <string name="root_module_data_test_busy">请停止正在运行的节点测速，再连接或重新打开 wanBox 完成安装数据处理。</string>
     <string name="root_module_data_subscription_busy">订阅更新尚未停止，请等待更新结束后再连接或重新打开 wanBox。现有数据与备份保留。</string>
     <string name="root_module_data_selection_error">安装器的数据选择无效或已变更。请保留备份并导出应用日志，不要清除应用数据或删除待处理记录。</string>
+    <string name="root_module_data_journal_corrupt">安装恢复进度记录无法读取或版本不兼容。请保留备份并导出应用日志，不要清除应用数据。</string>
     <string name="root_module_data_stage_failed">安装数据处理失败，位置：%1$s（%2$s）。现有备份及处理进度保留，重新打开 wanBox 可重试；再次失败请导出应用日志。</string>
     <string name="root_module_stage_quiesce">停止订阅任务</string>
     <string name="root_module_stage_backup">生成并校验完整备份</string>
