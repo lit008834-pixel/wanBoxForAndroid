@@ -14,14 +14,19 @@ class UrlTest(private val overrideLink: String? = null) {
         return DataStore.connectionTestURL
     }
 
-    suspend fun doTest(profile: ProxyEntity): Int {
+    suspend fun doTest(profile: ProxyEntity, useCache: Boolean = true): Int {
+        // @author 雾晚: reuse fresh results (TTL cache) instead of re-probing.
+        // Single-node manual tests pass useCache=false for a guaranteed fresh probe.
+        if (useCache) UrlTestCache.get(profile.id)?.let { return it }
         val link = resolveLink(profile)
-        return NodeTestRunner.measure(link, retryable = {
+        val result = NodeTestRunner.measure(link, retryable = {
             it !is io.nekohasekai.sagernet.plugin.PluginManager.PluginNotFoundException && it !is IllegalArgumentException
         }) { target, timeout ->
             // Each retry owns a fresh core; TestInstance closes it before the next attempt.
             TestInstance(profile, target, timeout).doTest()
         }
+        UrlTestCache.put(profile.id, result)
+        return result
     }
 
 }
