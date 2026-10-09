@@ -36,7 +36,7 @@ class RootModuleDataPolicyTest {
         catch (_: IllegalStateException) {}
         val source = File("src/main/java/io/nekohasekai/sagernet/bg/RootModuleDataUpdate.kt").readText()
         assertTrue(source.indexOf("write(AtomicFile(backup), bytes)") < source.indexOf("RootModuleClient.call(\"data prepare\")"))
-        assertTrue(source.indexOf("BackupRestore.apply(target") < source.indexOf("RootModuleClient.call(\"data finish\")"))
+        assertTrue(source.indexOf("BackupRestore.apply(checkNotNull(target)") < source.indexOf("RootModuleClient.call(\"data finish\")"))
         assertTrue(source.contains("NonCancellable"));assertTrue(source.contains("journal.delete()"))
         assertFalse(source.contains("clearApplicationUserData"));assertFalse(source.contains("deleteDatabase"))
         val updater = File("src/main/java/io/nekohasekai/sagernet/group/RawUpdater.kt").readText()

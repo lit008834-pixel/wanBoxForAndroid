@@ -72,6 +72,8 @@ class InstallerDataCommitTest {
         assertEquals(R.string.root_module_data_pending, RootModuleErrors.resource("install_data_update_pending"))
         assertEquals(R.string.root_module_data_test_busy, RootModuleErrors.resource("stop_node_tests_before_update"))
         assertEquals(R.string.root_module_data_subscription_busy, RootModuleErrors.resource("subscription_cancel_timeout"))
+        assertEquals(R.string.root_module_data_selection_error, RootModuleErrors.resource("install_data_selection_changed"))
+        assertEquals(R.string.root_module_data_journal_corrupt, RootModuleErrors.resource("installer_journal_corrupt"))
         assertEquals(R.string.root_module_action_failed, RootModuleErrors.resource("root_required"))
     }
 
@@ -83,7 +85,7 @@ class InstallerDataCommitTest {
             .contains("job.invokeOnCompletion"))
         val recovery = File("src/main/java/io/nekohasekai/sagernet/bg/RootModuleDataUpdate.kt").readText()
         val ownerCheck = "android.app.Application.getProcessName() != io.nekohasekai.sagernet.BuildConfig.APPLICATION_ID"
-        assertTrue(recovery.substringAfter("suspend fun prepare").substringBefore("val existing").contains(ownerCheck))
+        assertTrue(recovery.substringAfter("suspend fun prepare").substringBefore("val existing").contains("requireMainProcess()"))
         assertTrue(recovery.substringAfter("suspend fun applyInstallerSelection").substringBefore("var applied").contains(ownerCheck))
         val xml = javax.xml.parsers.DocumentBuilderFactory.newInstance().apply { isNamespaceAware = true }
             .newDocumentBuilder().parse(File("src/main/AndroidManifest.xml"))
