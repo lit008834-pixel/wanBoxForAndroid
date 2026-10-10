@@ -4,6 +4,7 @@ package io.nekohasekai.sagernet.bg
 
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import android.os.SystemClock
 import io.nekohasekai.sagernet.SagerNet
 import io.nekohasekai.sagernet.database.DataStore
 import io.nekohasekai.sagernet.database.SagerDatabase
@@ -27,6 +28,13 @@ object RootModuleClient {
     private val commands = setOf("status", "module", "logs", "start", "stop", "restart", "reload",
         "config apply", "config validate", "autostart on", "autostart off", "data prepare", "data finish", "data rollback")
     private val changes = Mutex()
+    // @author 雾晚: 2s TTL status cache. The home observer, service tiles and node
+    // dialogs all poll status; without this each poll is a `su` round-trip.
+    private const val STATUS_TTL_MS = 2000L
+    @Volatile private var statusCache: Status? = null
+    @Volatile private var statusCacheAt = 0L
+    /** Drop the cached status; call after any mutation (select/start/stop/reload/apply). */
+    fun invalidateStatusCache() { statusCache = null }
     data class InstallSelection(val id: String, val mode: Int)
     data class Status(val phase: String, val revision: String, val runningRevision: String,
         val profileId: Long, val profileName: String, val stats: RootNotificationSample?, val error: String = "",
@@ -67,8 +75,14 @@ object RootModuleClient {
             state["error"]?.asString.orEmpty().takeIf { it.matches(Regex("[a-z_]{1,80}")) }.orEmpty(), selection)
     }
     suspend fun call(command: String, input: File? = null): Status = withContext(Dispatchers.IO) {
-        require(command in commands || command.matches(Regex("data selection-finish [a-f0-9]{32}")))
+        require(command in commands || command.matches(Regex("data selection-finish [a-f0-9]{32}"))
+                || command.matches(Regex("node select [1-9][0-9]{0,18}")))
         require((command == "config apply" || command == "config validate") == (input != null))
+        // @author 雾晚: serve fresh-enough status from the TTL cache; mutations invalidate it.
+        if (command == "status") {
+            val cached = statusCache
+            if (cached != null && SystemClock.elapsedRealtime() - statusCacheAt < STATUS_TTL_MS) return@withContext cached
+        }
         val process = try { ProcessBuilder("su", "-c", "exec $CLI $command").start() }
             catch (_: IOException) { throw IOException("root_required") }
         try {
@@ -90,9 +104,19 @@ object RootModuleClient {
                 val errors = launch(Dispatchers.IO) { process.errorStream.use { it.copyTo(object : java.io.OutputStream() { override fun write(value: Int) = Unit; override fun write(data: ByteArray, offset: Int, length: Int) = Unit }) } }
                 val writer = launch(Dispatchers.IO) { process.outputStream.use { pipe -> input?.inputStream()?.use { it.copyTo(pipe) } } }
                 try {
-                    withTimeout(if (command in setOf("status", "module", "logs")) 15_000L else 720_000L) { runInterruptible(Dispatchers.IO) { process.waitFor() } }
+                    withTimeout(if (command in setOf("status", "module", "logs") || command.startsWith("node select ")) 15_000L else 720_000L) { runInterruptible(Dispatchers.IO) { process.waitFor() } }
                     writer.join(); errors.join()
-                    try { parseResponse(output.await()) }
+                    try {
+                        val status = parseResponse(output.await())
+                        if (command == "status") {
+                            statusCache = status
+                            statusCacheAt = SystemClock.elapsedRealtime()
+                        } else {
+                            // Any successful mutation invalidates the cached status.
+                            statusCache = null
+                        }
+                        status
+                    }
                     catch (e: IOException) { throw e }
                     catch (_: Exception) { throw IOException("root_or_module_unavailable") }
                 } finally {
@@ -115,6 +139,9 @@ object RootModuleClient {
             if (before.phase == "disabled") throw IOException("module_disabled_or_missing")
             val profile = SagerDatabase.proxyDao.getById(DataStore.selectedProxy)
                 ?: if (!startIfStopped && !before.state.canStop) return else throw IOException("profile_missing")
+            // @author 雾晚: refresh cross-user UIDs (TTL-cached) so per-app rules
+            // cover secondary users / cloned apps.
+            runCatching { io.nekohasekai.sagernet.utils.PackageCache.refreshMultiUserUids() }
             val instance = ProxyInstance(profile)
             val file = File.createTempFile("module-snapshot-", ".json", SagerNet.application.cacheDir)
             try {
@@ -131,6 +158,16 @@ object RootModuleClient {
         } finally { changes.unlock() }
     }
     suspend fun stop() = changes.withLock { call("stop") }
+    /**
+     * Hot-switch the running core to another node without restart.
+     * Serialized with config applies; any failure must make the caller fall back
+     * to [startOrReload]. Never throws for user data, only fixed error codes.
+     * @author 雾晚
+     */
+    suspend fun selectNode(profileId: Long): Status {
+        require(profileId > 0)
+        return changes.withLock { call("node select $profileId") }
+    }
     internal suspend fun finishInstallerSelection(id: String) {
         require(id.matches(Regex("[a-f0-9]{32}")))
         call("data selection-finish $id")
@@ -218,6 +255,25 @@ internal class RootModuleSnapshot(private val instance: ProxyInstance, private v
             addBytes(configName, rewrite(JsonParser.parseString(content)).toString().toByteArray()); plugins.add(plugin)
         } }
         val config = rewrite(JsonParser.parseString(instance.config.config))
+        // @author 雾晚: hot-switch: publish profileId -> outbound tag (+display name) as a
+        // staged file (not the strict snapshot schema) so older modules still accept
+        // the snapshot; the module moves its runtime selector from this map.
+        runCatching {
+            val tagMap = instance.config.profileTagMap
+            if (tagMap.isNotEmpty()) {
+                val names = SagerDatabase.proxyDao.getEntities(tagMap.keys.toList()).associate { it.id to it.displayName() }
+                val profileTags = JsonObject()
+                tagMap.forEach { (id, tag) ->
+                    if (tag.isNotBlank()) {
+                        val entry = JsonObject()
+                        entry.addProperty("tag", tag)
+                        entry.addProperty("name", names[id].orEmpty().take(512))
+                        profileTags.add(id.toString(), entry)
+                    }
+                }
+                if (profileTags.size() > 0) addBytes("files/profile_tags.json", profileTags.toString().toByteArray())
+            }
+        }
         val encoded = JsonObject(); files.forEach { (name, bytes) -> encoded.addProperty(name, Base64.getEncoder().encodeToString(bytes)) }
         return JsonObject().apply {
             addProperty("schemaVersion", 1); addProperty("expectedRevision", revision); add("config", config); add("files", encoded); add("plugins", plugins)

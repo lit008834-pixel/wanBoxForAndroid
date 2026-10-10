@@ -105,6 +105,13 @@ func run(ctx context.Context, r *module.Runtime, args []string) error {
 	if len(args) == 2 && args[0] == "config" && args[1] == "rollback" {
 		return r.Rollback(ctx)
 	}
+	if len(args) == 3 && args[0] == "node" && args[1] == "select" {
+		id, e := strconv.ParseInt(args[2], 10, 64)
+		if e != nil || id <= 0 || strconv.FormatInt(id, 10) != args[2] {
+			return errors.New("arguments_invalid")
+		}
+		return r.SelectNode(ctx, id)
+	}
 	if len(args) == 1 {
 		switch args[0] {
 		case "status", "module", "logs":

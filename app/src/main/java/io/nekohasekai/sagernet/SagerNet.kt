@@ -233,7 +233,19 @@ class SagerNet : Application(),
                 if (previous != id) {
                     DataStore.selectedProxy = id
                 }
-                configurationReload.request(immediate = true)
+                // @author 雾晚: hot-switch first: move the module's runtime selector via
+                // Clash API (no core restart). Fall back to a full config apply when the
+                // module is stopped, the tag is unknown, or the switch is not confirmed.
+                val hotSwitched = runCatching {
+                    io.nekohasekai.sagernet.bg.RootModuleClient.selectNode(id)
+                }.onFailure { error ->
+                    val code = (error as? Exception)?.let { io.nekohasekai.sagernet.bg.RootModuleClient.safeError(it) }
+                        ?: "module_operation_failed"
+                    Logs.i("Node hot-switch failed ($code), falling back to full reload")
+                }.isSuccess
+                if (!hotSwitched) {
+                    configurationReload.request(immediate = true)
+                }
                 if (previous != id) io.nekohasekai.sagernet.database.ProfileManager.postUpdate(previous, noTraffic = true)
                 io.nekohasekai.sagernet.widget.OwnBoxWidgetProvider.updateWidgets(application)
             }, onError = ::reportModuleError)

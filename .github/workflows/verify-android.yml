@@ -33,9 +33,20 @@ jobs:
       - name: Build native core
         if: steps.native-cache.outputs.cache-hit != 'true'
         run: ./run lib core
+      - name: Ensure Android NDK
+        run: |
+          NDK_DIR="$ANDROID_HOME/ndk/25.0.8775105"
+          CLANG="$NDK_DIR/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android31-clang"
+          if [ ! -f "$CLANG" ]; then
+            echo "NDK clang missing, installing ndk;25.0.8775105 via sdkmanager"
+            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;25.0.8775105"
+          fi
+          test -f "$CLANG"
       - name: Test bounded URL probes and configuration templates
         run: |
           (cd libcore && go test -tags=with_clash_api,with_gvisor,with_quic,with_wireguard,with_utls .)
+          
+          
           (cd libcore && go test ./internal/... ./protocol/urltest ./protocol/loadbalance)
           (cd libcore && go test -race ./protocol/urltest ./protocol/loadbalance)
           # @author 雾晚: real SCM_RIGHTS ownership, panic, truncation and repeated requests.

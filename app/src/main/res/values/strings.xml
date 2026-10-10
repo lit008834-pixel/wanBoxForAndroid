@@ -1235,4 +1235,5 @@
     <string name="preset_domestic_ips">China IPs direct</string>
     <string name="preset_domestic_custom_config">A full custom configuration is active. Edit its routing or turn it off before applying this preset.</string>
     <string name="preset_domestic_failed">Could not save routing preset. Check available storage and retry.</string>
+    <string name="node_switch_in_progress">Switching node, please wait…</string>
 </resources>

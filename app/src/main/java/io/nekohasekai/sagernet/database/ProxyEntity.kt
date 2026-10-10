@@ -620,6 +620,12 @@ data class ProxyEntity(
         @Query("SELECT COUNT(*) FROM proxy_entities WHERE groupId = :groupId")
         fun countByGroup(groupId: Long): Long
 
+        /** Batch group sizes in one query; avoids per-row DB hits during bind. @author 雾晚 */
+        data class GroupCount(val groupId: Long, val count: Long)
+
+        @Query("SELECT groupId, COUNT(*) AS count FROM proxy_entities WHERE groupId IN (:groupIds) GROUP BY groupId")
+        fun countByGroups(groupIds: List<Long>): List<GroupCount>
+
         @Query("SELECT  MAX(userOrder) + 1 FROM proxy_entities WHERE groupId = :groupId")
         fun nextOrder(groupId: Long): Long?
 

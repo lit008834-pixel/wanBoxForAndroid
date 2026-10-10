@@ -74,6 +74,64 @@ object PackageCache {
     operator fun get(uid: Int) = AppUidPackages.names(uidMap, uid)
     operator fun get(packageName: String) = packageMap[packageName]
 
+    // @author 雾晚: secondary users' packages are invisible to PackageManager, so
+    // per-app rules would miss their traffic. Resolve all users' UIDs via root pm.
+    private const val MULTI_USER_TTL_MS = 5 * 60 * 1000L
+    @Volatile private var multiUserMap: Map<String, List<Int>> = emptyMap()
+    @Volatile private var multiUserMapAt = 0L
+    private val multiUserMutex = Mutex()
+
+    /** Refresh the cross-user UID map; cheap (TTL) and safe to call often. */
+    suspend fun refreshMultiUserUids() {
+        if (System.currentTimeMillis() - multiUserMapAt < MULTI_USER_TTL_MS) return
+        multiUserMutex.withLock {
+            if (System.currentTimeMillis() - multiUserMapAt < MULTI_USER_TTL_MS) return
+            val fresh = runCatching { queryMultiUserUids() }.getOrDefault(emptyMap())
+            multiUserMap = fresh
+            multiUserMapAt = System.currentTimeMillis()
+        }
+    }
+
+    /** All UIDs for a package across users (current user first). */
+    fun uidsForPackage(packageName: String): List<Int> {
+        val out = linkedSetOf<Int>()
+        packageMap[packageName]?.let { out.add(it) }
+        multiUserMap[packageName]?.let { out.addAll(it) }
+        return out.toList()
+    }
+
+    private fun queryMultiUserUids(): Map<String, List<Int>> {
+        fun su(cmd: String): String {
+            val p = ProcessBuilder("su", "-c", cmd).start()
+            try {
+                val out = p.inputStream.bufferedReader().readText()
+                p.waitFor()
+                if (p.exitValue() != 0) throw java.io.IOException("pm_failed")
+                return out
+            } finally {
+                p.destroy()
+            }
+        }
+        val myUser = android.os.Process.myUid() / 100000
+        val users = su("pm list users").lineSequence()
+            .mapNotNull { Regex("""UserInfo\{(\d+):""").find(it)?.groupValues?.get(1)?.toIntOrNull() }
+            .filter { it != myUser }
+            .toList()
+        if (users.isEmpty()) return emptyMap()
+        val map = mutableMapOf<String, MutableList<Int>>()
+        for (u in users) {
+            // package:com.example uid:1010123
+            su("pm list packages --user $u -U").lineSequence().forEach { line ->
+                val m = Regex("""^package:([^\s]+)\s+uid:(\d+)$""").find(line.trim()) ?: return@forEach
+                val uid = m.groupValues[2].toIntOrNull() ?: return@forEach
+                if (uid >= 1000) map.getOrPut(m.groupValues[1]) { mutableListOf() }.add(uid)
+            }
+        }
+        // @author 雾晚: identifiers/counts only; never log package names.
+        io.nekohasekai.sagernet.ktx.Logs.d("PackageCache: multi-user uid map users=${users.size} packages=${map.size}")
+        return map
+    }
+
     fun awaitLoadSync() {
         if (::packageMap.isInitialized) {
             return
