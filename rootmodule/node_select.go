@@ -19,8 +19,8 @@ import (
 // into module configs (see ConfigBuilder: buildSelector is forced on).
 const clashProxySelector = "proxy"
 
-// profileTagFile is staged via the snapshot Files channel (not the strict
-// Snapshot schema) so older modules accept new snapshots without it.
+// profileTagFile is staged via the snapshot Files channel under files/
+// (not the strict Snapshot schema) so older modules accept new snapshots.
 const profileTagFile = "profile_tags.json"
 
 // ProfileTag is the runtime identity of one selectable node.
@@ -48,7 +48,7 @@ func (r *Runtime) SelectNode(ctx context.Context, profileID int64) error {
 			return errors.New("module_not_running")
 		}
 		var tags map[string]ProfileTag
-		if e := readJSON(r.path("generations", rev, profileTagFile), &tags, 1<<20); e != nil {
+		if e := readJSON(r.path("generations", rev, "files", profileTagFile), &tags, 1<<20); e != nil {
 			return errors.New("node_tag_not_found")
 		}
 		pt, ok := tags[strconv.FormatInt(profileID, 10)]

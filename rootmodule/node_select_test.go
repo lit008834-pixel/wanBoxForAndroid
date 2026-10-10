@@ -95,7 +95,10 @@ func stageSelectNode(t *testing.T, r *Runtime, fake *fakeClash, tags map[string]
 	if e := os.MkdirAll(filepath.Join(gen, "run"), 0700); e != nil {
 		t.Fatal(e)
 	}
-	if e := jsonWrite(filepath.Join(gen, "profile_tags.json"), tags); e != nil {
+	if e := os.MkdirAll(filepath.Join(gen, "files"), 0700); e != nil {
+		t.Fatal(e)
+	}
+	if e := jsonWrite(filepath.Join(gen, "files", "profile_tags.json"), tags); e != nil {
 		t.Fatal(e)
 	}
 	clash := ""
@@ -184,7 +187,7 @@ func TestSelectNodeFailures(t *testing.T) {
 
 	r, _ = newStaged(t, true, tags)
 	// Break the generation: profile_tags.json removed -> not found.
-	if e := os.Remove(r.path("generations", "rev-select-node", "profile_tags.json")); e != nil {
+	if e := os.Remove(r.path("generations", "rev-select-node", "files", "profile_tags.json")); e != nil {
 		t.Fatal(e)
 	}
 	if e := r.SelectNode(context.Background(), 1); e == nil || e.Error() != "node_tag_not_found" {
@@ -209,15 +212,15 @@ func TestSelectNodeFailures(t *testing.T) {
 
 func TestStageMaterializesProfileTagsFile(t *testing.T) {
 	r, s := fixture(t)
-	// profile_tags.json travels via the snapshot Files channel (not the strict
-	// schema) so older modules keep accepting new snapshots.
-	s.Files["profile_tags.json"] = []byte(`{"7":{"tag":"node-x","name":"x"}}`)
+	// profile_tags.json travels via the snapshot Files channel under files/
+	// (not the strict schema) so older modules keep accepting new snapshots.
+	s.Files["files/profile_tags.json"] = []byte(`{"7":{"tag":"node-x","name":"x"}}`)
 	rev, e := r.Stage(context.Background(), s)
 	if e != nil {
 		t.Fatal(e)
 	}
 	var tags map[string]ProfileTag
-	if e := readJSON(r.path("generations", rev, "profile_tags.json"), &tags, 1<<20); e != nil {
+	if e := readJSON(r.path("generations", rev, "files", "profile_tags.json"), &tags, 1<<20); e != nil {
 		t.Fatal("profile_tags.json not staged:", e)
 	}
 	if tags["7"].Tag != "node-x" || tags["7"].Name != "x" {

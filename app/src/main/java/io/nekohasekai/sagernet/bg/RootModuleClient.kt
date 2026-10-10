@@ -271,7 +271,7 @@ internal class RootModuleSnapshot(private val instance: ProxyInstance, private v
                         profileTags.add(id.toString(), entry)
                     }
                 }
-                if (profileTags.size() > 0) addBytes("profile_tags.json", profileTags.toString().toByteArray())
+                if (profileTags.size() > 0) addBytes("files/profile_tags.json", profileTags.toString().toByteArray())
             }
         }
         val encoded = JsonObject(); files.forEach { (name, bytes) -> encoded.addProperty(name, Base64.getEncoder().encodeToString(bytes)) }
